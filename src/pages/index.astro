@@ -1,11 +1,221 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+import Head from "../components/Head.astro";
+import Layout from "../layouts/Layout.astro";
+import { cn } from "../lib/utils";
+import { MAX_WIDTH_CLASSES } from "../lib/constants";
+import Github from "../assets/github.svg";
+import LinkedIn from "../assets/linkedin.svg";
+import Mail from "../assets/mail.svg";
+import Youtube from "../assets/youtube.svg";
+import HeroArticleCard from "../components/HeroArticleCard.astro";
+
+import ProjectCard from "../components/ProjectCard.astro";
+import CodeCompilerScreenshot from "../assets/screenshots/code-compiler.png";
+import BrunScreenshot from "../assets/screenshots/brun.png";
+import SeekhCodeScreenshot from "../assets/screenshots/seekhcode.png";
+import { MoveRightIcon } from "lucide-react";
+import Footer from "../components/Footer.astro";
+
+
+// TODO: Change these icons
+
+const LINKS = [
+  {
+    name: "Github",
+    Icon: Github,
+    href: "https://github.com/Wiper-R",
+  },
+  {
+    name: "LinkedIn",
+    Icon: LinkedIn,
+    href: "https://www.linkedin.com/in/wiperr",
+  },
+  {
+    name: "Mail",
+    Icon: Mail,
+    href: "mailto:shivang.rath@gmail.com",
+  },
+  {
+    name: "Youtube",
+    Icon: Youtube,
+    href: "https://www.youtube.com/@seekhcode",
+  },
+];
 
 // Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
 // Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
 
 <Layout>
-	<Welcome />
+  <Head title="Shivang Rathore | Developer & Tech Enthusiast" />
+  <div class={cn("relative overflow-hidden")}>
+    <!-- <ParticlesBackground client:only /> -->
+    <div class={cn(MAX_WIDTH_CLASSES)}>
+      <div class="mt-20">
+        <span class="text-green-400 text-3xl"> Hi, I am </span>
+        <h1 class="text-8xl font-black">Shivang Rathore.</h1>
+        <p class="mt-10 font-medium max-w-2xl text-xl">
+          Software Engineer,<span class="text-gray-400">
+            A developer with interest in Computer Science.</span
+          >
+          <span class="block text-gray-400 mt-4">
+            I hold a degree in computer science, but the majority of my
+            expertise comes from self-directed learning and real-world projects.
+          </span>
+        </p>
+      </div>
+      <ul class="grid mt-6 text-lg text-gray-400">
+        <li>
+          <span class="text-xl"> ⚡ </span><span
+            >Currently specilizing in Full Stack Development</span
+          >
+        </li>
+        <li>
+          <span class="text-xl"> ✍️ </span><span
+            >Sharing knowledge on Youtube and Blogs</span
+          >
+        </li>
+      </ul>
+      <ul class="flex gap-4 mt-10">
+        {
+          LINKS.map(({ Icon, ...link }) => (
+            <li>
+              <a
+                href={link.href}
+                class="p-4 py-2 bg-zinc-900 rounded flex gap-2 items-center hover:bg-zinc-800"
+              >
+                <span class="text-green-400">
+                  <Icon class={"size-5"} />
+                </span>
+                <span>{link.name}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+  <!-- TODO: Add sources and hover effects in about section -->
+  <div class={cn(MAX_WIDTH_CLASSES, "mt-52")}>
+    <h2 class="text-2xl font-bold">⚡About Me</h2>
+    <div class="grid grid-cols-2 mt-10">
+      <ul class="gap-2 grid text-gray-300">
+        <li>
+          Hey! I'm Shivang Rathore. My interest in programming started in
+          school, where I was introduced to HTML in 6th grade by a teacher who
+          was also a software engineer.
+        </li>
+        <li>
+          In 2019, I discovered a Discord bot written in Python and backed by
+          SQLite. With no prior experience, I taught myself Python through
+          online resources and forums. That journey kickstarted my passion for
+          coding.
+        </li>
+        <li>
+          I have strong expertise in Python, JavaScript, React, Node.js, and
+          Golang.
+        </li>
+        <li>
+          Previously, I worked as a Lead Developer with the Pokémon Bot team for
+          two years, scaling the app to support 100k servers.
+        </li>
+      </ul>
+      <div>
+        <div class="size-full aspect-square bg-gray-400 ml-auto max-w-[320px]">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class={cn(MAX_WIDTH_CLASSES, "mt-36 grid grid-cols-2 gap-14")}>
+    <div class="flex flex-col gap-2">
+      <h2 class="text-2xl font-bold">💼 My Work</h2>
+      <p class="text-gray-400">
+        Here's some of my projects that I have worked on.
+      </p>
+      <a href="/projects" class="flex gap-2 text-green-400 text-lg items-center"
+        >Explore More <MoveRightIcon /></a
+      >
+      <div class="mt-20 w-px h-px"></div>
+      <ProjectCard
+        title="Seekh Code"
+        description="Seekh Code is a platform where I share my knowledge about programming and computer science."
+        image={SeekhCodeScreenshot.src}
+        href="/projects/seekhcode"
+        tags={["astro", "nodejs", "markdown"]}
+      />
+    </div>
+    <div class="grid gap-14">
+      <ProjectCard
+        title="Code Compiler"
+        description="Made a code compiler where users can compile languages like python, nodejs, c and java on the web."
+        image={CodeCompilerScreenshot.src}
+        href="/projects/code-compiler"
+        tags={["react", "nodejs", "express", "docker", "redis", "postgresql"]}
+      />
+      <ProjectCard
+        title="Brun"
+        description="Brun is a full fledged social media platform where users can share their thoughts and ideas."
+        image={BrunScreenshot.src}
+        href="/projects/brun"
+        tags={["nextjs", "nodejs", "express", "postgresql"]}
+      />
+    </div>
+  </div>
+  <div class={cn(MAX_WIDTH_CLASSES, "mt-36")}>
+    <div class="flex justify-between items-center">
+      <h3 class="font-bold text-3xl">🌟 Recent Articles</h3>
+      <a href="/blog" class="text-green-400 text-lg flex gap-2 items-center"
+        >Explore More <MoveRightIcon /></a
+      >
+    </div>
+    <div class="grid grid-cols-2 mt-10 gap-6">
+      <HeroArticleCard
+        title="How to use react query in nextjs"
+        description="In this blog we will how to use react query in nextjs"
+        date="2021-10-10"
+        readTime="5 min read"
+      />
+      <HeroArticleCard
+        title="How to use react query in nextjs"
+        description="In this blog we will how to use react query in nextjs"
+        date="2021-10-10"
+        readTime="5 min read"
+      />
+      <HeroArticleCard
+        title="How to use react query in nextjs"
+        description="In this blog we will how to use react query in nextjs"
+        date="2021-10-10"
+        readTime="5 min read"
+      />
+      <HeroArticleCard
+        title="How to use react query in nextjs"
+        description="In this blog we will how to use react query in nextjs"
+        date="2021-10-10"
+        readTime="5 min read"
+      />
+    </div>
+  </div>
+  <div
+    class={cn(
+      MAX_WIDTH_CLASSES,
+      "mt-36 flex flex-col items-center text-center",
+    )}
+  >
+    <h2 class="text-2xl font-bold">📬 Get in touch</h2>
+    <p class="text-gray-400 mt-4 max-w-4xl mx-auto">
+      I'm currently looking for new opportunities, my inbox is always open.
+      Whether you have a question or just want to say hi, I'll try my best to
+      get back to you!
+    </p>
+    <a
+      href="mailto:shivang.rath@gmail.com"
+      class="mt-10 p-4 py-2 bg-zinc-900 rounded flex gap-2 items-center hover:bg-zinc-800"
+    >
+      <span class="text-green-400">
+        <Mail class={"size-5"} />
+      </span>
+      <span>Email me</span>
+    </a>
+  </div>
+  <Footer />
 </Layout>

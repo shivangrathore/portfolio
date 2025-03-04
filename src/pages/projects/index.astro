@@ -1,0 +1,56 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { MAX_WIDTH_CLASSES } from "../../lib/constants";
+import SearchInput from "../../components/SearchInput.tsx";
+import { cn } from "../../lib/utils";
+import ProjectCard from "../../components/ProjectCard.astro";
+import SeekhcodeImage from "../../assets/screenshots/brun.png";
+import Footer from "../../components/Footer.astro";
+---
+
+<Layout>
+  <div class={cn(MAX_WIDTH_CLASSES, "mt-20")}>
+    <h1 class="text-6xl font-extrabold my-8">Projects</h1>
+    <p class="text-gray-400">
+      Over the past few years, I have had the opportunity to work on a variety
+      of projects. This section is dedicated to showcasing those projects,
+      diving into the why behind their creation, the how of their development,
+      and the tech stacks I utilized. Additionally, I’ll share the challenges I
+      encountered along the way and the solutions I implemented to overcome
+      them.
+    </p>
+    <SearchInput />
+    <hr class="my-10 border-gray-500/25" />
+    <div class="grid grid-cols-2 gap-10">
+      <ProjectCard
+        title="Project 1"
+        description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar, nunc nec ultricies."
+        tags={["react", "astro", "react"]}
+        image={SeekhcodeImage.src}
+        href="/projects/project-1"
+      />
+      <ProjectCard
+        title="Project 1"
+        description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar, nunc nec ultricies."
+        tags={["react", "astro", "react"]}
+        image={SeekhcodeImage.src}
+        href="/projects/project-1"
+      />
+      <ProjectCard
+        title="Project 1"
+        description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar, nunc nec ultricies."
+        tags={["react", "astro", "react"]}
+        image={SeekhcodeImage.src}
+        href="/projects/project-1"
+      />
+      <ProjectCard
+        title="Project 1"
+        description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed pulvinar, nunc nec ultricies."
+        tags={["react", "astro", "react"]}
+        image={SeekhcodeImage.src}
+        href="/projects/project-1"
+      />
+    </div>
+  </div>
+  <Footer />
+</Layout>

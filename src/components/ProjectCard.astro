@@ -1,0 +1,121 @@
+---
+import NextJSIcon from "../assets/nextjs.svg";
+import ReactIcon from "../assets/react.svg";
+import NodeJSIcon from "../assets/nodejs.svg";
+import CodeIcon from "../assets/code.svg";
+import DockerIcon from "../assets/docker.svg";
+import RedisIcon from "../assets/redis.svg";
+import PostgreSQLIcon from "../assets/postgresql.svg";
+
+type Props = {
+  title: string;
+  description: string;
+  image: string;
+  href: string;
+  tags: (keyof typeof TAGS)[];
+};
+
+const { href, title, description, image, tags } = Astro.props;
+
+const TAGS = {
+  nextjs: {
+    bgColor: "bg-green-400/35",
+    textColor: "text-green-400",
+    text: "NextJS",
+    Icon: NextJSIcon,
+  },
+  react: {
+    bgColor: "bg-blue-400/35",
+    textColor: "text-blue-400",
+    text: "React",
+    Icon: ReactIcon,
+  },
+  nodejs: {
+    bgColor: "bg-lime-400/35",
+    textColor: "text-lime-400",
+    text: "Node.js",
+    Icon: NodeJSIcon,
+  },
+  express: {
+    bgColor: "bg-gray-400/35",
+    textColor: "text-gray-400",
+    text: "Express",
+    Icon: CodeIcon,
+  },
+  docker: {
+    bgColor: "bg-blue-400/35",
+    textColor: "text-blue-400",
+    text: "Docker",
+    Icon: DockerIcon,
+  },
+  redis: {
+    bgColor: "bg-red-400/35",
+    textColor: "text-red-400",
+    text: "Redis",
+    Icon: RedisIcon,
+  },
+  postgresql: {
+    bgColor: "bg-violet-400/35",
+    textColor: "text-violet-400",
+    text: "PostgreSQL",
+    Icon: PostgreSQLIcon,
+  },
+  astro: {
+    bgColor: "bg-pink-400/35",
+    textColor: "text-pink-400",
+    text: "Astro",
+    Icon: CodeIcon,
+  },
+  markdown: {
+    bgColor: "bg-orange-400/35",
+    textColor: "text-orange-400",
+    text: "Markdown",
+    Icon: CodeIcon,
+  },
+} as const;
+
+import { ExternalLink } from "lucide-react";
+import { cn } from "../lib/utils";
+---
+
+<a
+  href={href}
+  class="rounded-xl overflow-hidden bg-black border border-gray-600/25 flex flex-col hover:bg-stone-950"
+>
+  <img
+    src={image}
+    alt="Project Screenshot"
+    class="w-full object-top object-cover"
+  />
+  <div class="grid gap-2 p-4">
+    <h3 class="text-2xl font-bold flex justify-between items-center">
+      <span>
+        {title}
+      </span>
+      <span>
+        <ExternalLink />
+      </span>
+    </h3>
+    <ul class="flex flex-wrap gap-2">
+      {
+        tags.map((tag) => {
+          const Icon = TAGS[tag].Icon;
+          return (
+            <li
+              class={cn(
+                "px-2 py-1 rounded-lg bg-green-400/40 text-sm inline-flex items-center gap-2 font-medium",
+                TAGS[tag].textColor,
+                TAGS[tag].bgColor,
+              )}
+            >
+              <Icon class="size-4" />
+              <span>{TAGS[tag].text}</span>
+            </li>
+          );
+        })
+      }
+    </ul>
+    <hr class="border-gray-400/20" />
+    <p class="text-gray-300">{description}</p>
+  </div>
+</a>

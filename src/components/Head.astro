@@ -1,0 +1,15 @@
+---
+type Props = {
+  title: string;
+  description?: string;
+};
+const { title, description } = Astro.props;
+---
+
+<head slot="head">
+  <title>{title}</title>
+  <link rel="stylesheet" href="/styles/global.css" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  {description && <meta name="description" content={description} />}
+  <slot />
+</head>
