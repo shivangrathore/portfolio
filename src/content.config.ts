@@ -1,22 +1,41 @@
-import { glob } from "astro/loaders"
-import { defineCollection, z } from "astro:content"
+import { glob, file } from "astro/loaders"
+import { defineCollection, reference, z } from "astro:content"
+import { parse as parseToml } from "@iarna/toml"
 
 const projects = defineCollection({
   loader: glob({ pattern: "**/*.mdx", base: "content/projects" }),
-  schema: z.object({
+  schema: ({ image }) => z.object({
     title: z.string(),
     description: z.string(),
-    date: z.coerce.date(),
+    pubDate: z.coerce.date(),
+    tags: z.array(reference("tags")),
+    image: image(),
+    githubUrl: z.string().optional(),
+    liveUrl: z.string().optional(),
   })
 })
 
 const tags = defineCollection({
-  loader: glob({ pattern: "**/*.json", base: "content/tags" }),
-  schema: ({ image }) => z.object({
-    title: z.string(),
-    icon: image(),
-  })
+  loader: file("content/tags.toml", {
+    parser: (text) => {
+      const p = parseToml(text) as Record<string, any>;
+      const data: Record<string, any> = [];
+      Object.keys(p).forEach(key => {
+        data.push({
+          id: key,
+          ...p[key]
+        })
+      })
+      return data;
+    }
+  }),
+  schema: z.object(
+    {
+      text: z.string(),
+      className: z.string(),
+      icon: z.string()
+    }
+  )
 })
-
 
 export const collections = { projects, tags }

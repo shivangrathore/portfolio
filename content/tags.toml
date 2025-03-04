@@ -1,0 +1,39 @@
+[astro]
+text = "Astro"
+className = "bg-pink-400/35 text-pink-400"
+icon = "code"
+
+[docker]
+text = "Docker"
+className = "bg-blue-400/35 text-blue-400"
+icon = "docker"
+
+[nextjs]
+text = "NextJS"
+className = "bg-green-400/35 text-green-400"
+icon = "nextjs"
+
+[nodejs]
+text = "NodeJS"
+className = "bg-lime-400/35 text-lime-400"
+icon = "nodejs"
+
+[postgresql]
+text = "PostgreSQL"
+className = "bg-violet-400/35 text-violet-400"
+icon = "postgresql"
+
+[react]
+text = "React"
+className = "bg-blue-400/35 text-blue-400"
+icon = "react"
+
+[redis]
+text = "Redis"
+className = "bg-red-400/35 text-red-400"
+icon = "redis"
+
+[markdown]
+text = "Markdown"
+className = "bg-yellow-400/35 text-yellow-400"
+icon = "code"

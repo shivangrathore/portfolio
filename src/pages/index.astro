@@ -12,14 +12,9 @@ import Youtube from "@/assets/icons/youtube.svg";
 import HeroArticleCard from "@/components/HeroArticleCard.astro";
 
 import ProjectCard from "@/components/ProjectCard.astro";
-import CodeCompilerScreenshot from "@/assets/screenshots/code-compiler.png";
-import BrunScreenshot from "@/assets/screenshots/brun.png";
-import SeekhCodeScreenshot from "@/assets/screenshots/seekhcode.png";
 import { MoveRightIcon } from "lucide-react";
 import Footer from "@/components/Footer.astro";
-
-
-// TODO: Change these icons
+import { getCollection } from "astro:content";
 
 const LINKS = [
   {
@@ -44,14 +39,12 @@ const LINKS = [
   },
 ];
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const projects = await getCollection("projects");
 ---
 
 <Layout>
   <Head title="Shivang Rathore | Developer & Tech Enthusiast" />
   <div class={cn("relative overflow-hidden")}>
-    <!-- <ParticlesBackground client:only /> -->
     <div class={cn(MAX_WIDTH_CLASSES)}>
       <div class="mt-20">
         <span class="text-green-400 text-3xl"> Hi, I am </span>
@@ -138,29 +131,11 @@ const LINKS = [
         >Explore More <MoveRightIcon /></a
       >
       <div class="mt-20 w-px h-px"></div>
-      <ProjectCard
-        title="Seekh Code"
-        description="Seekh Code is a platform where I share my knowledge about programming and computer science."
-        image={SeekhCodeScreenshot.src}
-        href="/projects/seekhcode"
-        tags={["astro", "nodejs", "markdown"]}
-      />
+      <ProjectCard {...projects[0]} />
     </div>
     <div class="grid gap-14">
-      <ProjectCard
-        title="Code Compiler"
-        description="Made a code compiler where users can compile languages like python, nodejs, c and java on the web."
-        image={CodeCompilerScreenshot.src}
-        href="/projects/code-compiler"
-        tags={["react", "nodejs", "express", "docker", "redis", "postgresql"]}
-      />
-      <ProjectCard
-        title="Brun"
-        description="Brun is a full fledged social media platform where users can share their thoughts and ideas."
-        image={BrunScreenshot.src}
-        href="/projects/brun"
-        tags={["nextjs", "nodejs", "express", "postgresql"]}
-      />
+      <ProjectCard {...projects[0]} />
+      <ProjectCard {...projects[0]} />
     </div>
   </div>
   <div class={cn(MAX_WIDTH_CLASSES, "mt-36")}>
