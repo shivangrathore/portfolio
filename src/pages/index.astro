@@ -1,20 +1,22 @@
 ---
-import Head from "../components/Head.astro";
-import Layout from "../layouts/Layout.astro";
-import { cn } from "../lib/utils";
-import { MAX_WIDTH_CLASSES } from "../lib/constants";
-import Github from "../assets/github.svg";
-import LinkedIn from "../assets/linkedin.svg";
-import Mail from "../assets/mail.svg";
-import Youtube from "../assets/youtube.svg";
-import HeroArticleCard from "../components/HeroArticleCard.astro";
+import Head from "@/components/Head.astro";
+import Layout from "@/layouts/Layout.astro";
+import { cn } from "@/lib/utils";
+import { MAX_WIDTH_CLASSES } from "@/lib/constants";
 
-import ProjectCard from "../components/ProjectCard.astro";
-import CodeCompilerScreenshot from "../assets/screenshots/code-compiler.png";
-import BrunScreenshot from "../assets/screenshots/brun.png";
-import SeekhCodeScreenshot from "../assets/screenshots/seekhcode.png";
+// Icons
+import Github from "@/assets/icons/github.svg";
+import LinkedIn from "@/assets/icons/linkedin.svg";
+import Mail from "@/assets/icons/mail.svg";
+import Youtube from "@/assets/icons/youtube.svg";
+import HeroArticleCard from "@/components/HeroArticleCard.astro";
+
+import ProjectCard from "@/components/ProjectCard.astro";
+import CodeCompilerScreenshot from "@/assets/screenshots/code-compiler.png";
+import BrunScreenshot from "@/assets/screenshots/brun.png";
+import SeekhCodeScreenshot from "@/assets/screenshots/seekhcode.png";
 import { MoveRightIcon } from "lucide-react";
-import Footer from "../components/Footer.astro";
+import Footer from "@/components/Footer.astro";
 
 
 // TODO: Change these icons

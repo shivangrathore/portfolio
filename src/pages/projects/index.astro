@@ -6,6 +6,10 @@ import { cn } from "../../lib/utils";
 import ProjectCard from "../../components/ProjectCard.astro";
 import SeekhcodeImage from "../../assets/screenshots/brun.png";
 import Footer from "../../components/Footer.astro";
+import { getCollection, getEntry, render } from "astro:content";
+const projects = await getCollection("projects");
+const tags = await getCollection("tags");
+console.log(tags)
 ---
 
 <Layout>
