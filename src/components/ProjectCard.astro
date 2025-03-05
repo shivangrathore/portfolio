@@ -4,22 +4,21 @@ import { cn } from "../lib/utils";
 import type { CollectionEntry } from "astro:content";
 import { Image } from "astro:assets";
 import { getEntry } from "astro:content";
-import { Icon } from "astro-icon/components"
+import { Icon } from "astro-icon/components";
 
-type Props = {
-} & CollectionEntry<"projects">;
+type Props = {} & CollectionEntry<"projects">;
 
-const { id: href, data: { title, description, date, tags, image } } = Astro.props;
+const {
+  id,
+  data: { title, description, tags, image },
+} = Astro.props;
 ---
 
 <a
-  href={href}
-  class="rounded-xl overflow-hidden bg-black border border-gray-600/25 flex flex-col hover:bg-stone-950"
+  href={`/projects/${id}`}
+  class="rounded-xl overflow-hidden bg-neutral-950 border border-gray-600/25 flex flex-col"
 >
-  <Image
-    src={image}
-    alt={"Image for " + title}
-  />
+  <Image src={image} alt={"Image for " + title} />
   <div class="grid gap-2 p-4">
     <h3 class="text-2xl font-bold flex justify-between items-center">
       <span>
@@ -32,16 +31,16 @@ const { id: href, data: { title, description, date, tags, image } } = Astro.prop
     <ul class="flex flex-wrap gap-2">
       {
         tags.map(async ({ id: tagId }) => {
-          const tag = await getEntry("tags", tagId)
+          const tag = await getEntry("tags", tagId);
           if (!tag) throw new Error(`Tag with id ${tagId} not found`);
           return (
             <li
               class={cn(
                 "px-2 py-1 rounded-lg bg-green-400/40 text-sm inline-flex items-center gap-2 font-medium",
-                tag.data.className
+                tag.data.className,
               )}
             >
-              <Icon name={tag.data.icon}/>
+              <Icon name={tag.data.icon} />
               <span>{tag.data.text}</span>
             </li>
           );
@@ -49,6 +48,6 @@ const { id: href, data: { title, description, date, tags, image } } = Astro.prop
       }
     </ul>
     <hr class="border-gray-400/20" />
-  <p class="text-gray-300">{description}</p>
+    <p class="text-gray-300">{description}</p>
   </div>
 </a>
