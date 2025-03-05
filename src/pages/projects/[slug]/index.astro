@@ -5,7 +5,8 @@ import { getCollection } from "astro:content";
 import TOC from "@/components/TOC/index.astro";
 import Layout from "@/layouts/Layout.astro";
 import { cn } from "@/lib/utils";
-import { MAX_WIDTH_CLASSES } from "@/lib/constants";
+import { Icon } from "astro-icon/components";
+import { Image } from "astro:assets";
 
 export const getStaticPaths = (async () => {
   const projects = await getCollection("projects");
@@ -22,12 +23,45 @@ const { Content, headings } = await render(project);
 ---
 
 <Layout>
-  <div class={cn(MAX_WIDTH_CLASSES, "flex w-fit gap-20")}>
-    <article class={"prose prose-neutral dark:prose-invert flex-grow shrink-0"}>
-      <Content />
-    </article>
-    <div class="max-w-[400px] sticky top-20 h-full overflow-y-auto float-right">
-      <TOC headings={headings} />
+  <div class={cn("flex flex-col max-w-5xl mx-auto")}>
+    <Image
+      src={project.data.image}
+      alt={"Image for " + project.data.title}
+      class={"w-full"}
+    />
+    <h1 class={cn("text-4xl font-bold mt-10")}>{project.data.title}</h1>
+    <p class={cn("text-lg mt-4")}>{project.data.description}</p>
+    <ol class="flex gap-4 mt-4">
+      {
+        project.data.tags.map(async ({ id: tagId }) => {
+          const tag = await getEntry("tags", tagId);
+          if (!tag) {
+            return null;
+          }
+          return (
+            <li class={cn("text-sm text-neutral-500 dark:text-neutral-400")}>
+              <Icon
+                name={tag.data.icon}
+                class={cn("w-4 h-4 inline-block mr-2")}
+              />
+              {tag.data.text}
+            </li>
+          );
+        })
+      }
+    </ol>
+    <hr class={cn("my-10")} />
+    <div class={cn("flex w-fit gap-20")}>
+      <article
+        class={"prose prose-neutral dark:prose-invert flex-grow max-w-none"}
+      >
+        <Content />
+      </article>
+      <div
+        class="max-w-[240px] w-full sticky top-20 h-full overflow-y-auto float-right"
+      >
+        <TOC headings={headings} />
+      </div>
     </div>
   </div>
 </Layout>

@@ -19,7 +19,6 @@ export function buildHeadingHierarchy(headings: Heading[]) {
     const heading: HeadingWithSubheadings = { ...h, subheadings: [] };
     if (heading.depth === 2) {
       toc.push(heading);
-      parentHeadings.set(2, heading);
     }
     else {
       let searchDepth = heading.depth - 1;
@@ -35,6 +34,7 @@ export function buildHeadingHierarchy(headings: Heading[]) {
         toc.push(heading);
       }
     }
+    parentHeadings.set(heading.depth, heading);
   });
 
   return toc;

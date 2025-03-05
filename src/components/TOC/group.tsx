@@ -1,9 +1,10 @@
 import { type HeadingWithSubheadings } from "@/lib/heading-hierarchy";
+import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 
-type Props = { headings: HeadingWithSubheadings[] };
+type Props = { headings: HeadingWithSubheadings[], isRoot?: boolean };
 
-export function Group({ headings }: Props) {
+export function Group({ headings, isRoot = false }: Props) {
   useEffect(() => {
     const intersectionObserver = new IntersectionObserver(
       (entries) => {
@@ -37,7 +38,7 @@ export function Group({ headings }: Props) {
   }, [headings]);
 
   return (
-    <ol className="ml-4 text-gray-400">
+    <ol className={cn("text-gray-400", { "pl-4": !isRoot })}>
       {headings.map((heading) => (
         <li key={heading.slug}>
           <a
