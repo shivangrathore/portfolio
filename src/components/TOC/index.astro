@@ -1,0 +1,18 @@
+---
+import { buildHeadingHierarchy } from "@/lib/heading-hierarchy";
+import { Group } from "./group.tsx";
+type Heading = {
+  depth: number;
+  text: string;
+  slug: string;
+};
+
+type Props = { headings: Heading[] };
+const { headings } = Astro.props;
+const hierarchy = buildHeadingHierarchy(headings);
+---
+
+<div>
+  <h6 class="font-semibold text-lg mb-2">Table of Contents</h6>
+  <Group headings={hierarchy} client:load />
+</div>

@@ -1,0 +1,26 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { MAX_WIDTH_CLASSES } from "@/lib/constants";
+import BlogSearchInput from "@/components/BlogSearchInput";
+import { cn } from "@/lib/utils";
+import ArticleCard from "@/components/ArticleCard.astro";
+import { getCollection } from "astro:content";
+import Head from "@/components/Head.astro";
+const blog = await getCollection("blog");
+---
+
+<Head title="Blog" />
+<Layout>
+  <div class={cn(MAX_WIDTH_CLASSES, "mt-5")}>
+    <h1 class="text-6xl font-extrabold my-8">Blog</h1>
+    <p class="text-gray-400">
+      This is where I share my writings on programming, tutorials, and my
+      experiences.
+    </p>
+    <BlogSearchInput client:load />
+    <hr class="my-10 border-gray-500/25" />
+    <div class="grid gap-10">
+      {blog.map((blog) => <ArticleCard {...blog} />)}
+    </div>
+  </div>
+</Layout>

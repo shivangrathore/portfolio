@@ -7,8 +7,8 @@ export const GET: APIRoute = async () => {
     fields: ["title", "description", "tags"],
     storeFields: ["title", "description"],
   });
-  const projects = await getCollection("projects");
-  const data = projects.map(p => {
+  const blog = await getCollection("blog");
+  const data = blog.map(p => {
     return {
       id: p.id,
       ...p.data,

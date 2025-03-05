@@ -15,6 +15,17 @@ const projects = defineCollection({
   })
 })
 
+const blog = defineCollection({
+  loader: glob({ pattern: "**/*.mdx", base: "content/blog" }),
+  schema: ({ image }) => z.object({
+    title: z.string(),
+    description: z.string(),
+    pubDate: z.coerce.date(),
+    tags: z.array(reference("tags")),
+    image: image(),
+  })
+})
+
 const tags = defineCollection({
   loader: file("content/tags.toml", {
     parser: (text) => {
@@ -38,4 +49,4 @@ const tags = defineCollection({
   )
 })
 
-export const collections = { projects, tags }
+export const collections = { projects, tags, blog }

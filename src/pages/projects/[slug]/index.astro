@@ -1,10 +1,33 @@
 ---
 import type { GetStaticPaths } from "astro";
+import { getEntry, render } from "astro:content";
+import { getCollection } from "astro:content";
+import TOC from "@/components/TOC/index.astro";
+import Layout from "@/layouts/Layout.astro";
+import { cn } from "@/lib/utils";
+import { MAX_WIDTH_CLASSES } from "@/lib/constants";
+
+export const getStaticPaths = (async () => {
+  const projects = await getCollection("projects");
+  return projects.map(({ id }) => ({ params: { slug: id } }));
+}) satisfies GetStaticPaths;
+
 const { slug } = Astro.params;
 
-export const getStaticPaths = (() => {
-  return [{ params: { slug: "seekhcode" } }];
-}) satisfies GetStaticPaths;
+const project = await getEntry("projects", slug);
+if (!project) {
+  throw new Error("Could not find blog post 1");
+}
+const { Content, headings } = await render(project);
 ---
 
-<span>{slug}</span>
+<Layout>
+  <div class={cn(MAX_WIDTH_CLASSES, "flex w-fit gap-20")}>
+    <article class={"prose prose-neutral dark:prose-invert flex-grow shrink-0"}>
+      <Content />
+    </article>
+    <div class="max-w-[400px] sticky top-20 h-full overflow-y-auto float-right">
+      <TOC headings={headings} />
+    </div>
+  </div>
+</Layout>

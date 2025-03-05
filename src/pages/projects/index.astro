@@ -4,7 +4,6 @@ import { MAX_WIDTH_CLASSES } from "@/lib/constants";
 import ProjectSearchInput from "@/components/ProjectSearchInput.tsx";
 import { cn } from "@/lib/utils";
 import ProjectCard from "@/components/ProjectCard.astro";
-import Footer from "@/components/Footer.astro";
 import { getCollection } from "astro:content";
 import Head from "@/components/Head.astro";
 const projects = await getCollection("projects");
@@ -12,7 +11,7 @@ const projects = await getCollection("projects");
 
 <Head title="Projects" />
 <Layout>
-  <div class={cn(MAX_WIDTH_CLASSES, "mt-20")}>
+  <div class={cn(MAX_WIDTH_CLASSES, "mt-5")}>
     <h1 class="text-6xl font-extrabold my-8">Projects</h1>
     <p class="text-gray-400">
       Over the past few years, I have had the opportunity to work on a variety
@@ -28,5 +27,4 @@ const projects = await getCollection("projects");
       {projects.map((project) => <ProjectCard {...project} />)}
     </div>
   </div>
-  <Footer />
 </Layout>

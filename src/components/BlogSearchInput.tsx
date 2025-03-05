@@ -15,7 +15,7 @@ export function SearchDialog({ open, setOpen }: { open: boolean, setOpen: (v: bo
   const [search, setSearch] = useState("");
   const miniSearch = useRef<MiniSearch>(null);
   const loadMiniSearch = useCallback(async () => {
-    const response = await axios.get("/index/projects.json", { responseType: "text" });
+    const response = await axios.get("/index/blog.json", { responseType: "text" });
     miniSearch.current = MiniSearch.loadJSON(response.data, { fields: ["title", "description", "tags"] });
   }, [])
   useEffect(() => {
@@ -33,11 +33,11 @@ export function SearchDialog({ open, setOpen }: { open: boolean, setOpen: (v: bo
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Search Projects</DialogTitle>
-          <DialogDescription>Search accross all the listed projects</DialogDescription>
+          <DialogTitle>Search Article</DialogTitle>
+          <DialogDescription>Search accross all the articles</DialogDescription>
         </DialogHeader>
         <div className="relative flex w-full items-center mt-6">
-          <Input className="w-full p-4 pr-10" placeholder="Search Project" value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => setOpen(true)} />
+          <Input className="w-full p-4 pr-10" placeholder="Search Article" value={search} onChange={(e) => setSearch(e.target.value)} onFocus={() => setOpen(true)} />
           <SearchIcon className="absolute right-2 size-5 text-gray-500" />
         </div>
         {searchResults.length == 0 ?
@@ -62,7 +62,7 @@ export default function ProjectSearchInput() {
   return <>
     <div>
       <div className="relative flex w-[400px] max-w-full items-center mt-6">
-        <Input className="w-full pr-10" placeholder="Search Project" onFocus={() => setOpen(true)} />
+        <Input className="w-full pr-10" placeholder="Search Article" onFocus={() => setOpen(true)} />
         <SearchIcon className="absolute right-2 size-5 text-gray-500" />
       </div>
     </div>

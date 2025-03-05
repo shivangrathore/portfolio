@@ -13,7 +13,6 @@ import HeroArticleCard from "@/components/HeroArticleCard.astro";
 
 import ProjectCard from "@/components/ProjectCard.astro";
 import { MoveRightIcon } from "lucide-react";
-import Footer from "@/components/Footer.astro";
 import { getCollection } from "astro:content";
 
 const LINKS = [
@@ -194,5 +193,4 @@ const projects = await getCollection("projects");
       <span>Email me</span>
     </a>
   </div>
-  <Footer />
 </Layout>
