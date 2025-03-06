@@ -1,0 +1,31 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import type { Heading } from "@/lib/heading-hierarchy";
+import { cn } from "@/lib/utils";
+import TOC from "@/components/TOC/index.astro";
+import Comments from "@/components/Comments.astro";
+
+type Props = {
+  headings: Heading[];
+};
+
+const { headings } = Astro.props;
+---
+
+<Layout>
+  <div class={cn("flex flex-col max-w-5xl mx-auto")}>
+    <slot name="details" />
+    <hr class={cn("my-10")} />
+    <div class={cn("flex w-fit gap-20")}>
+      <article class={"prose prose-neutral dark:prose-invert flex-grow"}>
+        <slot name="content" />
+      </article>
+      <div
+        class="max-w-[240px] w-full sticky top-20 h-full overflow-y-auto float-right"
+      >
+        <TOC headings={headings} />
+      </div>
+    </div>
+    <Comments />
+  </div>
+</Layout>

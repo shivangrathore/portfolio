@@ -1,40 +1,39 @@
 ---
-import type { GetStaticPaths } from "astro";
 import { getEntry, render } from "astro:content";
-import { getCollection } from "astro:content";
+import Head from "@/components/Head.astro";
+import BlogLayout from "@/layouts/BlogLayout.astro";
+import { Image } from "astro:assets";
 import { cn } from "@/lib/utils";
 import { Icon } from "astro-icon/components";
-import { Image } from "astro:assets";
-import BlogLayout from "@/layouts/BlogLayout.astro";
-import Head from "@/components/Head.astro";
+import { getCollection } from "astro:content";
+import type { GetStaticPaths } from "astro";
 
 export const getStaticPaths = (async () => {
-  const projects = await getCollection("projects");
+  const projects = await getCollection("blog");
   return projects.map(({ id }) => ({ params: { slug: id } }));
 }) satisfies GetStaticPaths;
 
 const { slug } = Astro.params;
-
-const project = await getEntry("projects", slug);
-if (!project) {
+const blog = await getEntry("blog", slug);
+if (!blog) {
   throw new Error("Could not find blog post 1");
 }
-const { Content, headings } = await render(project);
+const { Content, headings } = await render(blog);
 ---
 
-<Head title={project.data.title} />
+<Head title={blog.data.title} />
 <BlogLayout headings={headings}>
   <slot slot="details">
     <Image
-      src={project.data.image}
-      alt={"Image for " + project.data.title}
+      src={blog.data.image}
+      alt={"Image for " + blog.data.title}
       class={"w-full"}
     />
-    <h1 class={cn("text-4xl font-bold mt-10")}>{project.data.title}</h1>
-    <p class={cn("text-lg mt-4")}>{project.data.description}</p>
+    <h1 class={cn("text-4xl font-bold mt-10")}>{blog.data.title}</h1>
+    <p class={cn("text-lg mt-4")}>{blog.data.description}</p>
     <ol class="flex gap-4 mt-4">
       {
-        project.data.tags.map(async ({ id: tagId }) => {
+        blog.data.tags.map(async ({ id: tagId }) => {
           const tag = await getEntry("tags", tagId);
           if (!tag) {
             return null;
