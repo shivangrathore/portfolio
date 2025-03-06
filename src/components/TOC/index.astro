@@ -14,7 +14,7 @@ const hierarchy = buildHeadingHierarchy(headings);
 
 {
   headings.length > 0 && (
-    <div>
+    <div class="max-lg:hidden">
       <h6 class="font-semibold text-lg mb-2">Table of Contents</h6>
       <Group headings={hierarchy} isRoot client:load />
     </div>

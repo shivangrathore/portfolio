@@ -7,6 +7,7 @@ import { Icon } from "astro-icon/components";
 import { Image } from "astro:assets";
 import BlogLayout from "@/layouts/BlogLayout.astro";
 import Head from "@/components/Head.astro";
+import { CodeIcon, GlobeIcon } from "lucide-react";
 
 export const getStaticPaths = (async () => {
   const projects = await getCollection("projects");
@@ -32,6 +33,34 @@ const { Content, headings } = await render(project);
     />
     <h1 class={cn("text-4xl font-bold mt-10")}>{project.data.title}</h1>
     <p class={cn("text-lg mt-4")}>{project.data.description}</p>
+    <div class="flex gap-4">
+      {
+        project.data.liveUrl && (
+          <a
+            href={project.data.liveUrl}
+            class={cn(
+              "text-primary-500 dark:text-primary-400 hover:underline mt-4 text-sm flex items-center",
+            )}
+          >
+            <GlobeIcon size={16} className={cn("mr-1")} />
+            <span>Live Demo</span>
+          </a>
+        )
+      }
+      {
+        project.data.sourceUrl && (
+          <a
+            href={project.data.sourceUrl}
+            class={cn(
+              "text-primary-500 dark:text-primary-400 hover:underline mt-4 text-sm flex items-center",
+            )}
+          >
+            <CodeIcon size={16} className={cn("mr-1")} />
+            <span>Source Code</span>
+          </a>
+        )
+      }
+    </div>
     <ol class="flex gap-4 mt-4">
       {
         project.data.tags.map(async ({ id: tagId }) => {

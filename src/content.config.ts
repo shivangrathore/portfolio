@@ -10,7 +10,7 @@ const projects = defineCollection({
     pubDate: z.coerce.date(),
     tags: z.array(reference("tags")),
     image: image(),
-    githubUrl: z.string().optional(),
+    sourceUrl: z.string().optional(),
     liveUrl: z.string().optional(),
   })
 })
