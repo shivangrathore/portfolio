@@ -8,6 +8,7 @@
     "preview": "astro preview",
     "astro": "astro"
   },
+  "packageManager": "pnpm@9.15.4",
   "dependencies": {
     "@astrojs/mdx": "^4.1.0",
     "@astrojs/react": "^4.2.1",
