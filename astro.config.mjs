@@ -10,6 +10,7 @@ import icon from "astro-icon"
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://shivang.tech",
   integrations: [react(), mdx(), icon({ iconDir: "src/assets/icons" })],
   vite: {
     plugins: [tailwindcss()]
