@@ -6,7 +6,6 @@ heroImage: "./bitwise-operators.jpg"
 author: dhruva
 ---
 
-import Table from "@/components/Table.astro";
 
 A bitwise operator is a character that represents an action on data at the bit level, as opposed to bytes sor largett units of data. More simply put, it is an operator that enables the manipulation of individual bits in a binary pattern.
 
@@ -18,61 +17,59 @@ Bitwise operators are used in Communication stacks where the individual bits in 
 
 It takes two numbers as operands and does AND on every bit of two numbers. The result of AND is 1 only if both bits are 1.
 
-<Table caption="Bitwise & (AND)" className="font-mono">
-
+<figure>
 | A   | B   | =         |
 | --- | --- | --------- |
 | 0   | 0   | 0 & 0 = 0 |
 | 1   | 0   | 1 & 0 = 0 |
 | 0   | 1   | 0 & 1 = 0 |
 | 1   | 1   | 1 & 1 = 1 |
+<figcaption>Bitwise & (AND)</figcaption>
+</figure>
 
-</Table>
 
 ### 2. & (bitwise OR)
 
 It take two numbers as operands and does OR on every bit of two numbers. The result of OR is 1 if any of the two bits is 1.
 
-<Table caption="Bitwise | (OR)" className="font-mono">
-
-| A   | B   | =          |
-| --- | --- | ---------- |
+<figure>
+| A   | B   | =         |
+| --- | --- | --------- |
 | 0   | 0   | 0 \| 0 = 0 |
 | 1   | 0   | 1 \| 0 = 1 |
 | 0   | 1   | 0 \| 1 = 1 |
 | 1   | 1   | 1 \| 1 = 1 |
+<figcaption>Bitwise \| (OR)</figcaption>
+</figure>
 
-</Table>
 
 ### 3. ^ (bitwise XOR)
 
 It takes two number as operands and does XOR on every bit of two number. The result of XOR is 1 if the two bits are different.
 
-<Table caption="Bitwise ^ (XOR)" className="font-mono">
-
+<figure>
 | A   | B   | =         |
 | --- | --- | --------- |
 | 0   | 0   | 0 ^ 0 = 0 |
 | 1   | 0   | 1 ^ 0 = 1 |
 | 0   | 1   | 0 ^ 1 = 1 |
 | 1   | 1   | 1 ^ 1 = 0 |
+<figcaption>Bitwise ^ (XOR)</figcaption>
+</figure>
 
-</Table>
 
 ### 4. ~ (bitwise NOT)
 
 It takes one number and inverts all bits of it.
 
-{/* {/\* <p className="text-center">Bitwise ~ (NOT)</p> */}
-
-<Table caption="Bitwise ~ (NOT)" className="font-mono">
-
+<figure>
 | A   | =      |
 | --- | ------ |
 | 0   | ~0 = 1 |
 | 1   | ~1 = 0 |
+<figcaption>Bitwise ~ (NOT)</figcaption>
+</figure>
 
-</Table>
 
 ### 5. \<\< (Left shift)
 
