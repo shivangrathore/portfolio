@@ -1,0 +1,93 @@
+---
+title: "Code Compiler: An Online Platform for Compiling and Running Code"  
+description: "Code Compiler is an online platform where users can compile and run code in multiple programming languages. Built with Next.js, Node.js, PostgreSQL, Docker, and Redis, it offers a seamless coding experience."  
+pubDate: "07-03-2025"  
+tags: ["nextjs", "nodejs", "postgresql", "docker", "redis"]  
+githubUrl: "https://github.com/shivangrathore/seekhcode"  
+heroImage: "./code-compiler.png"  
+---
+
+## What is Code Compiler?  
+Code Compiler is an online platform designed to compile and run code in multiple programming languages. It provides a user-friendly interface for writing, compiling, and executing code snippets in real-time. Built using modern technologies like **Next.js**, **Node.js**, and **PostgreSQL**, it aims to simplify the process of testing and debugging code without the need for local setups.  
+
+---
+
+## Why Build Code Compiler?  
+Over the years, I’ve relied on online compilers to quickly test and debug code snippets. This inspired me to create a platform that offers a similar experience while also allowing me to explore new technologies like **Docker** and **Redis**.  
+
+This project is not just a tool for developers but also a learning journey for me. It gave me hands-on experience with containerization, queue systems, and sandboxing, which are essential skills in modern software development.  
+
+---
+
+## Technologies Used  
+The platform is built using a robust tech stack:  
+1. **Next.js** - For the frontend and server-side rendering.  
+2. **Node.js** - To power the backend API.  
+3. **PostgreSQL** - For storing user data and code execution logs.  
+4. **Docker** - To containerize language runners for secure code execution.  
+5. **Redis** - For managing job queues and improving performance.  
+6. **CodeMirror** - A versatile text editor for the code input interface.  
+
+---
+
+## Key Features  
+1. **Multi-Language Support** - Compile and run code in various programming languages.  
+2. **Simple Interface** - A clean and intuitive UI for writing and executing code.  
+3. **Dockerized Backend** - Ensures secure and isolated code execution environments.  
+4. **Vim Keybindings** - Supports Vim keybindings for users who prefer a keyboard-driven workflow.  
+5. **Real-Time Output** - Provides instant feedback on code execution.  
+
+---
+
+## How Does It Work?  
+1. **User Input** - The user writes code in the embedded editor and selects the desired programming language.  
+2. **Code Submission** - The code is sent to the backend when the user clicks the "Run" button.  
+3. **Queue System** - The code is added to a Redis queue for processing.  
+4. **Worker Execution** - A worker picks up the code, compiles, and runs it in a Docker container.  
+5. **Output Delivery** - The result is sent back to the frontend, and the user sees the output in real-time.  
+
+To ensure a smooth experience, the frontend continuously polls the backend for updates until the output is available.  
+
+---
+
+## Challenges and Solutions  
+### 1. **Sandboxing Code Execution**  
+One of the biggest challenges was securely sandboxing user code to prevent malicious activities. I used **Docker** to create isolated containers for each language runner (e.g., Python, C++, Java, Node.js). However, since Docker containers share the host’s kernel, I implemented **gVisor** to add an additional layer of security by running containers in user space.  
+
+### 2. **Timeout Issues**  
+Currently, the system has a 5-second timeout for code execution, which starts as soon as a worker picks up the job. This is not ideal, especially for languages like Java, which have longer startup times. I plan to address this by adjusting the timeout logic and compensating for language-specific delays.  
+
+---
+
+## Future Plans  
+### 1. **Add More Languages**  
+While the platform already supports multiple languages, I aim to expand this list as resources allow.  
+
+### 2. **Improve the UI/UX**  
+The current interface is functional but can be enhanced for better responsiveness and aesthetics, especially on mobile devices. I plan to draw inspiration from platforms like LeetCode while ensuring a unique and user-friendly experience.  
+
+### 3. **Rewrite the Backend in Golang**  
+To improve performance and efficiency, I’m considering rewriting the backend in **Golang**. This will also be a great opportunity to explore a new language and its ecosystem.  
+
+### 4. **Enhance Analytics**  
+I’m collecting telemetry data on code execution, such as the most-used languages and common errors. This data will help me prioritize features and improve the platform over time.  
+
+---
+
+## Data Collection  
+To continuously improve the platform, I collect anonymized data about the code being executed. This includes:  
+- The programming languages used.  
+- Execution times and success rates.  
+- Common errors and issues faced by users.  
+
+This data is used solely for improving the platform and ensuring a better user experience.  
+
+---
+
+## Conclusion  
+Code Compiler is a project born out of curiosity and a desire to learn. It combines my passion for coding with my interest in exploring new technologies. While there’s still room for improvement, I’m proud of what I’ve built so far and excited about the future possibilities.  
+
+Feel free to check out the project on [GitHub](https://github.com/shivangrathore/seekhcode) and contribute or provide feedback!  
+
+---
+

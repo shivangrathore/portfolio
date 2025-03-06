@@ -1,39 +1,110 @@
 ---
-title: "Brun"
-description: "Seekhcode is a platform where I share my knowledge about programming and computer science."
-pubDate: "12-10-24"
-tags: ["nextjs", "nodejs", "postgresql"]
-githubUrl: "https://github.com/shivangrathore/seekhcode"
-image: "./seekhcode.png"
+title: "Brun: A Social Media Platform like Twitter"  
+description: "Brun is a social media platform that allows users to share short messages, follow other users, and engage with content."  
+pubDate: "06-03-2025"  
+tags: ["nextjs", "nodejs", "postgresql"]  
+githubUrl: "https://github.com/shivangrathore/brun"  
+heroImage: "./brun.png"  
 ---
 
-[Seekhcode](https://seekhcode.com) is a platform where I share my knowledge about programming and computer science.
+## What is Brun?  
+Brun is a social media platform inspired by Twitter, designed to allow users to share short messages, follow other users, and engage with content through likes, comments, and replies. It’s built to handle large-scale interactions while providing a smooth and intuitive user experience.  
 
-## How to PK?
-Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-### Lets made a video
-```html
-<iframe width="560" height="315" src="https://www.youtube.com/embed/7wzR4Ig5Z9M" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-```
+The platform is currently in active development, with features like real-time messaging and dark mode on the roadmap. Brun is not just a project but a learning journey into building scalable, real-time systems and exploring modern web technologies.  
 
+---
 
-## Name
-Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-### Shivang
-Lorem ipsum dolor sit amet, consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-> Quote
+## Why Build Brun?  
+I’ve always been fascinated by the complexities of large-scale social media platforms like Twitter. Building Brun is my way of understanding the challenges of handling millions of users, real-time interactions, and vast amounts of data.  
 
+This project has been an incredible learning opportunity, allowing me to dive deep into:  
+- **Real-time systems** (e.g., WebSocket for live messaging).  
+- **Database design** (e.g., PostgreSQL for efficient data storage and retrieval).  
+- **User engagement features** (e.g., likes, comments, replies, and follow systems).  
 
-<figure>
-  | Name  | Age |
-  |-------|-----|
-  | Alice | 20  |
-  | Bob   | 21  |
-  | Carol | 22  |
-  <figcaption>Table 1: A sample table showing names and ages.</figcaption>
-</figure>
+Brun is not just a clone but a platform where I experiment with new ideas and technologies.  
 
-<figure>
-  ![Seekhcode Logo](./seekhcode.png)
-  <figcaption>Figure 1: Seekhcode Logo</figcaption>
-</figure>
+---
+
+## Technologies Used  
+Brun is built using a modern and scalable tech stack:  
+1. **Next.js** - For the frontend and server-side rendering, ensuring fast load times and SEO optimization.  
+2. **Node.js** - To power the backend API, handling user requests and data processing.  
+3. **PostgreSQL** - For storing user data, posts, comments, and relationships (e.g., followers, likes).  
+4. **Docker** - To containerize the application for easy deployment and scalability.  
+5. **WebSocket** - For real-time messaging and notifications (currently in development).  
+
+---
+
+## Key Features  
+### Implemented Features  
+1. **Post System** - Users can share short messages (similar to tweets).  
+2. **Relation System** - Users can follow and unfollow other users.  
+3. **Comment System** - Users can comment on posts to engage in discussions.  
+4. **Reply System** - Users can reply to comments, creating threaded conversations.  
+5. **Like System** - Users can like posts and comments to show appreciation.  
+6. **Follow System** - Users can follow others to see their posts in their feed.  
+7. **Followers List** - Users can view their followers and who they’re following.  
+
+### Upcoming Features  
+1. **Real-Time Messaging** - Live chat functionality using WebSocket.  
+2. **Dark Mode** - A user-friendly dark theme for better accessibility.  
+3. **Backend Rewrite** - Potentially porting the backend to Golang for improved performance (time permitting).  
+4. **Separate Backend and Frontend** - Currently, Next.js handles both, but separating them will improve scalability and maintainability.  
+
+---
+
+## How Does It Work?  
+1. **User Interaction** - Users can sign up, create posts, and interact with others through likes, comments, and replies.  
+2. **Follow System** - Users can follow others to curate their feed with relevant content.  
+3. **Real-Time Updates** - Using WebSocket, the platform will soon support real-time notifications and messaging.  
+4. **Database Management** - PostgreSQL efficiently stores and retrieves user data, posts, and relationships.  
+
+---
+
+## Challenges and Solutions  
+### 1. **Scalability**  
+Handling a large number of users and real-time interactions is a significant challenge. To address this, I’ve used **PostgreSQL** for efficient data management and plan to implement **WebSocket** for real-time updates.  
+
+### 2. **Database Design**  
+Designing a robust database schema to handle relationships (e.g., followers, likes, comments) was complex. I normalized the database to reduce redundancy and improve performance.  
+
+### 3. **Real-Time Messaging**  
+Implementing WebSocket for live messaging is still a work in progress. I’m exploring libraries like **Socket.IO** to simplify the process.  
+
+---
+
+## Future Plans  
+### 1. **Real-Time Messaging**  
+I’m currently working on implementing WebSocket for live messaging, which will allow users to chat in real-time.  
+
+### 2. **Dark Mode**  
+A dark mode theme will be added to improve accessibility and user experience.  
+
+### 3. **Backend Rewrite in Golang**  
+Depending on time constraints, I may rewrite the backend in **Golang** for better performance and scalability.  
+
+### 4. **Separate Backend and Frontend**  
+Currently, Next.js handles both the frontend and backend. Separating them will make the system more modular and easier to maintain.  
+
+### 5. **Advanced Analytics**  
+I plan to add analytics features to help users understand their engagement and reach.  
+
+---
+
+## Data Collection  
+To improve the platform, I collect anonymized data on user interactions, such as:  
+- Most-liked posts and comments.  
+- Popular topics and trends.  
+- User engagement metrics.  
+
+This data is used solely to enhance the platform and provide a better user experience.  
+
+---
+
+## Conclusion  
+Brun is more than just a social media platform; it’s a learning journey into building scalable, real-time systems. While there’s still work to be done, I’m proud of the progress so far and excited about the future possibilities.  
+
+Feel free to check out the project on [GitHub](https://github.com/shivangrathore/brun) and contribute or provide feedback!  
+
+---

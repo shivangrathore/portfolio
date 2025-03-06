@@ -27,7 +27,7 @@ const { Content, headings } = await render(project);
 <BlogLayout headings={headings}>
   <slot slot="details">
     <Image
-      src={project.data.image}
+      src={project.data.heroImage}
       alt={"Image for " + project.data.title}
       class={"w-full"}
     />

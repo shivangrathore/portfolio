@@ -10,7 +10,7 @@ type Props = {} & CollectionEntry<"projects">;
 
 const {
   id,
-  data: { title, description, tags, image },
+  data: { title, description, tags, heroImage },
 } = Astro.props;
 ---
 
@@ -18,7 +18,7 @@ const {
   href={`/projects/${id}`}
   class="rounded-lg overflow-hidden bg-neutral-950 border border-gray-600/25 flex flex-col"
 >
-  <Image src={image} alt={"Image for " + title} />
+  <Image src={heroImage} alt={"Image for " + title} />
   <div class="grid gap-2 p-4">
     <h3 class="text-2xl font-bold flex justify-between items-center">
       <span>
@@ -36,7 +36,7 @@ const {
           return (
             <li
               class={cn(
-                "px-2 py-1 rounded-lg bg-green-400/40 text-sm inline-flex items-center gap-2 font-medium",
+                "px-1 py-0.5 rounded-md bg-green-400/40 text-sm inline-flex items-center gap-2 font-medium",
                 tag.data.className,
               )}
             >
@@ -48,6 +48,6 @@ const {
       }
     </ul>
     <hr class="border-gray-400/20" />
-    <p class="text-gray-300">{description}</p>
+    <p class="text-gray-300 line-clamp-3">{description}</p>
   </div>
 </a>

@@ -23,7 +23,7 @@ const { headings } = Astro.props;
         <slot name="content" />
       </article>
       <div
-        class="max-w-[240px] w-full sticky top-20 h-full overflow-y-auto float-right"
+        class="sticky top-20 h-full overflow-y-auto float-right max-w-[320px]"
       >
         <TOC headings={headings} />
       </div>

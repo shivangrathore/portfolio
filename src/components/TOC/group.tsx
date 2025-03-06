@@ -38,7 +38,7 @@ export function Group({ headings, isRoot = false }: Props) {
   }, [headings]);
 
   return (
-    <ol className={cn("text-gray-400", { "pl-4": !isRoot })}>
+    <ol className={cn("text-gray-400", { "pl-4 mt-0": !isRoot })}>
       {headings.map((heading) => (
         <li key={heading.slug}>
           <a
