@@ -39,6 +39,14 @@ const LINKS = [
 ];
 
 const projects = await getCollection("projects");
+const articles = (await getCollection("blog"))
+  .filter((a) => a.data.published)
+  .sort((a, b) => {
+    return (
+      new Date(b.data.pubDate).getTime() - new Date(a.data.pubDate).getTime()
+    );
+  })
+  .slice(0, 4);
 ---
 
 <Layout>
@@ -154,30 +162,7 @@ const projects = await getCollection("projects");
       >
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 mt-10 gap-6">
-      <HeroArticleCard
-        title="How to use react query in nextjs"
-        description="In this blog we will how to use react query in nextjs"
-        date="2021-10-10"
-        readTime="5 min read"
-      />
-      <HeroArticleCard
-        title="How to use react query in nextjs"
-        description="In this blog we will how to use react query in nextjs"
-        date="2021-10-10"
-        readTime="5 min read"
-      />
-      <HeroArticleCard
-        title="How to use react query in nextjs"
-        description="In this blog we will how to use react query in nextjs"
-        date="2021-10-10"
-        readTime="5 min read"
-      />
-      <HeroArticleCard
-        title="How to use react query in nextjs"
-        description="In this blog we will how to use react query in nextjs"
-        date="2021-10-10"
-        readTime="5 min read"
-      />
+      {articles.map((article) => <HeroArticleCard article={article} />)}
     </div>
   </div>
   <div

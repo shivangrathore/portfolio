@@ -45,6 +45,15 @@ export function Group({ headings, isRoot = false }: Props) {
             href={`#${heading.slug}`}
             className="toc"
             data-slug={heading.slug}
+            onClick={(e) => {
+              const active = document.querySelector(`.toc.active`);
+              if (active) {
+                active.classList.remove(`active`);
+              }
+              if (e.target) {
+                (e.target as HTMLAnchorElement).classList.add(`active`);
+              }
+            }}
           >
             {heading.text}
           </a>

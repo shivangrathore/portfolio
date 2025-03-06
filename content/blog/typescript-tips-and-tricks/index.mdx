@@ -1,0 +1,205 @@
+---
+title: "Typescript Tips and Tricks"
+description: "Explore these TypeScript Utilities to ease your development journey and make your code more efficient."
+pubDate: "2025-01-22T13:15:48.790Z"
+# heroImage: "./typescript-tips-and-tricks.jpg"
+author: wiperr
+tags: [typescript]
+---
+
+TypeScript has become a staple in web development, offering type safety and catching bugs during development. While it significantly enhances code reliability, it also introduces added complexity, which can make projects harder to manage.
+
+Fortunately, TypeScript comes with a wealth of built-in features—some of which are lesser-known yet incredibly useful. In this post, I'll walk you through several of these features to make your TypeScript journey smoother and more efficient.
+
+Here's what we'll cover:
+- Using `ReturnType` to Infer Function Return Types
+- Resolving Promise Types with `Awaited`
+- Working with Union Types
+- Omitting Properties with `Omit`
+- Making Properties Optional with `Partial`
+- Making Properties Required with `Required`
+- Selecting Properties with `Pick`
+- Extracting Types from Unions with `Extract`
+
+---
+
+## 1. Using `ReturnType` to Infer Function Return Types
+
+The `ReturnType` utility type allows you to infer the return type of a function. Here's an example:
+
+```ts
+function getResult() {
+  return {
+    id: 1,
+    name: "Shivang",
+  };
+}
+
+type ResultType = ReturnType<typeof getResult>;
+```
+This will result in the inferred type:
+
+```ts
+{
+  id: number;
+  name: string;
+}
+```
+
+---
+
+## 2. Resolving Promise Types with `Awaited`
+
+When dealing with asynchronous functions, `Awaited` extracts the resolved value of a `Promise`. For example:
+
+```ts
+async function getResult() {
+  return {
+    id: 1,
+    name: "Shivang",
+  };
+}
+
+type ResultType = Awaited<ReturnType<typeof getResult>>;
+```
+This ensures that `ResultType` represents the resolved value, not the `Promise` itself:
+
+```ts
+{
+  id: number;
+  name: string;
+}
+```
+
+---
+
+## 3. Working with Union Types
+
+Union types allow you to define a type that could be one of several options. Here's an example:
+
+```ts
+type User = { id: number; name: string };
+type APIResultSuccess = { success: true; data: User };
+type APIResultError = { success: false; error: string };
+type APIResult = APIResultSuccess | APIResultError;
+
+const result = {} as APIResult;
+if (result.success) {
+  result.data; // Exists
+  result.error; // Does not exist
+} else {
+  result.data; // Does not exist
+  result.error; // Exists
+}
+```
+This type-checking ensures your code handles both success and error cases correctly.
+
+---
+
+## 4. Omitting Properties with `Omit`
+
+The `Omit` utility type allows you to exclude specific properties from a type. For example:
+
+```ts
+type User = { id: number; name: string; password: string };
+type UserWithoutPassword = Omit<User, "password">;
+```
+The resulting type will exclude the `password` field:
+
+```ts
+{
+  id: number;
+  name: string;
+}
+```
+
+### 4.1 Omitting Multiple Properties
+
+You can omit multiple properties by listing them in a union:
+
+```ts
+type UserWithOnlyId = Omit<User, "name" | "password">;
+```
+
+---
+
+## 5. Making Properties Optional with `Partial`
+
+The `Partial` utility type makes all properties of a type optional. This is useful, for example, in a patch request:
+
+```ts
+type UpdateUser = Partial<User>;
+```
+The resulting type will allow any combination of fields:
+
+```ts
+{
+  id?: number;
+  name?: string;
+  password?: string;
+}
+```
+
+---
+
+## 6. Making Properties Required with `Required`
+
+The `Required` utility type makes all properties required. This is the opposite of `Partial`:
+
+```ts
+type RequiredUser = Required<User>;
+```
+
+In this example, all fields of `User` will be required (though in this case, they already are).
+
+---
+
+## 7. Selecting Properties with `Pick`
+
+The `Pick` utility type allows you to select specific properties from a type to create a new type:
+
+```ts
+type UserWithSelectedValues = Pick<User, "id" | "name">;
+```
+This results in:
+
+```ts
+{
+  id: number;
+  name: string;
+}
+```
+
+---
+
+## 8. Extracting Types from Unions with `Extract`
+
+The `Extract` utility type filters union members that match a specified type. For example:
+
+```ts
+type Result = { success: true; data: User } | { success: false; error: string };
+type Success = Extract<Result, { success: true }>;
+```
+The `Success` type will only include the `success: true` branch of the union:
+
+```ts
+{
+  success: true;
+  data: User;
+}
+```
+
+### 8.1 Extracting with Unions
+
+You can also provide a union type to `Extract`:
+
+```ts
+type UnionResult = Extract<Result, { success: true | false }>;
+```
+
+---
+
+## Conclusion
+
+These TypeScript utility types can greatly enhance your development process by simplifying type management and ensuring robust type safety. Experiment with these features in your projects and explore more in the [TypeScript official documentation](https://www.typescriptlang.org/docs/handbook/utility-types.html). Happy coding!
+

@@ -9,31 +9,37 @@ import { getCollection } from "astro:content";
 import type { GetStaticPaths } from "astro";
 
 export const getStaticPaths = (async () => {
-  const projects = await getCollection("blog");
-  return projects.map(({ id }) => ({ params: { slug: id } }));
+  const blog = await getCollection("blog");
+  return blog
+    .filter((a) => a.data.published)
+    .map(({ id }) => ({ params: { slug: id } }));
 }) satisfies GetStaticPaths;
 
 const { slug } = Astro.params;
-const blog = await getEntry("blog", slug);
-if (!blog) {
+const article = await getEntry("blog", slug);
+if (!article || !article.data.published) {
   throw new Error("Could not find blog post 1");
 }
-const { Content, headings } = await render(blog);
+const { Content, headings } = await render(article);
 ---
 
-<Head title={blog.data.title} />
+<Head title={article.data.title} />
 <BlogLayout headings={headings}>
   <slot slot="details">
-    <Image
-      src={blog.data.image}
-      alt={"Image for " + blog.data.title}
-      class={"w-full"}
-    />
-    <h1 class={cn("text-4xl font-bold mt-10")}>{blog.data.title}</h1>
-    <p class={cn("text-lg mt-4")}>{blog.data.description}</p>
+    {
+      article.data.heroImage && (
+        <Image
+          src={article.data.heroImage}
+          alt={"Image for " + article.data.title}
+          class={"w-full max-h-[400px] object-contain aspect-square rounded-lg"}
+        />
+      )
+    }
+    <h1 class={cn("text-4xl font-bold mt-10")}>{article.data.title}</h1>
+    <p class={cn("text-lg mt-4")}>{article.data.description}</p>
     <ol class="flex gap-4 mt-4">
       {
-        blog.data.tags.map(async ({ id: tagId }) => {
+        article.data.tags.map(async ({ id: tagId }) => {
           const tag = await getEntry("tags", tagId);
           if (!tag) {
             return null;

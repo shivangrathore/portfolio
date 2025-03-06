@@ -44,7 +44,7 @@ export function SearchDialog({ open, setOpen }: { open: boolean, setOpen: (v: bo
           <div className="p-4 text-center text-gray-500">No results found</div> :
           <div className="grid gap-4">
             {searchResults.map(result => (
-              <a key={result.id} className="p-4 border rounded-md" href={`/projects/${result.id}`}>
+              <a key={result.id} className="p-4 border rounded-md bg-black hover:bg-neutral-800 transition-colors" href={`/blog/${result.id}`}>
                 <h3 className="text-lg font-semibold">{result.title}</h3>
                 <p className="text-gray-500">{result.description}</p>
               </a>

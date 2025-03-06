@@ -1,11 +1,15 @@
 ---
 import { type CollectionEntry } from "astro:content";
+import { format } from "date-fns";
+import { getReadingTime } from "@/lib/reading-time.ts";
 
 type Props = CollectionEntry<"blog">;
 const {
   id,
-  data: { title, description },
+  data: { title, description, pubDate },
+  body,
 } = Astro.props;
+const readingTime = getReadingTime(body || "");
 ---
 
 <a
@@ -14,14 +18,10 @@ const {
 >
   <div class="space-x-2 flex items-center text-gray-300 text-sm md:text-base">
     <span>
-      <!-- {date} -->
-      12/12/2021
+      {format(pubDate, "dd MMM, yyyy")}
     </span>
     <span>{"•"}</span>
-    <span>
-      6 min read
-      <!-- {readTime} -->
-    </span>
+    <span>{readingTime}</span>
   </div>
   <h3 class="text-xl md:text-2xl font-bold mt-4">{title}</h3>
   <p class="text-gray-400 mt-2 text-sm md:text-base">{description}</p>
