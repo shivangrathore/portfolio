@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 import ProjectCard from "@/components/ProjectCard.astro";
 import { getCollection } from "astro:content";
 import Head from "@/components/Head.astro";
-const projects = await getCollection("projects");
+const projects = (await getCollection("projects")).sort(
+  (a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime(),
+);
 ---
 
 <Head title="Projects" />
