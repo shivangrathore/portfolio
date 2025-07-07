@@ -29,7 +29,7 @@ const stats = [
   { label: "Projects", value: "15+" },
   { label: "Languages", value: "5+" },
   { label: "Years of Experience", value: "3" },
-  { label: "Open Source Contributions", value: "10+" },
+  { label: "Open Source Contributions", value: "4+" },
 ];
 
 const skills = [
@@ -212,9 +212,8 @@ function About() {
               About Me
             </Badge>
             <h2 className="text-4xl md:text-5xl font-bold mb-8">
-              Passionate Developer with{" "}
-              <span className="gradient-text">12+ Years</span> of Linux
-              Experience
+              Passionate Developer with interest in{" "}
+              <span className="gradient-text">Backend Technologies</span>{" "}
             </h2>
             <div className="space-y-6 text-lg text-muted-foreground">
               <p>

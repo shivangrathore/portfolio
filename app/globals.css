@@ -244,3 +244,39 @@
     left: 100%;
   }
 }
+
+
+@utility prose {
+  h1 {
+    @apply text-3xl font-bold mb-4;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold mb-3;
+  }
+
+  h3 {
+    @apply text-xl font-medium mb-2;
+  }
+
+  h4 {
+    @apply text-lg font-normal mb-1;
+  }
+
+  p {
+    @apply text-base mb-4;
+  }
+
+  hr {
+    @apply border-t border-border my-6;
+  }
+
+  img {
+    @apply rounded-lg mb-4;
+  }
+
+  pre {
+    @apply bg-muted text-foreground px-4 py-2 rounded overflow-x-auto mb-4 font-mono text-sm;
+  }
+
+}

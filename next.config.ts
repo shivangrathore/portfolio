@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import CopyPlugin from "copy-webpack-plugin";
+import path from "path";
 
 const nextConfig: NextConfig = {
   webpack(config) {
@@ -26,6 +28,21 @@ const nextConfig: NextConfig = {
     // Modify the file loader rule to ignore *.svg, since we have it handled now.
     fileLoaderRule.exclude = /\.svg$/i;
 
+    config.plugins.push(
+      new CopyPlugin({
+        patterns: [
+          {
+            from: path.join(
+              __dirname,
+              "content/blog/**/*.{jpg,jpeg,png,gif,webp,avif,svg}",
+            ),
+            to: path.join(__dirname, "public/[path][name][ext]"),
+            noErrorOnMissing: true,
+          },
+        ],
+      }),
+    );
+
     return config;
   },
   turbopack: {
@@ -36,6 +53,8 @@ const nextConfig: NextConfig = {
       },
     },
   },
+
+  transpilePackages: ["next-mdx-remote"],
 };
 
 export default nextConfig;

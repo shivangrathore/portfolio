@@ -1,23 +1,15 @@
 import { Metadata } from "next";
 import { Terminal, Code, Server, Database, Zap, Users } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = {
   title: "About",
-  description:
-    "Learn about Shivang Rathore - Full Stack Developer with expertise in Go, Rust, and Linux systems.",
 };
 
 export default function About() {
   return (
-    <div className="min-h-screen py-20">
+    <div className="min-h-screen py-24">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16 animate-fade-in">
@@ -159,7 +151,7 @@ const skills = [
     icon: Server,
     technologies: [
       "Go",
-      "Rust",
+      "Python",
       "Node.js",
       "Express",
       "RESTful APIs",
@@ -189,7 +181,16 @@ const skills = [
   {
     category: "Tools",
     icon: Users,
-    technologies: ["Git", "VS Code", "Vim", "Bash", "Testing", "Documentation"],
+    technologies: [
+      "Git",
+      "VS Code",
+      "Vim",
+      "Bash",
+      "Testing",
+      "Documentation",
+      "Copilot",
+      "Neovim",
+    ],
   },
 ];
 

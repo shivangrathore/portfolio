@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function Projects() {
   return (
-    <div className="min-h-screen py-20">
+    <div className="min-h-screen py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16 animate-fade-in">
@@ -35,7 +35,7 @@ export default function Projects() {
         {/* Featured Projects */}
         <div className="mb-16">
           <h2 className="text-2xl font-bold mb-8">Featured Projects</h2>
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="md:columns-2 break-inside-avoid space-y-4">
             {featuredProjects.map((project, index) => (
               <Card
                 key={project.title}
