@@ -158,7 +158,7 @@ function Hero() {
             <span className="text-orange-400 font-semibold">Rust</span>, and
             modern web technologies.
           </p>
-          <div className="flex justify-center gap-6 mb-16">
+          <div className="flex justify-center gap-6 mb-16 flex-col md:flex-row">
             <Button className="group" size="lg" asChild>
               <Link href="/projects">
                 <CodeIcon className="size-5 group-hover:rotate-12 transition-transform" />
@@ -167,7 +167,7 @@ function Hero() {
               </Link>
             </Button>
             <Button className="group glass" size="lg" variant="outline" asChild>
-              <Link href={`mailto:${MAIL_ADDRESS}`}>
+              <Link href={`/contact`}>
                 <UsersIcon className="mr-2 size-5 group-hover:scale-110 transition-transform" />
                 Get in Touch
               </Link>
@@ -249,8 +249,8 @@ function About() {
                 ))}
               </div>
             </div>
-            <div className="flex gap-4">
-              <Button size="lg" className="mt-8 btn-glow group" asChild>
+            <div className="flex flex-col md:flex-row gap-4 mt-8">
+              <Button size="lg" className="btn-glow group" asChild>
                 <Link href="/about">
                   Learn More About Me
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -259,7 +259,7 @@ function About() {
               <Button
                 size="lg"
                 variant="outline"
-                className="mt-8 btn-glow glow group"
+                className="btn-glow glow group"
                 asChild
               >
                 <Link href="resume.pdf" target="_blank" download>
@@ -271,7 +271,7 @@ function About() {
           </div>
 
           <div className="animate-slide-up">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid  sm:grid-cols-2 gap-6">
               {techStack.map((tech, index) => (
                 <Card
                   key={tech.name}

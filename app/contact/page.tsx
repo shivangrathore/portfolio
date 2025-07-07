@@ -1,69 +1,18 @@
-"use client";
-
-import { useState } from "react";
-import { Mail, MapPin, Send, MessageCircle } from "lucide-react";
+import { Mail, MapPin, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import {
-  CONTACT_FORM_EMAIL_FIELD,
-  CONTACT_FORM_MESSAGE_FIELD,
-  CONTACT_FORM_NAME_FIELD,
-  CONTACT_FORM_URL,
-  MAIL_ADDRESS,
-} from "@/data/constants";
-import { toast } from "sonner";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 
 import Github from "@/assets/icons/github.svg";
 import Linkedin from "@/assets/icons/linkedin.svg";
-import { Form, FormField, FormItem } from "@/components/ui/form";
+import { MAIL_ADDRESS } from "@/data/constants";
+import ContactForm from "./contact-form";
 
-const ContactFormSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
-  message: z.string().min(1, "Message is required"),
-});
-
-type ContactFormSchemaType = z.infer<typeof ContactFormSchema>;
+export const metadata = {
+  title: "Contact",
+};
 
 export default function Contact() {
-  const form = useForm({
-    resolver: zodResolver(ContactFormSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      message: "",
-    },
-  });
-
-  const onSubmit = async (data: ContactFormSchemaType) => {
-    const formData = new FormData();
-    formData.append(CONTACT_FORM_NAME_FIELD, data.name);
-    formData.append(CONTACT_FORM_EMAIL_FIELD, data.email);
-    formData.append(CONTACT_FORM_MESSAGE_FIELD, data.message);
-
-    const res = await fetch(CONTACT_FORM_URL, {
-      body: formData,
-      method: "POST",
-      mode: "no-cors",
-    });
-    console.log(res.status);
-    toast.success("Message sent successfully!");
-    form.reset();
-  };
-
   return (
     <div className="min-h-screen py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -188,92 +137,7 @@ export default function Contact() {
 
           {/* Contact Form */}
           <div className="animate-slide-up">
-            <Card>
-              <CardHeader>
-                <CardTitle>Send me a message</CardTitle>
-                <CardDescription>
-                  Fill out the form below and I'll get back to you as soon as
-                  possible.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-6"
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        name="name"
-                        control={form.control}
-                        render={({ field }) => (
-                          <FormItem>
-                            <Label htmlFor="name">Name</Label>
-                            <Input
-                              id="name"
-                              {...field}
-                              required
-                              placeholder="Your name"
-                            />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        name="email"
-                        control={form.control}
-                        render={({ field }) => (
-                          <FormItem>
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                              id="email"
-                              type="email"
-                              {...field}
-                              required
-                              placeholder="youremail@xyz.com"
-                            />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      name="message"
-                      control={form.control}
-                      render={({ field }) => (
-                        <FormItem>
-                          <Label htmlFor="message">Message</Label>
-                          <Textarea
-                            id="message"
-                            {...field}
-                            required
-                            rows={5}
-                            placeholder="Tell me about your project, idea, or just say hello..."
-                          />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={form.formState.isSubmitting}
-                    >
-                      {form.formState.isSubmitting ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="h-4 w-4 mr-2" />
-                          Send Message
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-
+            <ContactForm />
             {/* Additional Info */}
             <div className="mt-8 text-center">
               <p className="text-muted-foreground">
