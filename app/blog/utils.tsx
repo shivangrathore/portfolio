@@ -18,8 +18,14 @@ const BlogSchema = z.object({
 type Blog = z.infer<typeof BlogSchema>;
 
 export async function getBlogs(): Promise<Blog[]> {
-  const dirs = await readdir("content/blog");
   const blogs: Blog[] = [];
+  let dirs;
+  try {
+    dirs = await readdir("content/blog");
+  } catch (error) {
+    console.error("Error reading blog directory:", error);
+    return blogs;
+  }
 
   for (const dir of dirs) {
     try {
