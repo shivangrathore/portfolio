@@ -4,6 +4,7 @@ import { compileMDX } from "next-mdx-remote/rsc";
 import matter from "gray-matter";
 import path from "path";
 import rehypeShiki from "@shikijs/rehype";
+import readingDuration from "reading-duration";
 
 // TODO: Add hero image support and parsing, imports
 const BlogSchema = z.object({
@@ -13,6 +14,8 @@ const BlogSchema = z.object({
   slug: z.string(),
   tags: z.array(z.string()).default(() => []),
   heroImage: z.string().optional(),
+  published: z.boolean().default(false),
+  readingTime: z.string(),
 });
 
 type Blog = z.infer<typeof BlogSchema>;
@@ -40,7 +43,11 @@ export async function getBlogs(): Promise<Blog[]> {
       const blog = await BlogSchema.parseAsync({
         ...data,
         slug: dir,
+        readingTime: readingDuration(fileContent, { emoji: false }),
       });
+      if (!blog.published && process.env.NODE_ENV === "production") {
+        continue;
+      }
       blogs.push(blog);
     } catch (error) {
       console.error(`Error processing blog ${dir}:`, error);
@@ -54,12 +61,23 @@ export async function getBlog(slug: string) {
   const filePath = path.join(basePath, "index.mdx");
   const fileContent = await readFile(filePath, "utf-8");
   const { content, data } = matter(fileContent);
-  const frontmatter = await BlogSchema.parseAsync({ ...data, slug });
+  const frontmatter = await BlogSchema.parseAsync({
+    ...data,
+    slug,
+    readingTime: readingDuration(content, { emoji: false }),
+  });
+  // let rehypePlugins: any[] = [];
+  // if (process.env.NODE_ENV === "production") {
+  let rehypePlugins: any[] = [
+    [rehypeShiki, { theme: "tokyo-night", lazy: true }],
+  ];
+  // }
   const { content: compiledContent } = await compileMDX({
     source: content,
     options: {
-      parseFrontmatter: true,
-      mdxOptions: { rehypePlugins: [[rehypeShiki, { theme: "tokyo-night" }]] },
+      mdxOptions: {
+        rehypePlugins,
+      },
     },
     components: {
       img: ({ src, ...props }) => (

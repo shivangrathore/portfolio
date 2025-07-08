@@ -32,7 +32,7 @@ export default async function Blog() {
             blogs.map((post, index) => (
               <Card
                 key={post.slug}
-                className="group hover:shadow-lg transition-all duration-300 animate-slide-up h-fit"
+                className="group hover:shadow-lg transition-all duration-300 animate-slide-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="">

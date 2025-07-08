@@ -248,23 +248,31 @@
 
 @utility prose {
   h1 {
-    @apply text-3xl font-bold mb-4;
+    @apply text-3xl font-bold mb-4 text-foreground;
   }
 
   h2 {
-    @apply text-2xl font-semibold mb-3;
+    @apply text-2xl font-semibold mb-3 text-foreground;
   }
 
   h3 {
-    @apply text-xl font-medium mb-2;
+    @apply text-xl font-medium mb-2 text-foreground;
   }
 
   h4 {
-    @apply text-lg font-normal mb-1;
+    @apply text-lg font-normal mb-1 text-foreground;
   }
 
   p {
-    @apply text-base mb-4;
+    @apply text-base mb-4 text-muted-foreground;
+  }
+
+  a {
+    @apply text-primary underline underline-offset-2 hover:text-primary/80;
+  }
+
+  blockquote {
+    @apply border-l-4 border-primary pl-4 italic text-muted-foreground mb-4;
   }
 
   hr {
@@ -272,11 +280,58 @@
   }
 
   img {
-    @apply rounded-lg mb-4;
+    @apply rounded-lg mb-4 max-w-full h-auto;
   }
 
   pre {
-    @apply bg-muted text-foreground px-4 py-2 rounded overflow-x-auto mb-4 font-mono text-sm;
+    @apply bg-muted px-4 py-2 rounded overflow-x-auto mb-4 font-mono text-sm;
   }
 
+  ul {
+    @apply list-disc pl-6 mb-4 text-muted-foreground;
+
+    li {
+      @apply mb-2;
+    }
+  }
+
+  ol {
+    @apply list-decimal pl-6 mb-4 text-muted-foreground;
+
+    li {
+      @apply mb-2;
+    }
+  }
+
+  table {
+    @apply w-full text-left border-collapse mb-6 text-sm text-muted-foreground;
+  }
+
+  thead {
+    @apply border-b border-border;
+  }
+
+  th {
+    @apply px-3 py-2 font-semibold;
+  }
+
+  td {
+    @apply px-3 py-2;
+  }
+
+  strong {
+    @apply font-semibold text-foreground;
+  }
+
+  em {
+    @apply italic;
+  }
+
+  del {
+    @apply line-through text-muted-foreground;
+  }
+
+  figcaption {
+    @apply text-sm text-muted-foreground text-center mt-2;
+  }
 }

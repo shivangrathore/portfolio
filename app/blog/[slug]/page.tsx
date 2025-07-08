@@ -42,10 +42,20 @@ export default async function BlogPage({
                   day: "numeric",
                 })}
               </div>
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                {frontmatter.readingTime}
+              </div>
               <Button variant="ghost" size="sm">
                 <Share2 className="h-4 w-4 mr-2" />
                 Share
               </Button>
+              {!frontmatter.published && (
+                <Badge variant="secondary" className="ml-auto">
+                  Draft
+                </Badge>
+              )}
+              <div></div>
             </div>
 
             {/* Tags */}

@@ -1,0 +1,102 @@
+---
+title: "Infinite Scrolling"
+description: "Implementing infinite scrolling in a React application using the Intersection Observer API."
+pubDate: "2024-01-15"
+tags: ["Web Development", "React", "JavaScript", "Frontend"]
+published: true
+---
+
+Have you ever wondered how to implement infinite scrolling in your React applications? Following this guide, you can do infinite scrolling in any framework because it uses the Intersection Observer API, no external libraries.
+
+
+## What is Infinite Scrolling?
+Infinite scrolling is a web design technique that allows users to scroll through content without having to click through multiple pages. As the user scrolls down, new content is automatically loaded and appended to the page, creating a seamless browsing experience.
+
+You have seen youtube, twitter, and other social media platforms using infinite scrolling. It is a great way to keep users engaged with your content.
+
+
+## How it works?
+1. We create a empty div at the bottom of our list.
+2. We use the Intersection Observer API to observe when this div comes into view.
+3. When the div comes into view, we load more data and append it to the list.
+
+
+---
+
+We will create a helper react component that will handle the infinite scrolling logic. This component will take a `loadMore` function as a prop, which will be called when the user scrolls to the bottom of the list.
+
+```jsx
+"use client"; // Just for Next.js, remove if you are not using it
+import React, { useEffect, useRef } from 'react';
+const InfiniteScroll = ({ loadMore }) => {
+  const observer = useRef(null);
+  const sentinelRef = useRef(null);
+
+  useEffect(() => {
+    if (observer.current) observer.current.disconnect();
+
+    observer.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadMore();
+      }
+    });
+
+    if (sentinelRef.current) {
+      observer.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      if (observer.current) observer.current.disconnect();
+    };
+  }, [loadMore]);
+
+  return <div ref={sentinelRef}/>;
+};
+export default InfiniteScroll;
+```
+
+
+---
+Now, you can use this `InfiniteScroll` component in your application. Here is an example of how to use it with a list of items:
+
+```jsx
+import React, { useState } from 'react';
+import InfiniteScroll from './InfiniteScroll';
+const App = () => {
+  const [items, setItems] = useState(Array.from({ length: 20 }, (_, i) => `Item ${i + 1}`));
+  const [loading, setLoading] = useState(false);
+
+  const loadMore = () => {
+    if (loading) return;
+    setLoading(true);
+    setTimeout(() => {
+      setItems((prevItems) => [
+        ...prevItems,
+        ...Array.from({ length: 20 }, (_, i) => `Item ${prevItems.length + i + 1}`),
+      ]);
+      setLoading(false);
+    }, 1000); // Simulate a network request
+  };
+
+  return (
+    <div>
+      <ul>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <InfiniteScroll loadMore={loadMore} />
+      {loading && <p>Loading...</p>}
+    </div>
+  );
+};
+
+export default App;
+```
+
+This example initializes a list with 20 items and appends 20 more items each time the user scrolls to the bottom. The `loadMore` function simulates a network request with a timeout.
+
+You can customize the `loadMore` function to fetch data from an API or any other source as needed. The `InfiniteScroll` component will handle the intersection logic for you, making it easy to implement infinite scrolling in your React applications.
+
+## Conclusion
+Infinite scrolling is a powerful technique to enhance user experience by allowing seamless content loading as users scroll. By using the Intersection Observer API, you can implement this feature efficiently without relying on external libraries. The provided example demonstrates how to create an `InfiniteScroll` component that can be reused across your React applications.
