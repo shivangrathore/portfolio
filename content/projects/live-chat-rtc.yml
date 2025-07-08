@@ -1,0 +1,19 @@
+title: "Live Chat RTC"
+description: "A real-time video, audio, and chat communication platform built using WebRTC and WebSockets."
+date: "2024"
+featured: false
+technologies:
+  - WebRTC
+  - WebSocket
+  - TypeScript
+  - React
+  - Node.js
+  - Express
+  - Tailwind CSS
+features:
+  - "1:1 and group video calling using WebRTC"
+  - "Text chat with message history"
+  - "Peer-to-peer media streaming"
+  - "Room-based communication"
+  - "Minimal UI with responsive design"
+github: "https://github.com/shivangrathore/livechat-rtc"

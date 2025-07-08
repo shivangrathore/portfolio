@@ -4,6 +4,28 @@ import Link from "next/link";
 import { ArrowLeft, Calendar, Clock, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const { frontmatter } = await getBlog(slug);
+  return {
+    title: frontmatter.title,
+    description: frontmatter.description,
+    openGraph: {
+      title: frontmatter.title,
+      description: frontmatter.description,
+      url: `https://yourdomain.com/blog/${slug}`,
+    },
+    twitter: {
+      card: "summary",
+      title: frontmatter.title,
+      description: frontmatter.description,
+    },
+  };
+}
 export default async function BlogPage({
   params,
 }: {

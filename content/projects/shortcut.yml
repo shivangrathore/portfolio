@@ -1,0 +1,18 @@
+title: "Shortcut"
+description: "A clean and efficient URL shortening service with support for custom slugs and basic analytics."
+date: "2023"
+featured: false
+technologies:
+  - Go
+  - PostgreSQL
+  - Redis
+  - Docker
+  - HTML
+  - Tailwind CSS
+features:
+  - "Shorten long URLs with random or custom slugs"
+  - "Track click counts and expiration"
+  - "Rate limiting and basic abuse prevention"
+  - "Built with Go and PostgreSQL for high performance"
+  - "Dockerized for easy deployment"
+github: "https://github.com/shivangrathore/shortcut"

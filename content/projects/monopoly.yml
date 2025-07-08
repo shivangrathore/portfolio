@@ -1,0 +1,15 @@
+title: "Monopoly Clone (Discontinued)"
+description: "A digital adaptation of Monopoly built in Godot to explore multiplayer board game mechanics. The project was discontinued after learning about Monopoly’s active copyright enforcement."
+date: "2023"
+featured: false
+technologies:
+  - Godot Engine
+  - GDScript
+  - TileMap
+  - Multiplayer
+features:
+  - "Turn-based multiplayer with dice rolls and property ownership"
+  - "Player movement across a tile-based board"
+  - "UI for property cards, rent, and in-game cash"
+  - "Pause and resume game state functionality"
+  - "Discontinued due to copyright conflict with Monopoly IP"

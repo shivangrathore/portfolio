@@ -1,0 +1,21 @@
+title: "Code Compiler"
+description: "A self-hosted full-stack code execution platform supporting multiple languages with real-time output and sandboxed environments."
+date: "2024"
+featured: false
+technologies:
+  - Next.js
+  - TypeScript
+  - Docker
+  - WebSocket
+  - Node.js
+  - Express
+  - Redis
+  - Tailwind CSS
+features:
+  - "Supports multiple programming languages (C, C++, Python, Go, etc.)"
+  - "Real-time code execution with output streaming over WebSocket"
+  - "Sandboxed Docker containers for safe execution"
+  - "Language selection and stdin support"
+  - "Execution timeouts and resource limits"
+  - "Responsive UI with dark mode"
+github: "https://github.com/shivangrathore/code-compiler"

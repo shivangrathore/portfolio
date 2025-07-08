@@ -24,6 +24,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getProjects } from "./projects/utils";
+import { toTitleCase } from "@/lib/utils";
+import { getBlogs } from "./blog/utils";
 
 const stats = [
   { label: "Projects", value: "15+" },
@@ -60,45 +63,6 @@ const techStack = [
     name: "Systems",
     description: "Linux, Docker, AWS",
     icon: Terminal,
-  },
-];
-
-const featuredProjects = [
-  {
-    title: "E-commerce Platform",
-    description:
-      "A full-stack e-commerce solution with user authentication, payment processing, and admin dashboard.",
-    technologies: ["Next.js", "TypeScript", "Stripe", "Tailwind CSS"],
-    github: "https://github.com/shivangrathore",
-    demo: "https://example.com",
-    icon: Code,
-    stars: 42,
-    forks: 12,
-    status: "Active",
-  },
-  {
-    title: "System Monitor",
-    description:
-      "A cross-platform system monitoring tool written in Rust with real-time metrics and beautiful UI.",
-    technologies: ["Rust", "Tauri", "React", "Charts"],
-    github: "https://github.com/shivangrathore",
-    demo: null,
-    icon: Terminal,
-    stars: 28,
-    forks: 8,
-    status: "Beta",
-  },
-  {
-    title: "Go Microservice",
-    description:
-      "A high-performance REST API microservice with Docker containerization and comprehensive testing.",
-    technologies: ["Go", "Docker", "PostgreSQL", "Redis"],
-    github: "https://github.com/shivangrathore",
-    demo: null,
-    icon: Server,
-    stars: 35,
-    forks: 15,
-    status: "Production",
   },
 ];
 
@@ -300,7 +264,9 @@ function About() {
   );
 }
 
-function Portfolio() {
+async function Portfolio() {
+  const allProjects = await getProjects();
+  const featuredProjects = allProjects.filter((project) => project.featured);
   return (
     <section className="py-24 bg-gradient-to-br from-muted/20 to-transparent">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -324,36 +290,7 @@ function Portfolio() {
               className="glass-card card-hover group animate-slide-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                    <project.icon className="h-6 w-6 text-primary" />
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0"
-                      asChild
-                    >
-                      <Link href={project.github}>
-                        <Github className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    {project.demo && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        asChild
-                      >
-                        <Link href={project.demo}>
-                          <ExternalLink className="h-4 w-4" />
-                        </Link>
-                      </Button>
-                    )}
-                  </div>
-                </div>
+              <CardHeader className="flex-grow">
                 <CardTitle className="text-xl group-hover:text-primary transition-colors">
                   {project.title}
                 </CardTitle>
@@ -372,17 +309,22 @@ function Portfolio() {
                   </div>
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <div className="flex items-center space-x-4">
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 mr-1" />
-                        {project.stars}
-                      </div>
-                      <div className="flex items-center">
-                        <GitFork className="h-4 w-4 mr-1" />
-                        {project.forks}
-                      </div>
+                      {project.github && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="p-0 h-auto font-medium group-hover:text-primary"
+                          asChild
+                        >
+                          <Link href={project.github} target="_blank">
+                            <Github className="mr-2 h-4 w-4" />
+                            View on GitHub
+                          </Link>
+                        </Button>
+                      )}
                     </div>
                     <Badge variant="outline" className="text-xs">
-                      {project.status}
+                      {toTitleCase(project.status)}
                     </Badge>
                   </div>
                 </div>
@@ -409,7 +351,14 @@ function Portfolio() {
   );
 }
 
-function Blogs() {
+async function Blogs() {
+  const blogs = await getBlogs();
+  const latestPosts = blogs
+    .filter((post) => post.published)
+    .sort(
+      (a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime(),
+    )
+    .slice(0, 3);
   return (
     <section className="py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -436,17 +385,21 @@ function Blogs() {
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
                   <Badge variant="outline" className="text-xs">
-                    {post.readTime}
+                    {post.readingTime}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
-                    {post.date}
+                    {post.pubDate.toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </span>
                 </div>
                 <CardTitle className="text-xl group-hover:text-primary transition-colors">
                   <Link href={`/blog/${post.slug}`}>{post.title}</Link>
                 </CardTitle>
                 <CardDescription className="text-base">
-                  {post.excerpt}
+                  {post.description}
                 </CardDescription>
               </CardHeader>
               <CardContent>

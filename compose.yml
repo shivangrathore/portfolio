@@ -1,0 +1,24 @@
+services:
+  portfolio:
+    build: .
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.portfolio.rule=Host(`shivangrathore.com`)"
+      - "traefik.http.routers.portfolio.entrypoints=websecure"
+      - "traefik.http.routers.portfolio.tls.certresolver=myresolver"
+
+      - "traefik.http.routers.portfolio-http.rule=Host(`shivangrathore.com`)"
+      - "traefik.http.routers.portfolio-http.entrypoints=web"
+      - "traefik.http.routers.portfolio-http.middlewares=https-redirect"
+
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
+
+      - "traefik.http.services.portfolio.loadbalancer.server.port=3000"
+    networks:
+      - traefik-net
+    restart: unless-stopped
+
+networks:
+  traefik-net:
+    external: true

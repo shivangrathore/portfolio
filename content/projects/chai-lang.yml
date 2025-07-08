@@ -1,0 +1,18 @@
+title: "Chai Lang"
+description: "A toy programming language built with Go, designed for simplicity, modern syntax, and seamless WebAssembly support."
+date: "2025-07-07"
+featured: true
+order: 102
+technologies:
+  - "Go"
+  - "WebAssembly"
+  - "GitHub Actions"
+  - "CI/CD"
+  - "Lex/Yacc"
+features:
+  - "Clean and modern syntax"
+  - "Custom keywords for intuitive development"
+  - "WASM compilation target"
+  - "Fully tested with GitHub Actions"
+  - "Simple lexer and parser implementation"
+github: "https://github.com/chai-lang/chai-lang"

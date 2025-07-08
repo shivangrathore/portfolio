@@ -1,0 +1,22 @@
+title: "Social Connect"
+description: "A modern, full-stack social media platform focused on fast, reliable post creation, media uploads with progress feedback, and strong data consistency."
+date: "2025-07-08"
+featured: true
+order: 103
+technologies:
+  - "Next.js"
+  - "TypeScript"
+  - "PostgreSQL"
+  - "Drizzle ORM"
+  - "WebSockets"
+  - "Docker"
+  - "Redis"
+  - "REST API"
+features:
+  - "Realtime post uploads with progress bar"
+  - "Drafts, polls, and regular posts"
+  - "Attachment handling with ACID-safe design"
+  - "Secure authentication (JWT) & Social Login (Google, GitHub)"
+  - "Modular and scalable backend architecture"
+  - "Optimistic UI and conflict resolution logic"
+github: "https://github.com/shivangrathore/social-media"

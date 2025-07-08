@@ -1,0 +1,22 @@
+title: "Otaku Bot"
+description: "A Discord-based anime character collection game where users collect, vote, and rank characters through gacha-style drops and community-driven mechanics."
+date: "2023"
+featured: false
+technologies:
+  - Python
+  - Rust
+  - Discord.py
+  - SQLite
+  - Redis
+  - AniList API
+  - PIL (Python Imaging Library)
+  - Docker
+features:
+  - "Users vote weekly to determine top 5 anime that define the spawn pool"
+  - "Gacha-style character drops with rarity tiers (Common, Rare, Epic, Legendary)"
+  - "Rust-powered logic for fast ranking, vote tallying, and spawn calculations"
+  - "Dynamic image generation for collectible character cards with rarity overlays"
+  - "Card browsing system with filters by rarity, anime, or vote rank"
+  - "Community-wide ranking board based on votes cast on characters"
+  - "User inventory, vote history, and spawn logs stored persistently"
+github: "https://github.com/shivangrathore/otakubot"
