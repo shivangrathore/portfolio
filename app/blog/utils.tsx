@@ -66,12 +66,10 @@ export async function getBlog(slug: string) {
     slug,
     readingTime: readingDuration(content, { emoji: false }),
   });
-  // let rehypePlugins: any[] = [];
-  // if (process.env.NODE_ENV === "production") {
-  let rehypePlugins: any[] = [
-    [rehypeShiki, { theme: "tokyo-night", lazy: true }],
-  ];
-  // }
+  let rehypePlugins: any[] = [];
+  if (process.env.NODE_ENV === "production") {
+    rehypePlugins = [[rehypeShiki, { theme: "tokyo-night", lazy: true }]];
+  }
   const { content: compiledContent } = await compileMDX({
     source: content,
     options: {

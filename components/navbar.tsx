@@ -22,8 +22,27 @@ const navItems = [
   { name: "Contact", href: "/contact", icon: MailIcon },
 ];
 export default function Navbar() {
+  // Add scroll progress effect to the navbar top
   const [hasScrolled, setHasScrolled] = React.useState(false);
   const pathname = usePathname();
+  const [scrollProgress, setScrollProgress] = React.useState(0);
+
+  // Update scroll progress on scroll
+  useEffect(() => {
+    const control = new AbortController();
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const progress = (scrollTop / docHeight) * 100;
+      setScrollProgress(progress);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { signal: control.signal });
+    return () => {
+      control.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const control = new AbortController();
@@ -46,6 +65,10 @@ export default function Navbar() {
           : "bg-transparent",
       )}
     >
+      <div
+        className="h-1 bg-gradient-to-r from-primary to-blue-500 transition-all duration-300 ease-in-out"
+        style={{ width: `${scrollProgress}%` }}
+      />
       <header className="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto w-full">
         <Link className="flex gap-3 cursor-pointer" href="/">
           <div className="rounded-lg text-foreground size-12 items-center justify-center flex bg-gradient-to-br from-primary to-blue-500">

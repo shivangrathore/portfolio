@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -285,6 +286,15 @@
 
   pre {
     @apply bg-muted px-4 py-2 rounded overflow-x-auto mb-4 font-mono text-sm;
+
+    code {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 500;
+
+      & * {
+        font-style: normal !important;
+      }
+    }
   }
 
   ul {
