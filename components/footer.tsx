@@ -27,7 +27,7 @@ export function Footer() {
                   Shivang Rathore
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Full Stack Developer
+                  Software Engineer
                 </div>
               </div>
             </div>

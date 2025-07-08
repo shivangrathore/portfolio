@@ -76,7 +76,7 @@ export default function Navbar() {
           </div>
           <div>
             <h4 className="text-2xl font-semibold gradient-text">Shivang</h4>
-            <p className="text-xs text-gray-500">Full Stack Developer</p>
+            <p className="text-xs text-gray-500">Software Engineer</p>
           </div>
         </Link>
         <div className="hidden md:flex items-center space-x-1">

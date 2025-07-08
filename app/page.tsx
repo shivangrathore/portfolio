@@ -115,7 +115,7 @@ function Hero() {
             Hi, I'm <span className="gradient-text">Shivang Rathore</span>
           </h1>
           <p className="text-2xl max-w-4xl mx-auto text-muted-foreground mb-12">
-            Full Stack Developer passionate about{" "}
+            Software Engineer passionate about{" "}
             <span className="text-green-500">system-level programming</span>,
             clean code, and building performant web applications with{" "}
             <span className="text-sky-500 font-semibold">Go</span>,{" "}
@@ -168,7 +168,7 @@ function Hero() {
 function About() {
   return (
     <section className="py-24 relative">
-      <div className="absolute inset-0 bg-dots-pattern opacity-5"></div>
+      <div className="absolute inset-0 bg-dots-pattern opacity-5" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div className="animate-slide-in">

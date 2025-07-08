@@ -11,10 +11,16 @@ import Link from "next/link";
 import { Calendar, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Github from "@/assets/icons/github.svg";
+import { cn } from "@/lib/utils";
 
 export default function ProjectCard({ project }: { project: Project }) {
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300">
+    <Card
+      className={cn(
+        "group hover:shadow-lg transition-all duration-300 card-hover",
+        project.featured && "glass-card",
+      )}
+    >
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>

@@ -9,7 +9,7 @@ export default function ProjectsGrid({ projects }: { projects: Project[] }) {
       items={projects}
       config={{
         columns: [1, 2, 3],
-        gap: [8, 8, 8],
+        gap: [8, 12, 16],
         media: [768, 1024, 1440],
         useBalancedLayout: true,
       }}
