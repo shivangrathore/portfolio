@@ -16,6 +16,7 @@ const BlogSchema = z.object({
   heroImage: z.string().optional(),
   published: z.boolean().default(false),
   readingTime: z.string(),
+  updatedAt: z.coerce.date().optional(),
 });
 
 type Blog = z.infer<typeof BlogSchema>;
