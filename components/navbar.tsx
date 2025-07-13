@@ -169,12 +169,9 @@ export default function Navbar() {
                   className="h-10 w-10 p-0"
                   asChild
                 >
-                  <Link
-                    href="https://github.com/shivangrathore"
-                    target="_blank"
-                  >
+                  <a href={GITHUB_URL} target="_blank">
                     <Github className="h-5 w-5" />
-                  </Link>
+                  </a>
                 </Button>
                 <Button
                   variant="ghost"
@@ -182,12 +179,9 @@ export default function Navbar() {
                   className="h-10 w-10 p-0"
                   asChild
                 >
-                  <Link
-                    href="https://linkedin.com/in/shivangrathore"
-                    target="_blank"
-                  >
+                  <a href={LINKEDIN_URL} target="_blank">
                     <Linkedin className="h-5 w-5" />
-                  </Link>
+                  </a>
                 </Button>
               </div>
             </div>
