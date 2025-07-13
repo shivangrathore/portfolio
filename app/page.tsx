@@ -7,10 +7,7 @@ import {
   CodeIcon,
   Database,
   Download,
-  ExternalLink,
-  GitFork,
   Server,
-  Star,
   Terminal,
   UsersIcon,
 } from "lucide-react";
@@ -66,36 +63,6 @@ const techStack = [
   },
 ];
 
-const latestPosts = [
-  {
-    title: "Building High-Performance APIs with Go",
-    excerpt:
-      "Learn how to create scalable and efficient REST APIs using Go's powerful standard library and best practices.",
-    tags: ["Go", "Backend", "Performance"],
-    date: "Jan 15, 2024",
-    slug: "building-high-performance-apis-with-go",
-    readTime: "8 min read",
-  },
-  {
-    title: "Rust vs Go: A Developer's Perspective",
-    excerpt:
-      "Comparing two powerful languages for system programming and their use cases in modern development.",
-    tags: ["Rust", "Go", "Comparison"],
-    date: "Jan 10, 2024",
-    slug: "rust-vs-go-developer-perspective",
-    readTime: "12 min read",
-  },
-  {
-    title: "Linux Command Line Productivity Tips",
-    excerpt:
-      "Essential command-line tools and techniques for boosting your productivity on Linux systems.",
-    tags: ["Linux", "CLI", "Productivity"],
-    date: "Jan 5, 2024",
-    slug: "linux-command-line-productivity-tips",
-    readTime: "6 min read",
-  },
-];
-
 function Hero() {
   return (
     <section className="relative overflow-hidden">
@@ -111,10 +78,10 @@ function Hero() {
               Available for opportunities
             </Badge>
           </div>
-          <h1 className="text-7xl font-bold text-gray-900 dark:text-white mb-8">
+          <h1 className="md:text-7xl font-bold text-gray-900 dark:text-white mb-8 text-5xl">
             Hi, I'm <span className="gradient-text">Shivang Rathore</span>
           </h1>
-          <p className="text-2xl max-w-4xl mx-auto text-muted-foreground mb-12">
+          <p className="text-lg md:text-2xl max-w-4xl mx-auto text-muted-foreground mb-12">
             Software Engineer passionate about{" "}
             <span className="text-green-500">system-level programming</span>,
             clean code, and building performant web applications with{" "}
