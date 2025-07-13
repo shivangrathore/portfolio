@@ -32,10 +32,10 @@ export default async function BlogPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const { content, frontmatter } = await getBlog(slug);
+  const { content, frontmatter, toc } = await getBlog(slug);
   return (
     <div className="min-h-screen py-24 bg-background">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <div className="max-w-fit mx-auto px-4 sm:px-6 lg:px-8 relative">
         {/* Navigation */}
         <div className="mb-8 animate-fade-in">
           <Button variant="ghost" asChild>
@@ -45,54 +45,72 @@ export default async function BlogPage({
             </Link>
           </Button>
         </div>
-        <article className="animate-slide-up">
-          <header className="mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              {frontmatter.title}
-            </h1>
-            <p className="text-xl text-muted-foreground mb-6">
-              {frontmatter.description}
-            </p>
+        <div className="flex mb-8 relative">
+          <article className="overflow-hidden max-w-3xl w-full">
+            <header className="mb-8">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                {frontmatter.title}
+              </h1>
+              <p className="text-xl text-muted-foreground mb-6">
+                {frontmatter.description}
+              </p>
 
-            {/* Meta Information */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
-              <div className="flex items-center">
-                <Calendar className="h-4 w-4 mr-2" />
-                {frontmatter.pubDate.toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+              {/* Meta Information */}
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  {frontmatter.pubDate.toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </div>
+                <div className="flex items-center">
+                  <Clock className="h-4 w-4 mr-2" />
+                  {frontmatter.readingTime}
+                </div>
+                <Button variant="ghost" size="sm">
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share
+                </Button>
+                {!frontmatter.published && (
+                  <Badge variant="secondary" className="ml-auto">
+                    Draft
+                  </Badge>
+                )}
+                <div></div>
               </div>
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 mr-2" />
-                {frontmatter.readingTime}
+
+              {/* Tags */}
+              <div className="flex flex-wrap gap-2 mb-8">
+                {frontmatter.tags.map((tag) => (
+                  <Badge key={tag} variant="secondary">
+                    {tag}
+                  </Badge>
+                ))}
               </div>
-              <Button variant="ghost" size="sm">
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-              {!frontmatter.published && (
-                <Badge variant="secondary" className="ml-auto">
-                  Draft
-                </Badge>
-              )}
-              <div></div>
-            </div>
+            </header>
 
-            {/* Tags */}
-            <div className="flex flex-wrap gap-2 mb-8">
-              {frontmatter.tags.map((tag) => (
-                <Badge key={tag} variant="secondary">
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          </header>
-
-          {/* Content */}
-        </article>
-        <div className="prose prose-invert max-w-none">{content}</div>
+            <div className="prose">{content}</div>
+          </article>
+          <aside className="hidden lg:block ml-8 max-w-64 w-full shrink-0">
+            <nav className="sticky top-24">
+              <h2 className="text-lg font-semibold mb-4">Table of Contents</h2>
+              <ul className="space-y-2">
+                {toc.map((item) => (
+                  <li key={item.href}>
+                    <a
+                      href={item.href}
+                      className="text-muted-foreground hover:text-primary"
+                    >
+                      {item.value}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+        </div>
       </div>
     </div>
   );

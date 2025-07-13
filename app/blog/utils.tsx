@@ -5,6 +5,11 @@ import matter from "gray-matter";
 import path from "path";
 import rehypeShiki from "@shikijs/rehype";
 import readingDuration from "reading-duration";
+import rehypeSlug from "rehype-slug";
+import remarkFlexibleToc, {
+  TocItem,
+  FlexibleTocOptions,
+} from "remark-flexible-toc";
 
 // TODO: Add hero image support and parsing, imports
 const BlogSchema = z.object({
@@ -62,20 +67,30 @@ export async function getBlog(slug: string) {
   const filePath = path.join(basePath, "index.mdx");
   const fileContent = await readFile(filePath, "utf-8");
   const { content, data } = matter(fileContent);
+  const toc: TocItem[] = [];
   const frontmatter = await BlogSchema.parseAsync({
     ...data,
     slug,
     readingTime: readingDuration(content, { emoji: false }),
   });
-  let rehypePlugins: any[] = [];
+  let rehypePlugins: any[] = [[rehypeSlug, {}]];
   if (process.env.NODE_ENV === "production") {
-    rehypePlugins = [[rehypeShiki, { theme: "tokyo-night", lazy: true }]];
+    rehypePlugins.push([rehypeShiki, { theme: "tokyo-night", lazy: true }]);
   }
+  let remarkPlugins: any[] = [
+    [
+      remarkFlexibleToc,
+      {
+        tocRef: toc,
+      } as FlexibleTocOptions,
+    ],
+  ];
   const { content: compiledContent } = await compileMDX({
     source: content,
     options: {
       mdxOptions: {
         rehypePlugins,
+        remarkPlugins,
       },
     },
     components: {
@@ -90,6 +105,7 @@ export async function getBlog(slug: string) {
   });
   return {
     content: compiledContent,
+    toc: toc,
     frontmatter: {
       ...frontmatter,
       slug,

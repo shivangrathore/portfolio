@@ -248,6 +248,10 @@
 
 
 @utility prose {
+  [id] {
+    @apply scroll-mt-24;
+  }
+
   h1 {
     @apply text-3xl font-bold mb-4 text-foreground;
   }
