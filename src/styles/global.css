@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+@theme {
+  /* Neutral dark base, single green accent */
+  --color-bg: oklch(0.16 0.005 260);
+  --color-surface: oklch(0.2 0.006 260);
+  --color-border: oklch(0.28 0.008 260);
+  --color-fg: oklch(0.96 0 0);
+  --color-muted: oklch(0.7 0.012 260);
+  --color-faint: oklch(0.55 0.01 260);
+  --color-accent: oklch(0.7 0.16 149.2);
+  --color-accent-fg: oklch(0.16 0.02 149.2);
+
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-accent text-accent-fg;
+  }
+
+  a {
+    @apply transition-colors;
+  }
+
+  :target {
+    scroll-margin-top: 6rem;
+  }
+}
+
+/* Subtle link underline that lives under the baseline */
+@utility link {
+  @apply text-fg underline decoration-border decoration-1 underline-offset-4 hover:decoration-accent;
+}
+
+/* Long-form article typography */
+@utility prose {
+  @apply text-muted leading-relaxed;
+
+  & > :first-child {
+    margin-top: 0;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-fg font-semibold scroll-mt-24 tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl mt-12 mb-4;
+  }
+
+  h3 {
+    @apply text-xl mt-8 mb-3;
+  }
+
+  h4 {
+    @apply text-lg mt-6 mb-2;
+  }
+
+  p {
+    @apply my-4;
+  }
+
+  a {
+    @apply text-fg underline decoration-border underline-offset-4 hover:decoration-accent;
+  }
+
+  strong {
+    @apply text-fg font-semibold;
+  }
+
+  em {
+    @apply italic;
+  }
+
+  blockquote {
+    @apply border-l-2 border-accent/60 pl-4 my-6 italic text-faint;
+  }
+
+  hr {
+    @apply border-0 border-t border-border my-10;
+  }
+
+  ul {
+    @apply list-disc pl-6 my-4 space-y-1.5;
+  }
+
+  ol {
+    @apply list-decimal pl-6 my-4 space-y-1.5;
+  }
+
+  img {
+    @apply rounded-lg my-6 mx-auto border border-border;
+  }
+
+  /* Inline code */
+  :not(pre) > code {
+    @apply bg-surface text-fg rounded px-1.5 py-0.5 text-[0.85em] font-mono;
+  }
+
+  /* Shiki code blocks */
+  pre {
+    @apply rounded-lg border border-border p-4 my-6 overflow-x-auto text-sm leading-relaxed;
+  }
+
+  pre code {
+    @apply font-mono;
+    counter-reset: line;
+  }
+
+  table {
+    @apply w-full text-left border-collapse my-6 text-sm;
+  }
+
+  thead {
+    @apply border-b border-border;
+  }
+
+  th {
+    @apply px-3 py-2 font-semibold text-fg;
+  }
+
+  td {
+    @apply px-3 py-2 border-b border-border/50;
+  }
+
+  figcaption {
+    @apply text-sm text-faint text-center mt-2;
+  }
+}
+
+/* Copy-to-clipboard button injected into code blocks */
+.prose pre {
+  position: relative;
+}
+
+.copy-button {
+  @apply absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface/80 text-faint opacity-0 backdrop-blur transition hover:text-fg focus-visible:opacity-100;
+}
+
+.prose pre:hover .copy-button {
+  @apply opacity-100;
+}
+
+.copy-button.copied {
+  @apply text-accent;
+}
+
+.copy-button svg {
+  @apply size-4;
+}

@@ -1,0 +1,62 @@
+---
+import { getCollection } from "astro:content";
+import Base from "@/layouts/Base.astro";
+import Icon from "@/components/icons/Icon.astro";
+import { formatDate } from "@/lib/utils";
+
+const isDev = import.meta.env.DEV;
+let studies = (await getCollection("caseStudies")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+if (!isDev) studies = studies.filter((s) => !s.data.draft);
+---
+
+<Base
+  title="Case Studies"
+  description="In-depth write-ups of features and projects I've built — the problem, the approach, and the trade-offs."
+>
+  <div class="mx-auto max-w-3xl px-5 py-16">
+    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">
+      Case Studies
+    </h1>
+    <p class="mt-3 max-w-xl text-muted">
+      Long-form write-ups of features and projects — the problem, the approach,
+      the trade-offs, and what I'd do differently.
+    </p>
+
+    {
+      studies.length === 0 ? (
+        <p class="mt-12 text-muted">No case studies yet — check back soon.</p>
+      ) : (
+        <div class="mt-10 grid gap-5">
+          {studies.map((s) => (
+            <a
+              href={`/case-studies/${s.id}`}
+              class="group rounded-xl border border-border bg-surface/40 p-6 transition-colors hover:border-accent/50"
+            >
+              <div class="flex items-center justify-between gap-4">
+                <h2 class="text-lg font-semibold text-fg group-hover:text-accent">
+                  {s.data.title}
+                </h2>
+                <Icon
+                  name="arrow-up-right"
+                  class="size-4 shrink-0 text-faint group-hover:text-accent"
+                />
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-muted">
+                {s.data.description}
+              </p>
+              <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-faint">
+                <time datetime={s.data.pubDate.toISOString()}>
+                  {formatDate(s.data.pubDate)}
+                </time>
+                {s.data.role && <span>{s.data.role}</span>}
+                {s.data.timeline && <span>{s.data.timeline}</span>}
+              </div>
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
+</Base>

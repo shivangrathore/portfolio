@@ -1,0 +1,31 @@
+---
+import { GITHUB_URL, LINKEDIN_URL, MAIL_ADDRESS } from "@/lib/constants";
+import Github from "@/components/icons/Github.astro";
+import Linkedin from "@/components/icons/Linkedin.astro";
+import Icon from "@/components/icons/Icon.astro";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="mt-24 border-t border-border/60">
+  <div
+    class="mx-auto flex max-w-3xl flex-col items-center justify-between gap-4 px-5 py-10 text-sm text-faint sm:flex-row"
+  >
+    <p>© {year} Shivang Rathore</p>
+    <div class="flex items-center gap-5">
+      <a href={GITHUB_URL} target="_blank" rel="noopener" aria-label="GitHub" class="hover:text-fg">
+        <Github class="size-4" />
+      </a>
+      <a href={LINKEDIN_URL} target="_blank" rel="noopener" aria-label="LinkedIn" class="hover:text-fg">
+        <Linkedin class="size-4" />
+      </a>
+      <a href={`mailto:${MAIL_ADDRESS}`} aria-label="Email" class="hover:text-fg">
+        <Icon name="mail" class="size-4" />
+      </a>
+      <a href="/rss.xml" aria-label="RSS" class="hover:text-fg">
+        <Icon name="rss" class="size-4" />
+      </a>
+    </div>
+    <p class="font-mono text-xs">Built with Astro</p>
+  </div>
+</footer>

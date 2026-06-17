@@ -1,0 +1,61 @@
+---
+import { getCollection } from "astro:content";
+import Base from "@/layouts/Base.astro";
+import { formatDate } from "@/lib/utils";
+
+const isDev = import.meta.env.DEV;
+let posts = (await getCollection("blog")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+if (!isDev) posts = posts.filter((p) => !p.data.draft);
+---
+
+<Base
+  title="Blog"
+  description="Thoughts on web development, system programming, Linux, Go, and Rust."
+>
+  <div class="mx-auto max-w-3xl px-5 py-16">
+    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Blog</h1>
+    <p class="mt-3 max-w-xl text-muted">
+      Notes on web development, system programming, Linux, and my journey with
+      Go and Rust.
+    </p>
+
+    {
+      posts.length === 0 ? (
+        <p class="mt-12 text-muted">No posts yet — check back soon.</p>
+      ) : (
+        <div class="mt-10 grid gap-4">
+          {posts.map((post) => (
+            <a
+              href={`/blog/${post.id}`}
+              class="group rounded-xl border border-border bg-surface/40 p-6 transition-colors hover:border-accent/50"
+            >
+              <time
+                datetime={post.data.pubDate.toISOString()}
+                class="font-mono text-xs text-faint"
+              >
+                {formatDate(post.data.pubDate)}
+              </time>
+              <h2 class="mt-2 text-lg font-semibold text-fg group-hover:text-accent">
+                {post.data.title}
+              </h2>
+              <p class="mt-1.5 text-sm leading-relaxed text-muted">
+                {post.data.description}
+              </p>
+              {post.data.tags.length > 0 && (
+                <div class="mt-4 flex flex-wrap gap-1.5">
+                  {post.data.tags.map((tag) => (
+                    <span class="rounded-full border border-border px-2 py-0.5 text-xs text-faint">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </a>
+          ))}
+        </div>
+      )
+    }
+  </div>
+</Base>

@@ -1,0 +1,152 @@
+---
+import type { MarkdownHeading } from "astro";
+import Base from "@/layouts/Base.astro";
+import Icon from "@/components/icons/Icon.astro";
+import { formatDate } from "@/lib/utils";
+
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  minutesRead?: string;
+  tags?: string[];
+  headings?: MarkdownHeading[];
+  backHref: string;
+  backLabel: string;
+  image?: string;
+}
+
+const {
+  title,
+  description,
+  pubDate,
+  updatedDate,
+  minutesRead,
+  tags = [],
+  headings = [],
+  backHref,
+  backLabel,
+  image,
+} = Astro.props;
+
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const hasToc = toc.length > 0;
+---
+
+<Base title={title} description={description} image={image} type="article">
+  <div
+    class:list={[
+      "mx-auto max-w-3xl px-5 py-12 md:py-16",
+      hasToc && "xl:max-w-6xl xl:grid xl:grid-cols-[minmax(0,1fr)_13rem] xl:gap-14",
+    ]}
+  >
+    <article class="min-w-0 xl:mx-auto xl:w-full xl:max-w-3xl">
+      <a
+        href={backHref}
+        class="inline-flex items-center gap-1.5 text-sm text-muted hover:text-fg"
+      >
+        <Icon name="arrow-left" class="size-4" />
+        {backLabel}
+      </a>
+
+      <header class="mt-8">
+        <slot name="eyebrow" />
+        <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{title}</h1>
+        <p class="mt-3 text-lg text-muted">{description}</p>
+
+        <div class="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-faint">
+          <span class="inline-flex items-center gap-1.5">
+            <Icon name="calendar" class="size-4" />
+            <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+          </span>
+          {
+            minutesRead && (
+              <span class="inline-flex items-center gap-1.5">
+                <Icon name="clock" class="size-4" />
+                {minutesRead}
+              </span>
+            )
+          }
+          {updatedDate && <span>Updated {formatDate(updatedDate)}</span>}
+        </div>
+
+        {
+          tags.length > 0 && (
+            <div class="mt-4 flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span class="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )
+        }
+
+        <slot name="meta" />
+      </header>
+
+      <hr class="my-8 border-border" />
+
+      <div class="prose">
+        <slot />
+      </div>
+    </article>
+
+    {
+      hasToc && (
+        <aside class="hidden xl:block">
+          <nav class="sticky top-24">
+            <p class="mb-3 text-xs font-medium uppercase tracking-wider text-faint">
+              On this page
+            </p>
+            <ul class="space-y-2 border-l border-border text-sm">
+              {toc.map((h) => (
+                <li>
+                  <a
+                    href={`#${h.slug}`}
+                    class:list={[
+                      "-ml-px block border-l border-transparent text-muted hover:border-accent hover:text-accent",
+                      h.depth === 3 ? "pl-6" : "pl-4",
+                    ]}
+                  >
+                    {h.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </aside>
+      )
+    }
+  </div>
+
+  <script>
+    const COPY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+    const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    document.querySelectorAll<HTMLPreElement>(".prose pre").forEach((pre) => {
+      if (pre.querySelector(".copy-button")) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "copy-button";
+      btn.setAttribute("aria-label", "Copy code");
+      btn.innerHTML = COPY;
+      btn.addEventListener("click", async () => {
+        const code = pre.querySelector("code")?.innerText ?? pre.innerText;
+        try {
+          await navigator.clipboard.writeText(code);
+          btn.innerHTML = CHECK;
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.innerHTML = COPY;
+            btn.classList.remove("copied");
+          }, 1500);
+        } catch {
+          /* clipboard unavailable */
+        }
+      });
+      pre.appendChild(btn);
+    });
+  </script>
+</Base>

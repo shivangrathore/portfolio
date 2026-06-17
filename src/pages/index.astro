@@ -1,0 +1,156 @@
+---
+import { getCollection } from "astro:content";
+import Base from "@/layouts/Base.astro";
+import ProjectCard from "@/components/ProjectCard.astro";
+import Timeline from "@/components/Timeline.astro";
+import Github from "@/components/icons/Github.astro";
+import Icon from "@/components/icons/Icon.astro";
+import { GITHUB_URL, MAIL_ADDRESS } from "@/lib/constants";
+import { experience } from "@/lib/experience";
+import { formatDate } from "@/lib/utils";
+
+const isDev = import.meta.env.DEV;
+const visible = <T extends { data: { draft: boolean } }>(items: T[]) =>
+  isDev ? items : items.filter((i) => !i.data.draft);
+
+const projects = (await getCollection("projects")).sort(
+  (a, b) => b.data.order - a.data.order,
+);
+const featured = projects.filter((p) => p.data.featured).slice(0, 3);
+
+const posts = visible(await getCollection("blog")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+const studies = visible(await getCollection("caseStudies")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const writing = [
+  ...studies.map((s) => ({ kind: "Case study", entry: s, base: "/case-studies/" })),
+  ...posts.map((p) => ({ kind: "Blog", entry: p, base: "/blog/" })),
+]
+  .sort((a, b) => b.entry.data.pubDate.valueOf() - a.entry.data.pubDate.valueOf())
+  .slice(0, 4);
+---
+
+<Base>
+  <!-- Hero -->
+  <section class="mx-auto max-w-3xl px-5 pb-12 pt-20 md:pt-28">
+    <p class="font-mono text-sm text-accent">Available for opportunities</p>
+    <h1 class="mt-4 text-4xl font-semibold tracking-tight md:text-5xl">
+      Shivang Rathore
+    </h1>
+    <p class="mt-2 font-mono text-sm text-faint">
+      Software Engineer · Go · Rust · Web
+    </p>
+    <p class="mt-6 max-w-xl text-lg leading-relaxed text-muted">
+      I build performant, system-level software and clean web applications.
+      Deeply into backend engineering, Linux, and writing code that scales
+      gracefully.
+    </p>
+    <div class="mt-8 flex flex-wrap items-center gap-3">
+      <a
+        href="/work"
+        class="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
+      >
+        View my work
+        <Icon name="arrow-right" class="size-4" />
+      </a>
+      <a
+        href="/contact"
+        class="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted hover:border-accent/50 hover:text-fg"
+      >
+        Get in touch
+      </a>
+      <a
+        href={GITHUB_URL}
+        target="_blank"
+        rel="noopener"
+        class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-muted hover:text-fg"
+      >
+        <Github class="size-4" />
+        GitHub
+      </a>
+    </div>
+  </section>
+
+  <!-- Experience -->
+  <section class="mx-auto max-w-3xl px-5 py-12">
+    <div class="flex items-baseline justify-between">
+      <h2 class="text-lg font-semibold tracking-tight">Experience</h2>
+      <a href="/about" class="text-sm text-muted hover:text-accent">Full background →</a>
+    </div>
+    <Timeline items={experience.slice(0, 2)} />
+  </section>
+
+  <!-- Selected work -->
+  <section class="mx-auto max-w-3xl px-5 py-12">
+    <div class="flex items-baseline justify-between">
+      <h2 class="text-lg font-semibold tracking-tight">Selected work</h2>
+      <a href="/work" class="text-sm text-muted hover:text-accent">All projects →</a>
+    </div>
+    <div class="mt-6 grid gap-4 sm:grid-cols-2">
+      {featured.map((project) => <ProjectCard project={project} />)}
+    </div>
+  </section>
+
+  <!-- Writing -->
+  <section class="mx-auto max-w-3xl px-5 py-12">
+    <div class="flex items-baseline justify-between">
+      <h2 class="text-lg font-semibold tracking-tight">Writing</h2>
+      <a href="/blog" class="text-sm text-muted hover:text-accent">All posts →</a>
+    </div>
+    <div class="mt-6 grid gap-4">
+      {
+        writing.map(({ kind, entry, base }) => (
+          <a
+            href={`${base}${entry.id}`}
+            class="group rounded-xl border border-border bg-surface/40 p-6 transition-colors hover:border-accent/50"
+          >
+            <div class="flex items-center gap-3 font-mono text-xs text-faint">
+              <span class="rounded-full bg-accent/10 px-2 py-0.5 text-accent">
+                {kind}
+              </span>
+              <time datetime={entry.data.pubDate.toISOString()}>
+                {formatDate(entry.data.pubDate)}
+              </time>
+            </div>
+            <h3 class="mt-3 text-lg font-semibold text-fg group-hover:text-accent">
+              {entry.data.title}
+            </h3>
+            <p class="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted">
+              {entry.data.description}
+            </p>
+            {entry.data.tags.length > 0 && (
+              <div class="mt-4 flex flex-wrap gap-1.5">
+                {entry.data.tags.slice(0, 4).map((tag) => (
+                  <span class="rounded-full border border-border px-2 py-0.5 text-xs text-faint">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </a>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- Contact CTA -->
+  <section class="mx-auto max-w-3xl px-5 py-12">
+    <div class="rounded-xl border border-border bg-surface/40 p-8 text-center">
+      <h2 class="text-xl font-semibold tracking-tight">Let's build something</h2>
+      <p class="mx-auto mt-2 max-w-md text-sm text-muted">
+        Open to interesting projects, open-source collaboration, or just a good
+        technical conversation.
+      </p>
+      <a
+        href={`mailto:${MAIL_ADDRESS}`}
+        class="mt-5 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
+      >
+        <Icon name="mail" class="size-4" />
+        Start a conversation
+      </a>
+    </div>
+  </section>
+</Base>

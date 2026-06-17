@@ -1,0 +1,25 @@
+title: "Casify"
+description: "A customizable e-commerce platform for phone cases, offering product design, cart, checkout, and order tracking functionalities."
+date: "2024"
+featured: true
+order: 100
+caseStudy: "casify"
+technologies:
+  - Next.js
+  - TypeScript
+  - PostgreSQL
+  - Prisma
+  - Tailwind CSS
+  - Stripe
+  - Cloudinary
+  - Clerk
+features:
+  - "Custom product designer for phone cases"
+  - "User authentication and profile management"
+  - "Shopping cart and checkout with Stripe"
+  - "Admin dashboard to manage products and orders"
+  - "Responsive UI with dark mode support"
+  - "Image uploads with Cloudinary"
+  - "SEO-optimized product pages"
+github: "https://github.com/shivangrathore/casify"
+demo: "https://casify.shivangrathore.dev"

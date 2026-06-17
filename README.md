@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# shivangrathore.com
 
-## Getting Started
+Personal portfolio built with [Astro](https://astro.build). Minimalist
+dark design, single green accent. Content-driven: projects, case studies,
+and a blog.
 
-First, run the development server:
+## Develop
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev          # http://localhost:4321
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Command         | Action                                |
+| --------------- | ------------------------------------- |
+| `pnpm dev`      | Start the dev server                  |
+| `pnpm build`    | Build the static site to `dist/`      |
+| `pnpm preview`  | Preview the production build locally  |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Content
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+All content lives in `src/content/`:
 
-## Learn More
+- **`projects/*.yml`** — short project cards shown under `/work`. Set
+  `caseStudy: "<slug>"` to link a project to its full write-up.
+- **`case-studies/*.mdx`** — long-form write-ups under `/case-studies`.
+  Supports `role`, `timeline`, `stack`, `github`, `demo`, `tags`.
+- **`blog/*.mdx`** — articles under `/blog`.
 
-To learn more about Next.js, take a look at the following resources:
+MDX/Markdown gets a generated reading time, a table of contents (from `h2`/`h3`),
+and Shiki code highlighting (`tokyo-night`). Set `draft: true` to hide an entry
+from production (drafts are still visible in `pnpm dev`).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Schemas are defined in `src/content.config.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture
 
-## Deploy on Vercel
+- **Layouts** — `src/layouts/Base.astro` (shell), `Post.astro` (blog +
+  case-study article template with TOC).
+- **Components** — `src/components/` (Nav, Footer, ProjectCard, icons). The
+  contact form is the only React island (`ContactForm.tsx`, posts to Google
+  Forms).
+- **Styling** — Tailwind v4 via `@tailwindcss/vite`; design tokens and prose
+  styles in `src/styles/global.css`.
+- **SEO** — sitemap (`@astrojs/sitemap`), `rss.xml`, `robots.txt`, OpenGraph
+  tags in `BaseHead.astro`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Static output. The `Dockerfile` builds the site and serves `dist/` with nginx
+on port `3000` (wired to Traefik in `compose.yml`).
+
+```bash
+docker compose up --build
+```

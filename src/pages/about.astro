@@ -1,0 +1,92 @@
+---
+import Base from "@/layouts/Base.astro";
+import Icon from "@/components/icons/Icon.astro";
+import Timeline from "@/components/Timeline.astro";
+import { experience } from "@/lib/experience";
+import { MAIL_ADDRESS } from "@/lib/constants";
+
+const skills: { group: string; items: string[] }[] = [
+  { group: "Languages", items: ["Go", "Rust", "Python", "TypeScript", "JavaScript"] },
+  { group: "Frontend", items: ["React", "Next.js", "Astro", "Tailwind CSS"] },
+  { group: "Backend", items: ["Node.js", "REST", "WebSockets", "gRPC"] },
+  { group: "Data", items: ["PostgreSQL", "MongoDB", "Redis", "SQLite"] },
+  { group: "Infra", items: ["Linux", "Docker", "CI/CD", "Nginx", "AWS"] },
+  { group: "Tools", items: ["Neovim", "Git", "Bash"] },
+];
+---
+
+<Base
+  title="About"
+  description="A developer focused on backend and system-level programming with Go, Rust, and the web."
+>
+  <div class="mx-auto max-w-3xl px-5 py-16">
+    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">About</h1>
+
+    <div class="prose mt-8">
+      <p>
+        I'm a software engineer who has been hooked on technology for over a
+        decade, with the last few years focused on professional development. My
+        journey started with Linux, and I've been a dedicated Linux user ever
+        since — drawn to its power, flexibility, and the open-source philosophy.
+      </p>
+      <p>
+        I specialize in building scalable applications, with a deep interest in
+        system-level programming. I'm particularly drawn to <strong>Go</strong>
+        and <strong>Rust</strong> for their performance and the elegance they
+        bring to systems work. I care about writing clean, well-documented code
+        that not only works but stays maintainable as it grows.
+      </p>
+      <p>
+        These days I'm deepening my expertise in systems programming while
+        continuing to ship modern web applications — and writing about what I
+        learn along the way.
+      </p>
+    </div>
+
+    <section class="mt-12">
+      <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
+        Experience
+      </h2>
+      <Timeline items={experience} />
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
+        Tools &amp; technologies
+      </h2>
+      <dl class="mt-5 space-y-4">
+        {
+          skills.map((s) => (
+            <div class="flex flex-col gap-1 sm:flex-row sm:gap-6">
+              <dt class="w-28 shrink-0 font-mono text-sm text-faint">{s.group}</dt>
+              <dd class="flex flex-wrap gap-1.5">
+                {s.items.map((item) => (
+                  <span class="rounded-md bg-surface px-2 py-0.5 font-mono text-xs text-muted">
+                    {item}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <div class="mt-12 flex flex-wrap gap-3">
+      <a
+        href="/resume.pdf"
+        target="_blank"
+        class="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted hover:border-accent/50 hover:text-fg"
+      >
+        Download résumé
+      </a>
+      <a
+        href={`mailto:${MAIL_ADDRESS}`}
+        class="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
+      >
+        <Icon name="mail" class="size-4" />
+        Get in touch
+      </a>
+    </div>
+  </div>
+</Base>

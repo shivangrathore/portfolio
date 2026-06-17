@@ -1,0 +1,49 @@
+---
+import { getCollection } from "astro:content";
+import Base from "@/layouts/Base.astro";
+import ProjectCard from "@/components/ProjectCard.astro";
+
+const projects = (await getCollection("projects")).sort(
+  (a, b) => b.data.order - a.data.order,
+);
+const featured = projects.filter((p) => p.data.featured);
+const others = projects.filter((p) => !p.data.featured);
+---
+
+<Base
+  title="Work"
+  description="Projects spanning web development, system programming, and open-source."
+>
+  <div class="mx-auto max-w-3xl px-5 py-16">
+    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Work</h1>
+    <p class="mt-3 max-w-xl text-muted">
+      A collection of projects across web development, system programming, and
+      open source. Some have deeper write-ups in
+      <a href="/case-studies" class="link">case studies</a>.
+    </p>
+
+    <section class="mt-12">
+      <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
+        Featured
+      </h2>
+      <div class="mt-5 grid gap-4 sm:grid-cols-2">
+        {featured.map((project) => <ProjectCard project={project} />)}
+      </div>
+    </section>
+
+    {
+      others.length > 0 && (
+        <section class="mt-12">
+          <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
+            More projects
+          </h2>
+          <div class="mt-5 grid gap-4 sm:grid-cols-2">
+            {others.map((project) => (
+              <ProjectCard project={project} />
+            ))}
+          </div>
+        </section>
+      )
+    }
+  </div>
+</Base>

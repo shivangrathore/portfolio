@@ -1,0 +1,83 @@
+---
+import { getCollection, render } from "astro:content";
+import Post from "@/layouts/Post.astro";
+import Github from "@/components/icons/Github.astro";
+import Icon from "@/components/icons/Icon.astro";
+
+export async function getStaticPaths() {
+  const studies = await getCollection("caseStudies");
+  return studies.map((study) => ({
+    params: { slug: study.id },
+    props: { study },
+  }));
+}
+
+const { study } = Astro.props;
+const { Content, headings, remarkPluginFrontmatter } = await render(study);
+const d = study.data;
+
+const facts = [
+  d.role && { label: "Role", value: d.role },
+  d.timeline && { label: "Timeline", value: d.timeline },
+  d.stack.length > 0 && { label: "Stack", value: d.stack.join(", ") },
+].filter(Boolean) as { label: string; value: string }[];
+---
+
+<Post
+  title={d.title}
+  description={d.description}
+  pubDate={d.pubDate}
+  updatedDate={d.updatedDate}
+  minutesRead={remarkPluginFrontmatter.minutesRead}
+  tags={d.tags}
+  headings={headings}
+  backHref="/case-studies"
+  backLabel="Back to case studies"
+>
+  <div slot="meta" class="mt-6 rounded-xl border border-border bg-surface/40 p-5">
+    {
+      facts.length > 0 && (
+        <dl class="grid gap-3 sm:grid-cols-3">
+          {facts.map((f) => (
+            <div>
+              <dt class="font-mono text-xs uppercase tracking-wider text-faint">
+                {f.label}
+              </dt>
+              <dd class="mt-1 text-sm text-fg">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )
+    }
+    {
+      (d.github || d.demo) && (
+        <div class="mt-4 flex flex-wrap gap-3 border-t border-border/60 pt-4">
+          {d.github && (
+            <a
+              href={d.github}
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-2 text-sm text-muted hover:text-fg"
+            >
+              <Github class="size-4" />
+              Source
+            </a>
+          )}
+          {d.demo && (
+            <a
+              href={d.demo}
+              target="_blank"
+              rel="noopener"
+              class="inline-flex items-center gap-2 text-sm text-muted hover:text-fg"
+            >
+              <Icon name="arrow-up-right" class="size-4" />
+              Live demo
+            </a>
+          )}
+        </div>
+      )
+    }
+  </div>
+
+  <Content />
+</Post>
