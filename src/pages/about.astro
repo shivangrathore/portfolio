@@ -6,40 +6,47 @@ import { experience } from "@/lib/experience";
 import { MAIL_ADDRESS } from "@/lib/constants";
 
 const skills: { group: string; items: string[] }[] = [
-  { group: "Languages", items: ["Go", "Rust", "Python", "TypeScript", "JavaScript"] },
-  { group: "Frontend", items: ["React", "Next.js", "Astro", "Tailwind CSS"] },
-  { group: "Backend", items: ["Node.js", "REST", "WebSockets", "gRPC"] },
-  { group: "Data", items: ["PostgreSQL", "MongoDB", "Redis", "SQLite"] },
-  { group: "Infra", items: ["Linux", "Docker", "CI/CD", "Nginx", "AWS"] },
-  { group: "Tools", items: ["Neovim", "Git", "Bash"] },
+  { group: "Languages", items: ["Go", "TypeScript", "JavaScript", "Python", "SQL"] },
+  { group: "Frontend", items: ["React", "Next.js", "Tailwind CSS", "TanStack Query", "Zustand", "Jotai"] },
+  { group: "Backend", items: ["Gin", "Node.js", "NestJS", "Express", "WebSockets"] },
+  { group: "Data", items: ["PostgreSQL", "Redis", "RabbitMQ"] },
+  { group: "Infra", items: ["Docker", "AWS S3", "GitHub Actions", "Turborepo", "Vercel", "Linux"] },
+  { group: "Tools", items: ["sqlc", "pgx", "Prisma", "Drizzle", "Stripe", "Zod"] },
 ];
+
+const education = {
+  school: "LNCT University, Bhopal",
+  degree: "Bachelor of Computer Applications (BCA)",
+  period: "2021 — 2024",
+  location: "Bhopal, Madhya Pradesh, India",
+};
 ---
 
 <Base
   title="About"
-  description="A developer focused on backend and system-level programming with Go, Rust, and the web."
+  description="Full-stack engineer building scalable Go backends and modern React/Next.js applications."
 >
   <div class="mx-auto max-w-3xl px-5 py-16">
     <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">About</h1>
 
     <div class="prose mt-8">
       <p>
-        I'm a software engineer who has been hooked on technology for over a
-        decade, with the last few years focused on professional development. My
-        journey started with Linux, and I've been a dedicated Linux user ever
-        since — drawn to its power, flexibility, and the open-source philosophy.
+        I'm a full-stack engineer who builds scalable <strong>Go</strong>
+        backends and modern <strong>React/Next.js</strong> applications. My
+        day-to-day is production SaaS — RBAC, real-time infrastructure,
+        compliance workflows, and the distributed services that hold them
+        together.
       </p>
       <p>
-        I specialize in building scalable applications, with a deep interest in
-        system-level programming. I'm particularly drawn to <strong>Go</strong>
-        and <strong>Rust</strong> for their performance and the elegance they
-        bring to systems work. I care about writing clean, well-documented code
-        that not only works but stays maintainable as it grows.
+        I started out on Linux and never left; that pull toward how systems
+        actually work still drives me. I care most about backend architecture,
+        developer tooling, and writing performance-minded code that stays clean
+        as it grows.
       </p>
       <p>
-        These days I'm deepening my expertise in systems programming while
-        continuing to ship modern web applications — and writing about what I
-        learn along the way.
+        These days I'm leading a Go + Next.js platform rewrite at
+        <strong>Hauldrive</strong> — and writing about the backend and systems
+        work I pick up along the way.
       </p>
     </div>
 
@@ -70,6 +77,19 @@ const skills: { group: string; items: string[] }[] = [
           ))
         }
       </dl>
+    </section>
+
+    <section class="mt-12">
+      <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
+        Education
+      </h2>
+      <div class="mt-5">
+        <p class="font-mono text-xs text-faint">
+          {education.period} · {education.location}
+        </p>
+        <h3 class="mt-1 font-medium text-fg">{education.degree}</h3>
+        <p class="text-sm text-muted">{education.school}</p>
+      </div>
     </section>
 
     <div class="mt-12 flex flex-wrap gap-3">

@@ -1,6 +1,6 @@
 export const SITE_TITLE = "Shivang Rathore";
 export const SITE_DESCRIPTION =
-  "Software engineer focused on backend and system-level programming with Go, Rust, and modern web technologies.";
+  "Full-stack engineer building scalable Go backends and modern React/Next.js applications.";
 export const BASE_URL = "https://shivangrathore.com";
 
 export const GITHUB_URL = "https://github.com/shivangrathore";

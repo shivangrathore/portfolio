@@ -26,7 +26,21 @@ const { items } = Astro.props;
         <h3 class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-medium text-fg">
           <span>
             {job.role}
-            <span class="text-muted"> · {job.company}</span>
+            <span class="text-muted">
+              {" · "}
+              {job.companyUrl ? (
+                <a
+                  href={job.companyUrl}
+                  target="_blank"
+                  rel="noopener"
+                  class="underline decoration-border underline-offset-4 hover:text-accent hover:decoration-accent"
+                >
+                  {job.company}
+                </a>
+              ) : (
+                job.company
+              )}
+            </span>
           </span>
           {job.current && (
             <span class="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-accent">
