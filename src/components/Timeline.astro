@@ -23,11 +23,13 @@ const { items } = Astro.props;
           {job.period}
           {job.location && <span> · {job.location}</span>}
         </p>
-        <h3 class="mt-1 font-medium text-fg">
-          {job.role}
-          <span class="text-muted"> · {job.company}</span>
+        <h3 class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-medium text-fg">
+          <span>
+            {job.role}
+            <span class="text-muted"> · {job.company}</span>
+          </span>
           {job.current && (
-            <span class="ml-2 rounded-full bg-accent/10 px-2 py-0.5 align-middle text-[10px] font-medium uppercase tracking-wider text-accent">
+            <span class="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-accent">
               Current
             </span>
           )}
