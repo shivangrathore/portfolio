@@ -1,5 +1,6 @@
 ---
 import Base from "@/layouts/Base.astro";
+import Button from "@/components/Button.astro";
 ---
 
 <Base title="Not found" description="This page doesn't exist.">
@@ -7,11 +8,6 @@ import Base from "@/layouts/Base.astro";
     <p class="font-mono text-5xl font-semibold text-accent">404</p>
     <h1 class="mt-4 text-2xl font-semibold tracking-tight">Page not found</h1>
     <p class="mt-2 text-muted">The page you're looking for doesn't exist.</p>
-    <a
-      href="/"
-      class="mt-8 inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
-    >
-      Back home
-    </a>
+    <Button variant="primary" href="/" class="mt-8">Back home</Button>
   </div>
 </Base>

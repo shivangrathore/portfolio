@@ -1,6 +1,7 @@
 ---
 import Base from "@/layouts/Base.astro";
 import Icon from "@/components/icons/Icon.astro";
+import Button from "@/components/Button.astro";
 import Timeline from "@/components/Timeline.astro";
 import { experience } from "@/lib/experience";
 import { MAIL_ADDRESS } from "@/lib/constants";
@@ -93,20 +94,14 @@ const education = {
     </section>
 
     <div class="mt-12 flex flex-wrap gap-3">
-      <a
-        href="/resume.pdf"
-        target="_blank"
-        class="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted hover:border-accent/50 hover:text-fg"
-      >
-        Download résumé
-      </a>
-      <a
-        href={`mailto:${MAIL_ADDRESS}`}
-        class="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
-      >
+      <Button href="/resume.pdf" target="_blank" rel="noopener">
+        <Icon name="download" class="size-4" />
+        Download Resume
+      </Button>
+      <Button variant="primary" href={`mailto:${MAIL_ADDRESS}`}>
         <Icon name="mail" class="size-4" />
         Get in touch
-      </a>
+      </Button>
     </div>
   </div>
 </Base>

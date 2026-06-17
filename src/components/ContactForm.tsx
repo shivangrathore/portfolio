@@ -4,6 +4,7 @@ import { z } from "zod";
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { CONTACT_FORM_URL, CONTACT_FORM_FIELDS } from "@/lib/constants";
+import { buttonClass } from "@/lib/button";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -105,7 +106,7 @@ export default function ContactForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90 disabled:opacity-60"
+        className={buttonClass("primary", "w-full py-3 disabled:opacity-60")}
       >
         {isSubmitting ? (
           "Sending..."

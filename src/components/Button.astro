@@ -1,0 +1,17 @@
+---
+import { buttonClass, type ButtonVariant } from "@/lib/button";
+
+interface Props {
+  variant?: ButtonVariant;
+  href?: string;
+  class?: string;
+  [key: string]: unknown;
+}
+
+const { variant = "secondary", href, class: className, ...rest } = Astro.props;
+const Tag = href ? "a" : "button";
+---
+
+<Tag href={href} class={buttonClass(variant, className)} {...rest}>
+  <slot />
+</Tag>
