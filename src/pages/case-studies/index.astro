@@ -13,20 +13,20 @@ if (!isDev) studies = studies.filter((s) => !s.data.draft);
 
 <Base
   title="Case Studies"
-  description="In-depth write-ups of features and projects I've built — the problem, the approach, and the trade-offs."
+  description="In-depth write-ups of features and projects I've built: the problem, the approach, and the trade-offs."
 >
   <div class="mx-auto max-w-3xl px-5 py-16">
     <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">
       Case Studies
     </h1>
     <p class="mt-3 max-w-xl text-muted">
-      Long-form write-ups of features and projects — the problem, the approach,
+      Long-form write-ups of features and projects: the problem, the approach,
       the trade-offs, and what I'd do differently.
     </p>
 
     {
       studies.length === 0 ? (
-        <p class="mt-12 text-muted">No case studies yet — check back soon.</p>
+        <p class="mt-12 text-muted">No case studies yet. Check back soon.</p>
       ) : (
         <div class="mt-10 grid gap-5">
           {studies.map((s) => (

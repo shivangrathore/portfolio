@@ -23,7 +23,7 @@ if (!isDev) posts = posts.filter((p) => !p.data.draft);
 
     {
       posts.length === 0 ? (
-        <p class="mt-12 text-muted">No posts yet — check back soon.</p>
+        <p class="mt-12 text-muted">No posts yet. Check back soon.</p>
       ) : (
         <div class="mt-10 grid gap-4">
           {posts.map((post) => (
