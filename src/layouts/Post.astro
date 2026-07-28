@@ -122,6 +122,19 @@ const hasToc = toc.length > 0;
   </div>
 
   <script>
+    // Clickable anchor beside every heading that has an id, so any section
+    // can be linked to directly.
+    document
+      .querySelectorAll<HTMLHeadingElement>(".prose h2[id], .prose h3[id]")
+      .forEach((heading) => {
+        const link = document.createElement("a");
+        link.href = `#${heading.id}`;
+        link.className = "heading-anchor";
+        link.setAttribute("aria-label", `Link to section: ${heading.textContent}`);
+        link.textContent = "#";
+        heading.appendChild(link);
+      });
+
     const COPY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
     const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
 

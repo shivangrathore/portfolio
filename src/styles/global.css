@@ -33,6 +33,20 @@
     @apply transition-colors;
   }
 
+  /* Geist Mono ships coding ligatures (=>, ===, ..., !=) whose glyphs
+     overlap neighbouring characters at these sizes. Render code literally. */
+  code,
+  pre,
+  kbd,
+  samp {
+    font-variant-ligatures: none;
+    font-feature-settings:
+      "liga" 0,
+      "clig" 0,
+      "calt" 0,
+      "dlig" 0;
+  }
+
   :target {
     scroll-margin-top: 6rem;
   }
@@ -111,9 +125,10 @@
     @apply bg-surface text-fg rounded px-1.5 py-0.5 text-[0.85em] font-mono;
   }
 
-  /* Shiki code blocks */
+  /* Shiki code blocks. pr-14 reserves a gutter for the copy button so
+     code never renders underneath it. */
   pre {
-    @apply rounded-lg border border-border p-4 my-6 overflow-x-auto text-sm leading-relaxed;
+    @apply rounded-lg border border-border p-4 pr-14 my-6 overflow-x-auto text-sm leading-relaxed;
   }
 
   pre code {
@@ -142,13 +157,32 @@
   }
 }
 
+/* Permalink injected beside each article heading */
+.heading-anchor {
+  @apply ml-2 align-middle text-[0.7em] font-normal text-faint no-underline opacity-0 transition hover:text-accent focus-visible:opacity-100;
+}
+
+.prose h2:hover .heading-anchor,
+.prose h3:hover .heading-anchor {
+  @apply opacity-100;
+}
+
+/* Touch devices have no hover — keep anchors visible but quiet */
+@media (hover: none) {
+  .heading-anchor {
+    @apply opacity-60;
+  }
+}
+
 /* Copy-to-clipboard button injected into code blocks */
 .code-block {
   position: relative;
 }
 
+/* Opaque, not translucent: a long line scrolling past must be hidden by the
+   button, not visible through it. */
 .copy-button {
-  @apply absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface/80 text-faint opacity-100 backdrop-blur transition hover:text-fg focus-visible:opacity-100 md:opacity-0;
+  @apply absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface text-faint opacity-100 shadow-sm transition hover:text-fg focus-visible:opacity-100 md:opacity-0;
 }
 
 .code-block:hover .copy-button {
