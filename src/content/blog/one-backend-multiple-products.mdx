@@ -1,0 +1,286 @@
+---
+title: "One Backend, Multiple Products"
+description: "Shipping a second product on the same backend, database and login — capability flags instead of account types, sessions bound to one app, and the difference between linking data inside a tenant and across one."
+pubDate: "2026-07-07"
+tags: ["Backend", "Architecture", "Multi-tenancy", "SaaS", "TypeScript"]
+---
+
+Sooner or later a product that's working grows a second product. Same customers, neighbouring problem, obvious upsell. Someone asks how to build it, and the answer arrives fully formed before anyone's thought about it: new service, new database, new team, clean separation.
+
+That answer is usually wrong at the size most teams are when they ask. Everything the second product needs — accounts, login, roles, billing, file storage, notifications, background jobs — already exists in the first one. Splitting means building all of it again and then keeping the two copies in sync forever. You'd be paying distributed-systems tax for a separation that a folder boundary in one codebase already gives you.
+
+The shape that actually works is less exciting: **one backend, one database, one login, with per-product entitlement and per-product billing on top.** Here's what that means in practice, and which handful of decisions you really don't want to get wrong, because those are the ones that are painful to undo.
+
+Running example throughout: a company sells **Sales**, a CRM. Later they add **Support**, a helpdesk. Same customers, and plenty of accounts buy both.
+
+## Contents
+
+- [The mental model that settles arguments](#the-mental-model-that-settles-arguments)
+- [Capability flags, not an account type](#capability-flags-not-an-account-type)
+- [Sessions belong to one app](#sessions-belong-to-one-app)
+- [Let the client say which app it is](#let-the-client-say-which-app-it-is)
+- [Linking data: two distances](#linking-data-two-distances)
+- [Billing falls out of the model](#billing-falls-out-of-the-model)
+- [Frontends, subdomains, and one cookie gotcha](#frontends-subdomains-and-one-cookie-gotcha)
+- [The parts that stay hard](#the-parts-that-stay-hard)
+- [When to actually split](#when-to-actually-split)
+
+## The mental model that settles arguments
+
+Don't think "two products". Think **one platform of apps, and an account is entitled to some of them** — like a workspace suite where the admin turns individual apps on, or an ERP where each module installs against the same company database.
+
+That framing is worth saying out loud, because it settles the arguments before they start.
+
+*"Should Support have its own users table?"* No. There's one account and one login; apps are things an account can be entitled to.
+
+*"Should a Support user see a Sales record?"* Only if the account has Sales **and** their role grants it.
+
+*"Where does the Support subscription live?"* Next to the Sales one, against the same customer.
+
+Every follow-up question resolves the same way, which is a nice property for a decision to have.
+
+There's one more distinction to internalise early, because it shapes the data model:
+
+**Inside one account**, records from both apps sit in the same database and point at each other with foreign keys. A support ticket references a sales opportunity. No syncing, no eventual consistency, no integration layer — it's just a join.
+
+**Across two accounts** — say, your customer's support team handling a ticket that came from a *different* company's sales team — nothing is shared. No cross-account queries, no cross-account tokens. The two sides exchange events, and each writes only its own rows.
+
+Design the cross-account case as the general one and the same-account case falls out of it as the zero-distance version where "sync" is just a foreign key. Design only the same-account case and the cross-account one is a rewrite. Worth knowing which way round you're building even if you only ever ship the first.
+
+## Capability flags, not an account type
+
+The first instinct is a `type` column on the account: `sales` or `support`. It's wrong inside a quarter, because some account will buy both, and now `type` is a lie your whole codebase is checking.
+
+Model entitlement as independent flags instead:
+
+```sql
+CREATE TABLE account_capabilities (
+  account_id      bigint PRIMARY KEY
+                  REFERENCES accounts(id) ON DELETE CASCADE,
+  sales_enabled   boolean NOT NULL DEFAULT false,
+  support_enabled boolean NOT NULL DEFAULT false,
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+```
+
+Boring, and that's the point. Any combination is representable, a third product is one more column, and "is this account entitled to X?" is a single lookup instead of a rule scattered across forty files.
+
+Two things to hold onto as this grows.
+
+**Entitlement isn't authorization.** The flag says the account paid for the product. It says nothing about whether *this particular user* may do anything in it. Both checks have to pass. Blur them together and upgrading a plan quietly hands every employee admin rights, which is a fun conversation to have with a customer.
+
+**Leave room for per-seat later.** Most big platforms gate finer than per-account — per-user licences, per-product roles, per-team toggles. A per-account flag is coarser than all of them. That's completely fine while the second product is bundled or sold per account. But if you ever sell it per seat, you want to add a per-member check *inside* the flag, not replace the flag. Keep it as the outer gate and you'll thank yourself.
+
+## Sessions belong to one app
+
+This is where multi-product stops being a data modelling exercise and starts being an auth one.
+
+A user can hold roles in both apps under one account — a manager in Sales who also works the Support queue. If their session is just "logged into the account", their token has to carry the union of both roles' permissions. Which means a stolen Support session opens Sales too. Any weakness in the weaker app now has the blast radius of both.
+
+So a session is bound to a **scope**: the one app it's operating in.
+
+```ts
+type Scope = "sales" | "support";
+
+type Role = {
+  key: string;
+  scopes: Scope[];        // which apps this role grants
+  permissions: Permission[];
+};
+
+type Membership = {
+  id: number;
+  accountId: number;
+  userId: number;
+  roles: Role[];
+  defaultScope: Scope;
+};
+```
+
+Which scopes can someone actually use? The overlap of two separate things: what their roles grant, and what the account has paid for.
+
+```ts
+export function entitledScopes(
+  member: Membership,
+  caps: Capabilities,
+): Scope[] {
+  const fromRoles = new Set(member.roles.flatMap((r) => r.scopes));
+
+  return [...fromRoles].filter((scope) => {
+    if (scope === "sales") return caps.salesEnabled;
+    if (scope === "support") return caps.supportEnabled;
+    return false; // unknown scope — don't guess
+  });
+}
+```
+
+Both conditions, every time. A role granting Support means nothing if the account never bought Support. Buying Support means nothing for a user whose roles don't grant it.
+
+The chosen scope goes into the token *and* onto the session row, so a token refresh puts it back instead of quietly reverting to the member's default. The permission list in the token then gets narrowed to the roles that grant this scope — a Support session carries what the Support role grants and nothing from the Sales role. That narrowing, and the surprisingly easy way to get it wrong, is the subject of [Putting Permissions Inside the JWT](/blog/permissions-inside-jwt).
+
+Route guards check scope separately from permissions:
+
+```ts
+export const requireScope = (needed: Scope) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    if (req.auth?.scope !== needed) {
+      return res.status(403).json({
+        code: "scope_required",   // note: NOT a permission failure
+        required_scope: needed,
+      });
+    }
+    next();
+  };
+
+router.use("/support", authenticate, requireScope("support"));
+router.use("/sales",   authenticate, requireScope("sales"));
+```
+
+That error code is deliberately different from a permission denial. The user may well hold the permission — just not in the session they're currently carrying. A client that can tell those apart re-binds the session and retries invisibly. One that can't tells the user they lack access they actually have.
+
+## Let the client say which app it is
+
+Here's the detail that looks trivial and costs a week. I'd like to save you the week.
+
+When someone logs in, something has to decide which app the session opens in. The natural implementation reads their `default_scope` and binds to that. Works great — right up until someone holds roles in both apps.
+
+Picture a user whose `default_scope` is `sales`, opening the Support app. Login binds their token to `sales`. Every Support endpoint returns `403 scope_required`. The app notices, calls the switch-scope endpoint, gets a properly bound token, retries, and everything works.
+
+It *works*. But every single login through that app burns an extra round trip to undo a guess the server had no business making. Worse, the first time you see it, that 403 looks like a permissions bug and gets debugged as one — by someone who doesn't yet know the session has a scope at all.
+
+The Support app knows perfectly well that it's the Support app. Let it say so, and treat that as the answer:
+
+```ts
+/**
+ * Decide which app a fresh session is bound to.
+ *
+ * A client that knows what it is shouldn't have to correct
+ * the server afterwards. So an explicit request wins when the
+ * member is entitled to it, and is a hard error when they
+ * aren't. Refusing beats silently issuing a session for a
+ * different app than the one that asked.
+ */
+export function resolveScope(
+  requested: Scope | undefined,
+  member: Membership,
+  entitled: Scope[],
+): Scope {
+  if (!entitled.length) throw new AuthError("no_entitled_scope");
+
+  if (requested) {
+    if (!entitled.includes(requested)) {
+      throw new AuthError("scope_not_permitted");
+    }
+    return requested;
+  }
+
+  // Nothing requested: prefer their default, if it's still
+  // entitled. It might not be — default_scope can point at a
+  // role they've since lost.
+  return entitled.includes(member.defaultScope)
+    ? member.defaultScope
+    : entitled[0];
+}
+```
+
+The refusal branch matters as much as the happy path. If the Support app asks for a Support session and this member has no Support entitlement, the answer is an error — *not* a Sales session. Quietly handing back a session for a different app is how a support agent ends up staring at a CRM they've never seen, wondering what they broke.
+
+The same reasoning extends to people who belong to several accounts. If someone is a member of four accounts but only one has Support enabled, a login from the Support app isn't actually ambiguous — no matter what the account count suggests. Filter to the accounts entitled to the requested app first; if exactly one survives, bind it and skip the picker entirely. Showing someone four accounts they can't open three of is a worse experience than that extra query costs you.
+
+## Linking data: two distances
+
+Back to those two distances, now with schemas.
+
+**Inside one account**, the apps share a database and reference each other directly:
+
+```sql
+CREATE TABLE support_tickets (
+  id             bigserial PRIMARY KEY,
+  account_id     bigint NOT NULL REFERENCES accounts(id),
+  -- nullable: set only on tickets raised from an opportunity
+  opportunity_id bigint REFERENCES sales_opportunities(id),
+  subject        text NOT NULL,
+  status         text NOT NULL,
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+```
+
+That's it — a nullable foreign key. Tickets raised from a sales opportunity carry the link; walk-in tickets don't. Reads stay transactional, joins stay joins, and there's nothing to keep in sync because there's only one copy of anything.
+
+One discipline worth keeping even here: `sales_opportunities` stays owned by the Sales module, and Support reads it through that module's interface rather than reaching into its tables. It costs nothing to do from day one and is close to impossible to retrofit — and it's the thing that keeps a future extraction merely difficult rather than impossible.
+
+**Across two accounts**, nothing is shared. Two separate companies, two tenants, no cross-tenant queries and — this is the invariant that keeps the whole system understandable — **no cross-tenant tokens**. A user is only ever scoped to their own account. Ever.
+
+What crosses the boundary is events, over a connection both sides agreed to set up:
+
+```ts
+type TicketSyncEvent = {
+  eventId: string;          // idempotency key, so a replay is harmless
+  connectionId: number;     // the agreed link between two accounts
+  sourceAccountId: number;
+  targetAccountId: number;
+  ticketRef: string;        // the sender's id — opaque to the receiver
+  kind: "status_changed" | "note_added" | "cost_updated" | "closed";
+  payload: Record<string, unknown>;
+  occurredAt: string;
+};
+```
+
+Each side reacts by writing its own rows. Nobody reads across the boundary.
+
+The delivery mechanics are the standard **transactional outbox**: in one database transaction, write the business change *and* an event row; a separate process reads that table and publishes to your message broker. You get atomicity without distributed transactions, it's a well-documented pattern, and there are libraries.
+
+What there aren't libraries for — and this is the part to budget properly — is the contract. Which account is an event for. Which fields may each side write. What happens when both sides change the same field. How the receiver deduplicates a redelivery. That's bespoke work every time, and retrofitting field ownership onto a sync that's already live means reconciling every row that's drifted since launch. Design the contract before you write the code.
+
+This is also the best argument for shipping the same-account case first. It needs neither the connection layer nor the sync, so real users get the product while the hard part is still a design doc. Build it *toward* the cross-account model — the shape above, with the foreign key as the degenerate case — and the later work is additive instead of a rewrite.
+
+## Billing falls out of the model
+
+If each app is separately entitled, each app is separately billable. Let the billing model mirror that rather than fight it: one customer, one payment method, one subscription per product.
+
+```ts
+type Subscription = {
+  accountId: number;
+  product: "sales" | "support";
+  periodStart: Date;
+  periodEnd: Date;
+  seats: number;
+  pricePerSeat: number;
+};
+```
+
+Separate subscriptions give you separate invoices and independent billing periods, which is exactly what customers expect when they buy a second product mid-month — and what payment processors are built for. One combined subscription with mixed line items is easier on day one and gets unpleasant the first time somebody cancels precisely one product.
+
+Here's the bit that trips people up. The capability flag and the subscription are two representations of the same fact, and one day they'll disagree: a failed payment, a mid-cycle downgrade, a trial expiring at 2am. Pick a direction and stick to it — **subscription state is the truth, the flag is a cache** — and make sure exactly one piece of code writes the flag. Two writers is how an account ends up paying for a product it can't open, which is the kind of bug that arrives via an angry email rather than your monitoring.
+
+## Frontends, subdomains, and one cookie gotcha
+
+If the apps get their own subdomains — `sales.example.com`, `support.example.com` — session cookies work across both, as long as they're siblings under one registrable domain. A cookie scoped to `.example.com` goes to both.
+
+Put one app on a *different* root domain and that stops working entirely. There's no cookie-level fix. You'd need a redirect-based flow through a shared auth origin, which is a substantially bigger build than anyone expects.
+
+Worth deciding before marketing falls in love with a standalone domain for the new product, because the constraint is invisible until it's expensive.
+
+## The parts that stay hard
+
+Four things don't get easier just because it's all one backend.
+
+**Entitlement in a token goes stale.** A token issued while Support was enabled keeps saying so until it expires. A short access token lifetime bounds this, and 15 minutes of a product an account just downgraded off isn't a security incident. But for anything where it *would* matter — billing changes, destructive actions — check entitlement server-side rather than trusting the claim.
+
+**Custom roles need a ceiling.** If accounts can define their own roles, a custom role mustn't be able to grant more than the account is entitled to. The rule: custom roles may only narrow, never widen. The platform sets the ceiling; the tenant customises underneath it. Enforce it when the role is saved *and* when the token is issued, so an over-broad role gets rejected up front rather than silently trimmed months later.
+
+**Every query stays account-scoped.** One database means the only thing between two customers' data is `WHERE account_id = $1` on every read. Every read — internal helpers, admin tooling, the reporting job nobody's looked at since it was written. One unscoped query is one cross-tenant leak.
+
+**Keep identity extractable.** One identity layer is right at this size. Keep it a clean module with a real interface anyway, with no product code reaching into its tables. If you genuinely outgrow the monolith one day, auth should be the piece you can lift out first — not the piece welded to everything else.
+
+## When to actually split
+
+Split when the reason is organisational rather than technical. Separate teams that need to deploy on separate cadences without coordinating. A product whose load profile is so different it needs its own scaling story. A compliance boundary that requires physically separate data.
+
+Not simply because there are two products. Two products on one backend is a normal, common, well-supported architecture. The large platforms running per-product services do it at a headcount and scale most teams will never reach, and they pay a shared-identity and cross-service-sync tax for the privilege.
+
+What you owe the future isn't a split. It's boundaries clean enough that a split stays *possible*: apps talking through interfaces rather than each other's tables, entitlement in one place, every query scoped to its tenant. Get those right and the second product is a feature. Get them wrong and it's a rewrite — whether or not you split.
+
+---
+
+This is the third of three posts on the same auth stack. If you landed here first, the other two are [Refresh Tokens With JWT](/blog/refresh-tokens-with-jwt), which builds the session model this post assumes, and [Putting Permissions Inside the JWT](/blog/permissions-inside-jwt), which covers the permission narrowing referenced above.

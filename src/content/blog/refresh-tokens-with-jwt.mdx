@@ -1,0 +1,576 @@
+---
+title: "Refresh Tokens With JWT"
+description: "Why one JWT is never enough, and how to build a two-token login that can actually be revoked — with rotation, session rows, and a client that doesn't stampede."
+pubDate: "2026-04-21"
+tags: ["Backend", "Authentication", "JWT", "TypeScript", "Node.js", "Security"]
+---
+
+If you've built a login with JWTs, you've probably had this argument with yourself: how long should the token last?
+
+Make it short and people get logged out mid-sentence. Make it long and you've handed out something you can't take back. Neither option feels good, because neither one *is* good. You're asking one token to do two jobs that pull in opposite directions.
+
+Let's fix that properly — the database table, the server code, the client code, and the handful of mistakes that quietly undo the whole thing.
+
+## Contents
+
+- [A bit of vocabulary first](#a-bit-of-vocabulary-first) — skip if JWTs are old news
+- [The idea: two tokens, two jobs](#the-idea-two-tokens-two-jobs)
+- [Step 1: the session table](#step-1-the-session-table)
+- [Step 2: issuing the pair](#step-2-issuing-the-pair)
+- [Step 3: the refresh endpoint](#step-3-the-refresh-endpoint) — the heart of it
+- [Step 4: where the tokens live](#step-4-where-the-tokens-live)
+- [Step 5: the client half](#step-5-the-client-half)
+- [Step 6: logout and housekeeping](#step-6-logout-and-housekeeping)
+- [Picking the two lifetimes](#picking-the-two-lifetimes)
+- [The mistakes worth knowing about](#the-mistakes-worth-knowing-about)
+- [A sane build order](#a-sane-build-order)
+
+## A bit of vocabulary first
+
+Skip this if JWTs are already familiar.
+
+A **JWT** (JSON Web Token) is three chunks of text glued together with dots. The middle chunk is plain JSON — user id, expiry, whatever you put in there. The last chunk is a **signature** the server creates with a secret key.
+
+```
+eyJhbGciOiJIUzI1NiJ9.eyJ1aWQiOjQyLCJleHAiOjE3Nn0.4Xk2_qP...
+     header               payload (readable!)        signature
+```
+
+The fields in the payload are **claims**. The signature is the trick that makes this work: anyone can *read* a JWT, but only someone holding the secret can produce one that verifies. Change a single character and verification fails.
+
+Two things follow from that, and the second one is why this post exists.
+
+First, **the server doesn't need to remember anything**. Verifying is just math with the secret key — no database lookup. That's what makes JWTs fast.
+
+Second, **the server can't take one back**. There's nothing to delete. A JWT works until the moment written in its `exp` claim, full stop.
+
+That second one bites harder than people expect. Put a 30-day expiry on your tokens and one gets stolen? The thief has 30 days. Fire someone and their token keeps working. Delete their user row and the token *still* verifies, because verification never touches your database.
+
+## The idea: two tokens, two jobs
+
+Think about a hotel.
+
+Your **keycard** opens doors instantly. The door doesn't phone reception, it just reads the card. But it stops working after a couple of days. That's an **access token**.
+
+Your **ID at the front desk** doesn't open a single door. Its only purpose is getting you a fresh keycard, and reception keeps a list, so they can turn you away. That's a **refresh token**.
+
+Log in once and you get both:
+
+| | Access token | Refresh token |
+|---|---|---|
+| Lifetime | 15 minutes | 7 days |
+| Sent with | every API request | only the refresh request |
+| Checked by | signature only, no database | signature **and** a database row |
+| Can you revoke it? | no | **yes** |
+
+The access token stays stateless and fast, because it's used constantly. The refresh token gets a proper database check, and you can afford that precisely because it's used rarely — once every 15 minutes per user instead of on every click.
+
+Here's a real session:
+
+```
+10:00  login            → access (dies 10:15) + refresh (dies in 7 days)
+10:00  GET /projects    → signature checked. No DB hit.
+10:07  GET /invoices    → signature checked. No DB hit.
+10:14  client sees the access token is nearly dead
+       POST /auth/refresh
+       → server checks the DB: session's alive
+       → new access (dies 10:29) + new refresh
+10:16  GET /projects    → signature checked. No DB hit.
+```
+
+The user notices none of it. And if you delete that session row at 10:20, the 10:29 refresh fails and they're out.
+
+## Step 1: the session table
+
+This is the piece that makes revocation possible, and it's smaller than you'd think.
+
+When we mint a refresh token, we also generate a long random string called a **`jti`** (JWT ID — a unique id for this one token). The `jti` goes inside the token, and it also gets a row in the database.
+
+Now the rule is delightfully simple: **no row, no refresh.** You can't reach into a token someone's already holding, but you can absolutely delete a row.
+
+```sql
+CREATE TABLE sessions (
+  id           bigserial PRIMARY KEY,
+  user_id      bigint NOT NULL
+               REFERENCES users(id) ON DELETE CASCADE,
+  token_hash   text NOT NULL UNIQUE,  -- SHA-256 of the jti
+  tenant_id    bigint,                -- optional: workspace
+  scope        text,                  -- optional: which app
+  expires_at   timestamptz NOT NULL,
+  ip_address   inet,                  -- for a devices screen
+  user_agent   text,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz
+);
+
+CREATE INDEX ON sessions (user_id);
+CREATE INDEX ON sessions (expires_at);
+```
+
+**Why a hash rather than the value itself?** Because if your database ever leaks, a table full of raw session ids is a table full of working credentials. Store digests and the attacker gets nothing usable — you just hash whatever arrives at refresh time and compare.
+
+```ts
+import { createHash, randomBytes } from "node:crypto";
+
+const hashToken = (v: string) =>
+  createHash("sha256").update(v).digest("hex");
+
+// 32 random bytes from a cryptographically secure generator.
+// Don't use Math.random() here — it's predictable.
+const newJti = () => randomBytes(32).toString("hex");
+```
+
+You might be wondering why this isn't bcrypt, since that's the password advice everyone repeats. Bcrypt is deliberately *slow*, which is exactly right when you're defending against someone guessing "password123" a billion times. But nobody's guessing a 32-byte random value — there's nothing there to guess — and you'd be paying that slowness on every single refresh. SHA-256 is the right tool for this job.
+
+`tenant_id` and `scope` are optional. Add them if your app has any concept of "which workspace am I in" or "which product am I using". There's a good reason, and it turns up in a minute.
+
+## Step 2: issuing the pair
+
+Every path into your app — password, Google sign-in, magic link, whatever you support — should end up in the same function. One place decides what a session looks like, so there's one place to fix when something's off.
+
+```ts
+import jwt from "jsonwebtoken";
+
+const ACCESS_TTL = "15m";
+const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+type Pair = { access: string; refresh: string; expiresAt: Date };
+
+export async function issue(
+  user: User,
+  membership: Membership | null,
+): Promise<Pair> {
+  // What the access token carries. Middleware reads these on
+  // every request, so anything an authorization check needs
+  // has to be in here.
+  const claims = {
+    uid: user.id,
+    email: user.email,
+    ...(membership && {
+      tid: membership.tenantId,
+      roles: membership.roleKeys,
+    }),
+  };
+
+  const access = jwt.sign(claims, SECRET, {
+    expiresIn: ACCESS_TTL,
+    issuer: ISSUER,     // who minted this
+    audience: AUDIENCE, // who it's for
+  });
+
+  // The jti is the only thread connecting a signed token to
+  // a row we can delete.
+  const jti = newJti();
+
+  // The refresh token needs almost nothing: who, and which session.
+  const refresh = jwt.sign({ uid: user.id, jti }, SECRET, {
+    expiresIn: REFRESH_TTL_MS / 1000,
+    issuer: ISSUER,
+    audience: AUDIENCE,
+  });
+
+  await db.query(
+    `INSERT INTO sessions
+       (user_id, token_hash, tenant_id, scope, expires_at)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [
+      user.id,
+      hashToken(jti), // the hash, never the jti itself
+      membership?.tenantId ?? null,
+      membership?.activeScope ?? null,
+      new Date(Date.now() + REFRESH_TTL_MS),
+    ],
+  );
+
+  return {
+    access,
+    refresh,
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+  };
+}
+```
+
+Look at how lopsided the two payloads are:
+
+```ts
+type AccessClaims = {
+  uid: number;
+  email?: string;
+  tid?: number;
+  roles?: string[];
+};
+
+type RefreshClaims = { uid: number; jti: string };
+```
+
+That's deliberate. The access token carries roles because middleware reads them constantly and mustn't do a lookup. The refresh token carries nearly nothing, because its whole job is to go and find its row in the database anyway.
+
+One thing that's easy to skip past: set `issuer` and `audience` when you sign, and actually **check them when you verify**. If two of your services share a signing secret, that audience check is the only thing stopping a token minted for one from working on the other.
+
+And please don't put anything secret in a JWT payload. It's signed, not encrypted — anyone holding it can read every claim by pasting it into a decoder.
+
+## Step 3: the refresh endpoint
+
+Everything so far leads here. Read the comments top to bottom; each step earns its place.
+
+```ts
+export async function refresh(raw: string): Promise<Pair> {
+  // 1. Signature and expiry first. It's cheap and needs no
+  //    database, so it throws out junk before we spend a
+  //    query on it.
+  let claims: RefreshClaims;
+  try {
+    claims = jwt.verify(raw, SECRET, {
+      issuer: ISSUER,
+      audience: AUDIENCE,
+    }) as RefreshClaims;
+  } catch {
+    throw new AuthError("invalid_token");
+  }
+
+  // 2. The session row has to exist. THIS is revocation:
+  //    deleting this row is what turns a valid-looking token
+  //    into a useless one.
+  const hash = hashToken(claims.jti);
+  const { rows } = await db.query(
+    `SELECT * FROM sessions WHERE token_hash = $1`,
+    [hash],
+  );
+
+  const session = rows[0];
+  if (!session) throw new AuthError("session_not_found");
+  if (session.expires_at < new Date()) {
+    throw new AuthError("session_expired");
+  }
+
+  // 3. Reload the user. A deactivated account stops right
+  //    here, even though their old token still has a
+  //    flawless signature.
+  const user = await users.byId(session.user_id);
+  if (!user?.active) throw new AuthError("user_not_found");
+
+  // 4. Rotate: destroy the token that was just used before minting its
+  //    replacement. One refresh token, one use.
+  await db.query(`DELETE FROM sessions WHERE token_hash = $1`, [hash]);
+
+  // 5. Load permissions fresh from the database — NOT from
+  //    the old token. This is the step everyone is tempted
+  //    to skip. Please don't.
+  let membership: Membership | null = null;
+  if (session.tenant_id) {
+    membership = await memberships.get(user.id, session.tenant_id);
+    if (!membership) throw new AuthError("membership_gone");
+    if (session.scope) membership.activeScope = session.scope;
+  }
+
+  // issue() writes a new session row, so the old one is
+  // gone for good.
+  return issue(user, membership);
+}
+```
+
+Three of those steps deserve a proper explanation.
+
+### Why rotate (step 4)
+
+Rotation means a refresh token can be used exactly once. Use it, get a new one, the old one dies.
+
+Skip rotation and your refresh token is basically a 7-day password sitting in browser storage. With rotation, a stolen one only works until the real user's next refresh — usually minutes away — because that refresh kills it.
+
+Rotation also unlocks **theft detection**, which is worth understanding even if you don't build it today.
+
+If a token that was already spent shows up again, something is wrong. Either an attacker is replaying a copy, or the real user is replaying one an attacker already burned. You can't tell which from the outside, so you assume the worst and log them out everywhere.
+
+The code above can't do that, though — it *deletes* the row, so a replayed token and an invented one look identical (both "not found"). To catch replays you keep spent rows instead of deleting them:
+
+```sql
+ALTER TABLE sessions ADD COLUMN family_id  uuid NOT NULL;
+ALTER TABLE sessions ADD COLUMN revoked_at timestamptz;
+```
+
+Every token descended from one login shares a `family_id`. A refresh marks the old row `revoked_at = now()` and inserts a child in the same family. If a request turns up for a row that's *already* revoked, that's your replay — nuke the whole family and make them log in again.
+
+Start with the simple delete-only version. Add families when you have the appetite. It's a genuine improvement, not a prerequisite.
+
+### Why reload permissions instead of copying them (step 5)
+
+This is the most important line in the whole design, and it looks like a pointless extra query.
+
+The old token already has the user's roles right there. Copying them over is free, one less database call, and it works fine in testing. Please don't.
+
+If you copy, the roles captured at login get reprinted on every refresh, forever. Take away someone's admin role and nothing happens until they fully log out, which might be never. You'd have built a 15-minute token that behaves like a 7-day one — with none of the safety you thought you were buying.
+
+Reload instead, and you get a guarantee you can say in one sentence: **a permission change takes effect within one access token lifetime.** No logout, no client cooperation, no cache to bust. Their own refresh cycle fixes it.
+
+The price is two queries every 15 minutes per session. That's nothing, and it's the reason this whole pattern holds up.
+
+### Why the session row remembers context
+
+If your app lets people pick a workspace or switch products after login, that choice lives in `scope` on the session row — and step 5 puts it back.
+
+Leave that out and every refresh quietly drops them to their default. The symptom is genuinely horrible to debug: everything works beautifully for 15 minutes, then a subset of endpoints starts 403ing, long after the user did anything that could explain it.
+
+## Step 4: where the tokens live
+
+Different tokens, different risks, different homes.
+
+**The access token** goes in a JavaScript variable, or `localStorage` if it needs to survive a page reload. Either way, any JavaScript on your page can read it — which matters, because an **XSS** bug (an attacker getting their script to run on your site) means they can grab it. The 15-minute lifetime is what caps the damage.
+
+**The refresh token** is the valuable one, so on the web it never touches JavaScript at all. It goes in a cookie with flags that keep it out of reach:
+
+```ts
+function setRefreshCookie(
+  res: Response,
+  token: string,
+  crossSite: boolean,
+) {
+  res.cookie("rt", token, {
+    httpOnly: true,                       // JavaScript can't read this
+    secure: true,                         // HTTPS only
+    sameSite: crossSite ? "none" : "lax", // see below
+    path: "/auth/refresh",                // sent ONLY to this endpoint
+    maxAge: REFRESH_TTL_MS,
+  });
+}
+```
+
+These are worth understanding rather than copy-pasting:
+
+- **`httpOnly`** — the browser refuses to expose this cookie to `document.cookie`. An XSS bug can now steal your 15-minute token but not your 7-day one. This is the big win.
+- **`path`** — the browser only attaches the cookie to requests under that path. Your other 200 endpoints never see it, so it can't wander into their logs.
+- **`sameSite`** — controls whether the cookie tags along on requests started by *other* sites, which is the CSRF worry. `lax` is right when your API and frontend share an origin. You need `none` when they're on different origins, and `none` demands `secure` — which means you can't test that combination over plain HTTP locally. Annoying, but there it is.
+
+Mobile apps have no cookie jar worth using, so let them send the token in the body and keep it in the device keychain. One header tells the two apart:
+
+```ts
+router.post("/auth/refresh", async (req, res) => {
+  const native = req.get("X-Client") === "native";
+  const raw = native ? req.body?.refresh_token : req.cookies?.rt;
+
+  if (!raw) return res.status(401).json({ code: "no_refresh_token" });
+
+  try {
+    const pair = await refresh(raw);
+
+    // Rotation just handed us a NEW refresh token. Forget
+    // this line and the browser keeps sending the old,
+    // deleted one — so the user gets logged out on their
+    // next refresh, seemingly at random. Ask me how I know.
+    if (!native) setRefreshCookie(res, pair.refresh, CROSS_SITE);
+
+    res.json({
+      access_token: pair.access,
+      refresh_token: native ? pair.refresh : undefined,
+      expires_at: pair.expiresAt,
+    });
+  } catch (err) {
+    res.status(401).json({ code: (err as AuthError).code });
+  }
+});
+```
+
+## Step 5: the client half
+
+The server was the easy part. Clients break this pattern, and they nearly always break it in the same way.
+
+Your dashboard mounts and fires eight requests at once. The access token just expired, so all eight come back 401. All eight call `/auth/refresh` with the same token. One wins and rotates it. The other seven are now presenting a token whose row was deleted a millisecond ago — and your user lands on the login screen wondering what they did wrong.
+
+The fix: only ever have one refresh in flight, and let everyone else wait for it.
+
+```ts
+type Stored = { token: string; expiresAt: number };
+
+export class AccessTokenStore {
+  private current: Stored | null = null;
+  private inflight: Promise<string> | null = null;
+
+  constructor(private key: string, private skewMs = 60_000) {
+    this.current = readFromStorage(key);
+  }
+
+  set(token: string, expiresAt: Date): void {
+    this.current = { token, expiresAt: expiresAt.getTime() };
+    writeToStorage(this.key, this.current);
+  }
+
+  clear(): void {
+    this.current = null;
+    clearStorage(this.key);
+  }
+
+  // "Nearly expired" counts as expired — see the skew note below.
+  private stale(): boolean {
+    if (!this.current) return true;
+    return this.current.expiresAt - this.skewMs <= Date.now();
+  }
+
+  async valid(refresh: () => Promise<Stored>): Promise<string> {
+    if (this.current && !this.stale()) return this.current.token;
+
+    // Someone's already refreshing — wait for their answer instead of
+    // starting a second one. This one line is the entire fix.
+    if (this.inflight) return this.inflight;
+
+    this.inflight = this.run(refresh);
+    try {
+      return await this.inflight;
+    } finally {
+      // clear it so the next expiry can refresh again
+      this.inflight = null;
+    }
+  }
+
+  private async run(refresh: () => Promise<Stored>): Promise<string> {
+    const before = this.current;
+    try {
+      const next = await refresh();
+      this.set(next.token, new Date(next.expiresAt));
+      return next.token;
+    } catch (err) {
+      // Only bin the token if nothing replaced it while we
+      // were failing.
+      if (this.current === before) this.clear();
+      throw err;
+    }
+  }
+}
+```
+
+Two small things in there are doing a lot of work.
+
+**The skew allowance.** `stale()` says yes a minute *before* the real expiry, so the client refreshes early and requests are almost never sent with a dead token. Without it you eat a 401 and a retry at every expiry, and any request whose round trip straddles the boundary just fails. It also soaks up clock differences between the user's device and your server — real devices are routinely tens of seconds out, occasionally hours.
+
+**The `before` comparison.** If a refresh fails, only clear the token if it's still the one we started with. Otherwise a slow failing attempt can wipe a perfectly good token that a faster one just saved.
+
+Then your HTTP layer asks for a token before each call, and retries a 401 exactly once:
+
+```ts
+async function request<T>(
+  path: string,
+  opts: Opts,
+  attempt = 0,
+): Promise<T> {
+  const headers: Record<string, string> = { ...opts.headers };
+  if (!opts.anonymous) {
+    headers.Authorization = `Bearer ${await store.valid(doRefresh)}`;
+  }
+
+  const res = await fetch(url(path), {
+    ...opts,
+    headers,
+    credentials: "include",
+  });
+
+  // Retry once, and only where a 401 could plausibly mean
+  // "stale token". On a login call it means "wrong password"
+  // — retrying that just double-submits the form and makes
+  // the error flicker.
+  if (res.status === 401 && attempt === 0 && !opts.anonymous) {
+    store.clear();
+    return request<T>(path, opts, 1);
+  }
+
+  return parse<T>(res);
+}
+```
+
+`attempt === 0` keeps you out of an infinite retry loop. `!opts.anonymous` is the guard people forget, and without it every mistyped password looks like a bug in your app.
+
+## Step 6: logout and housekeeping
+
+Logout stops being a client-side `localStorage.clear()` and becomes something the server genuinely does:
+
+```ts
+export async function logout(raw: string | undefined): Promise<void> {
+  if (!raw) return;
+
+  let claims: RefreshClaims;
+  try {
+    claims = jwt.verify(raw, SECRET) as RefreshClaims;
+  } catch {
+    return; // already unusable — call it logged out
+  }
+
+  await db.query(
+    `DELETE FROM sessions WHERE token_hash = $1`,
+    [hashToken(claims.jti)],
+  );
+}
+```
+
+Be honest with yourself about what this does: the session's gone, but the access token they're holding keeps working until it expires — up to 15 more minutes. That's the cost of stateless verification, and it's the right cost almost everywhere. If some particular action really can't tolerate it, check the session row on that endpoint too.
+
+Two features now fall out almost for free, because sessions are just rows:
+
+```sql
+-- "Log out everywhere" — the button people hit when they think
+-- someone has their password
+DELETE FROM sessions WHERE user_id = $1;
+
+-- Active devices: one row per logged-in device
+SELECT ip_address, user_agent, created_at, last_seen_at
+FROM sessions WHERE user_id = $1 ORDER BY created_at DESC;
+```
+
+And one chore, or the table grows forever:
+
+```sql
+DELETE FROM sessions WHERE expires_at < now();
+```
+
+Nightly is fine. If the table gets big, delete in batches so you're not holding a lock across millions of rows.
+
+## Picking the two lifetimes
+
+15 minutes and 7 days is a solid default. Two questions set them.
+
+**Access token TTL is your revocation delay.** Fifteen minutes means a deactivated account keeps read access for at most fifteen more minutes. Drop to five and you triple your refresh traffic to shave a delay most products don't care about. Stretch to an hour and it gets awkward to explain in a security review.
+
+**Refresh token TTL is how long an idle user stays logged in.** Seven days means someone who ignores your app for a week logs in again. A consumer app might want 30 days with rotation on; anything touching money might want 12 hours.
+
+Put both in config, because you will change your mind:
+
+```
+AUTH_ACCESS_TTL=15m
+AUTH_REFRESH_TTL=7d
+```
+
+## The mistakes worth knowing about
+
+Every one of these *looks* like it works:
+
+- **Copying roles from the old token on refresh** instead of reloading them. Quietly turns your 15-minute window into a 7-day one.
+- **Not rotating.** A refresh token that's reusable for a week is a week-long password.
+- **Forgetting to re-set the cookie after rotation.** Random-looking logouts.
+- **No single-flight guard on the client.** Perfect with one request in flight, broken the moment a page fires several.
+- **Retrying 401s on the login endpoint.** Wrong password becomes a double submit and a flickering error.
+- **Storing the raw session id.** Turns a database leak into a session hijack.
+- **No skew buffer.** Every expiry costs a failed request, and users with skewed clocks get random failures.
+- **Never cleaning up expired sessions.** Quiet, right up until the table is enormous.
+
+## A sane build order
+
+Adding this to something that already exists? This order keeps you shippable at every step:
+
+1. Add the `sessions` table.
+2. Issue both tokens at login, and drop the access token TTL to 15 minutes.
+3. Build `/auth/refresh` with rotation and a permission reload.
+4. Add the client store with single-flight and skew.
+5. Make logout delete the session row.
+6. Schedule the cleanup job.
+7. Later, if you fancy it: token families and replay detection.
+
+For one table, one endpoint, and a client that knows how to queue, you end up with:
+
+- Fast requests — a signature check, no database round trip
+- Real revocation — delete the row and they're out at their next refresh
+- Real logout, per device or everywhere at once
+- Role changes that land within one access token lifetime
+- A refresh token JavaScript can't read, sent to exactly one endpoint
+- A device list your users can audit themselves
+
+Honestly, it's the cheapest security upgrade available to a JWT setup.
+
+---
+
+This is the first of three posts on the same auth stack. Next: [Putting Permissions Inside the JWT](/blog/permissions-inside-jwt), on what to put in the access token beyond a user id — and then [One Backend, Multiple Products](/blog/one-backend-multiple-products), on what happens to all of this when you ship a second product.
