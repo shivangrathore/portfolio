@@ -1,6 +1,6 @@
 ---
 title: "Putting Permissions Inside the JWT"
-description: "Permission claims give you authorization with zero database hits — in exchange for a window where the token is out of date. Here's how to keep that window small."
+description: "Permission claims give you authorization with zero database hits, in exchange for a window where the token is out of date. Here's how to keep that window small."
 pubDate: "2026-05-26"
 tags: ["Backend", "Authentication", "Authorization", "JWT", "TypeScript", "Security"]
 ---
@@ -15,7 +15,7 @@ There are two ways to answer it.
 
 Most people reach for the second one, and then get bitten by something that seems obvious in hindsight: a signed token can't be edited. Take away someone's admin role and their token keeps saying they're an admin.
 
-That's a real problem. But it's a *bounded* problem, and the bound is something you already control — how long the access token lives. This post is about keeping that bound tight, because every way this pattern goes wrong is really a way of accidentally letting it grow.
+That's a real problem. But it's a *bounded* problem, and the bound is something you already control: how long the access token lives. This post is about keeping that bound tight, because every way this pattern goes wrong is really a way of accidentally letting it grow.
 
 I'll assume the two-token setup from [Refresh Tokens With JWT](/blog/refresh-tokens-with-jwt): a 15-minute access token, a 7-day refresh token, one session row per login. If you haven't read that one, the short version is that the access token is fast and unrevokable, and the refresh token is checked against the database every 15 minutes.
 
@@ -23,7 +23,7 @@ I'll assume the two-token setup from [Refresh Tokens With JWT](/blog/refresh-tok
 
 - [What goes in the token](#what-goes-in-the-token)
 - [Checking it](#checking-it)
-- [Rule 1: rebuild the permissions on every refresh](#rule-1-rebuild-the-permissions-on-every-refresh) — the one that matters
+- [Rule 1: rebuild the permissions on every refresh](#rule-1-rebuild-the-permissions-on-every-refresh) (the one that matters)
 - [Rule 2: narrow the token to the session's context](#rule-2-narrow-the-token-to-the-sessions-context)
 - [Rule 3: check what the account paid for, separately](#rule-3-check-what-the-account-paid-for-separately)
 - [Rule 4: the token says what you may do, never what you own](#rule-4-the-token-says-what-you-may-do-never-what-you-own)
@@ -50,9 +50,9 @@ type RefreshClaims = {
 };
 ```
 
-The refresh token has no `perms` on purpose. Its only job is to prove the session is still alive, and it goes to the database every time it's used anyway. Put a permission list in there and you've turned a 7-day credential into a 7-day snapshot of what someone was allowed to do at login — the exact thing we're trying to avoid.
+The refresh token has no `perms` on purpose. Its only job is to prove the session is still alive, and it goes to the database every time it's used anyway. Put a permission list in there and you've turned a 7-day credential into a 7-day snapshot of what someone was allowed to do at login, the exact thing we're trying to avoid.
 
-Permissions are plain strings shaped `resource:action`: `projects:view`, `invoices:manage`, `tickets:assign`. Roles are how you *grant* them — "Editor" grants a bundle of these — but only the flattened list ever reaches the token.
+Permissions are plain strings shaped `resource:action`: `projects:view`, `invoices:manage`, `tickets:assign`. Roles are how you *grant* them ("Editor" grants a bundle of these), but only the flattened list ever reaches the token.
 
 That last bit matters more than it sounds. It's tempting to put role *names* in the token instead, since it's shorter. But then every permission check becomes "which roles imply this permission?", and that mapping lives on your server, so you're right back to a lookup. Flatten it once, at login.
 
@@ -132,7 +132,7 @@ export function hasPermission(
     // projects:delete, and so on
     if (resource === wantResource && action === "*") return true;
 
-    // "*:view" covers view on anything — handy for read-only auditors
+    // "*:view" covers view on anything (read-only auditors)
     if (resource === "*" && action === wantAction) return true;
 
     return false;
@@ -140,11 +140,11 @@ export function hasPermission(
 }
 ```
 
-Why bother with wildcards? Because an owner would otherwise carry the entire permission catalogue in their token — ninety strings instead of one `*:*`. And since the token goes in an `Authorization` header on *every* request, that's bytes you pay for constantly.
+Why bother with wildcards? Because an owner would otherwise carry the entire permission catalogue in their token: ninety strings instead of one `*:*`. And since the token goes in an `Authorization` header on *every* request, that's bytes you pay for constantly.
 
 Keep half an eye on the size. Past roughly 4 KB of headers some proxies start rejecting requests outright, and nginx's default header buffer is 8 KB. A hundred permission strings will get you closer to that than you'd guess.
 
-Right — now the five rules. The first one is the one that matters.
+Right, now the five rules. The first one is the one that matters.
 
 ## Rule 1: rebuild the permissions on every refresh
 
@@ -154,7 +154,7 @@ When a refresh request comes in, the old token is sitting right there, already p
 
 Don't do it.
 
-If you copy, the permissions captured at login get reprinted on every refresh, forever. Revoking a role changes nothing until the user fully logs out — which, for an app people leave open, might be never. You'd have built a 15-minute token that behaves like a 7-day one.
+If you copy, the permissions captured at login get reprinted on every refresh, forever. Revoking a role changes nothing until the user fully logs out, which, for an app people leave open, might be never. You'd have built a 15-minute token that behaves like a 7-day one.
 
 Load them fresh instead:
 
@@ -166,7 +166,7 @@ if (session.tenant_id) {
   membership = await memberships.get(user.id, session.tenant_id);
   if (!membership) throw new AuthError("membership_gone");
 
-  // live roles — not whatever the old token happened to say
+  // live roles, not whatever the old token happened to say
   membership.roles = await memberships.roles(membership.id);
   if (session.scope) membership.activeScope = session.scope;
 }
@@ -180,11 +180,11 @@ The cost is two queries every 15 minutes per session. That's genuinely nothing, 
 
 ## Rule 2: narrow the token to the session's context
 
-If you have one product, skip this rule — it won't apply until you have two.
+If you have one product, skip this rule; it won't apply until you have two.
 
 Say you sell a CRM and a helpdesk, and someone is a manager in the CRM *and* works the helpdesk queue. Two roles on one account. The obvious implementation puts the union of both roles' permissions in their token.
 
-Which means their helpdesk session can do everything their CRM manager role allows. If the helpdesk app has a weakness — an XSS bug, a leaky third-party script — the damage isn't limited to the helpdesk. It's the union of both.
+Which means their helpdesk session can do everything their CRM manager role allows. If the helpdesk app has a weakness (an XSS bug, a leaky third-party script), the damage isn't limited to the helpdesk. It's the union of both.
 
 So bind each session to one product (I'll call it a **scope**) and cut the permissions down to the roles that grant it:
 
@@ -194,7 +194,7 @@ So bind each session to one product (I'll call it a **scope**) and cut the permi
  * the given `scope`.
  *
  * Someone's helpdesk token carries what their helpdesk role
- * grants, and nothing from their CRM role — and the reverse
+ * grants, and nothing from their CRM role, and the reverse
  * holds too. An owner role grants every scope, so an owner's
  * token is never narrowed.
  */
@@ -208,9 +208,9 @@ export function permsForScope(
 
 Now, here's a trap I want to save you from, because the obvious version of this is wrong.
 
-You'd think: "in a helpdesk session, keep only helpdesk permissions." Reasonable. Also broken — because helpdesk roles legitimately need to *read* CRM data. The helpdesk UI shows customer and billing history, and those permissions belong to the CRM. Filter by category and you strip permissions the app depends on, and it looks like a permissions bug rather than a design mistake.
+You'd think: "in a helpdesk session, keep only helpdesk permissions." Reasonable. Also broken, because helpdesk roles legitimately need to *read* CRM data. The helpdesk UI shows customer and billing history, and those permissions belong to the CRM. Filter by category and you strip permissions the app depends on, and it looks like a permissions bug rather than a design mistake.
 
-The correct cut is by **role**, not by permission category. Ask "does this role grant the scope this session is in?" and then take everything that role holds — because whatever it holds, it holds legitimately.
+The correct cut is by **role**, not by permission category. Ask "does this role grant the scope this session is in?" and then take everything that role holds, because whatever it holds, it holds legitimately.
 
 One more thing: store the session's scope on the session row, so a token refresh restores it. Otherwise every refresh silently drops the user back to their default scope, and the app works fine for exactly 15 minutes before falling over.
 
@@ -248,7 +248,7 @@ function collectPerms(
 
 Two decisions in there are worth stealing.
 
-**Load the plan live, at token-issue time.** Not from whatever object the caller happened to be holding, and definitely not from the old token. Some login paths — a magic link, an OAuth callback — never load a plan at all, and a missing plan object reads as "everything disabled", which locks a paying customer out of their own product.
+**Load the plan live, at token-issue time.** Not from whatever object the caller happened to be holding, and definitely not from the old token. Some login paths (a magic link, an OAuth callback) never load a plan at all, and a missing plan object reads as "everything disabled", which locks a paying customer out of their own product.
 
 ```ts
 // Start permissive, then overwrite from a live read. A blip
@@ -265,7 +265,7 @@ try {
 }
 ```
 
-I know — defaulting to *permissive* on an error looks like exactly the wrong instinct for anything security-flavoured. Here's why it's right in this one spot: this is the billing gate, not the security gate. The roles were already checked. So the real choice is between "a downgraded account keeps a feature for 15 extra minutes" and "a database hiccup logs out every paying customer at once". The second one is worse, and it's the one that actually happens.
+I know: defaulting to *permissive* on an error looks like exactly the wrong instinct for anything security-flavoured. Here's why it's right in this one spot: this is the billing gate, not the security gate. The roles were already checked. So the real choice is between "a downgraded account keeps a feature for 15 extra minutes" and "a database hiccup logs out every paying customer at once". The second one is worse, and it's the one that actually happens.
 
 **Let unknown products through.** If a permission is tagged with something the gate doesn't recognise, don't silently drop it. A permission someone forgot to classify should fail loudly in testing, not vanish invisibly in production.
 
@@ -273,7 +273,7 @@ I know — defaulting to *permissive* on an error looks like exactly the wrong i
 
 This is the rule people skip, and it's the one that causes actual breaches. It's worth reading twice.
 
-`projects:view` means "this user may view projects". It does **not** mean "this user may view *this* project". Those are completely different questions, and only the first one can live in a token — a token obviously can't list every row you're allowed to touch.
+`projects:view` means "this user may view projects". It does **not** mean "this user may view *this* project". Those are completely different questions, and only the first one can live in a token, which obviously can't list every row you're allowed to touch.
 
 So the tenant id in the token is an *input to your query*, not a check you tick off:
 
@@ -300,7 +300,7 @@ router.get(
 SELECT * FROM projects WHERE id = $1 AND tenant_id = $2;
 ```
 
-Every data access function takes an explicit tenant id and filters on it. Every single one — including the internal helpers, including the admin tooling, including the one you're sure only staff can reach. A valid permission claim plus an unscoped `WHERE id = $1` is precisely how one customer reads another customer's data, and the permission check passes cleanly the entire time. Nothing looks wrong in the logs.
+Every data access function takes an explicit tenant id and filters on it. Every single one, including the internal helpers, the admin tooling, and the one you're sure only staff can reach. A valid permission claim plus an unscoped `WHERE id = $1` is precisely how one customer reads another customer's data, and the permission check passes cleanly the entire time. Nothing looks wrong in the logs.
 
 Short version: **claims answer "what", the database answers "which".**
 
@@ -311,7 +311,7 @@ Small bonus: return `404` rather than `403` when someone asks for a row belongin
 There are two very different reasons to send a 403, and mashing them together makes clients behave badly.
 
 - *Your roles don't grant this.* Permanent. Retrying will never help.
-- *Your session is in the wrong scope.* Temporary — the user genuinely has this permission, just not in the session they're currently holding.
+- *Your session is in the wrong scope.* Temporary: the user genuinely has this permission, just not in the session they're currently holding.
 
 ```ts
 // A real denial: their roles don't grant it. Nothing to retry.
@@ -326,7 +326,7 @@ res.status(403).json({
 });
 ```
 
-Give a client only one code and it'll do one of two unhelpful things: retry a request that can never succeed, or tell someone they lack a permission they actually have. Give it two, and it can call your switch-scope endpoint, get a correctly-scoped token, and retry once — invisibly, from the user's point of view.
+Give a client only one code and it'll do one of two unhelpful things: retry a request that can never succeed, or tell someone they lack a permission they actually have. Give it two, and it can call your switch-scope endpoint, get a correctly-scoped token, and retry once, invisibly, from the user's point of view.
 
 Worth doing on day one. Adding the distinction later means auditing every 403 handler in every client you've shipped.
 
@@ -336,11 +336,11 @@ The staleness window is exactly your access token lifetime. Fifteen minutes is a
 
 **Someone's role gets downgraded.** They keep the old access for up to 15 minutes. Almost always fine.
 
-**Someone is deactivated or fired.** Also up to 15 minutes — but here you have a hard stop available: delete their session rows. They can't refresh, so their access token expires and nothing replaces it. Fifteen minutes is a real ceiling, not a hope.
+**Someone is deactivated or fired.** Also up to 15 minutes. But here you have a hard stop available: delete their session rows. They can't refresh, so their access token expires and nothing replaces it. Fifteen minutes is a real ceiling, not a hope.
 
 **An account downgrades off a product.** Up to 15 minutes of the old feature set. Nobody has ever filed a security incident over this.
 
-If 15 minutes really is unacceptable for one specific action, resist the urge to shorten the global TTL — that multiplies refresh traffic across every session to fix one endpoint. Just check the database on that endpoint:
+If 15 minutes really is unacceptable for one specific action, resist the urge to shorten the global TTL, which multiplies refresh traffic across every session to fix one endpoint. Just check the database on that endpoint:
 
 ```ts
 router.delete(
@@ -356,19 +356,19 @@ router.delete(
 
 The token is your fast path. Nothing stops you adding a slow path where the stakes justify it.
 
-There's also a middle option if you ever need it. Put a `pv` (permissions version) number in the token, and bump a per-user counter in Redis whenever their roles change. Middleware compares the two and forces a refresh when they disagree. That buys near-instant revocation for the price of one Redis `GET` per request — much cheaper than a join, but still I/O on the hot path, and now you have two sources of truth that can drift apart. Reach for it when a customer contractually requires sub-minute revocation. Not before.
+There's also a middle option if you ever need it. Put a `pv` (permissions version) number in the token, and bump a per-user counter in Redis whenever their roles change. Middleware compares the two and forces a refresh when they disagree. That buys near-instant revocation for the price of one Redis `GET` per request. Much cheaper than a join, but still I/O on the hot path, and now you have two sources of truth that can drift apart. Reach for it when a customer contractually requires sub-minute revocation. Not before.
 
 ## When to just use the database
 
 Permissions in the token stop being worth it when:
 
-**Your permission set is huge or per-record.** Sharing rules, per-document ACLs, "this user can see these 400 specific projects" — that's not a claim, that's a query. Leave it in the database.
+**Your permission set is huge or per-record.** Sharing rules, per-document ACLs, "this user can see these 400 specific projects". That's not a claim, that's a query. Leave it in the database.
 
 **You need revocation with no window at all.** Some regulated environments specify this outright. Accept the per-request lookup and cache it in Redis with explicit invalidation.
 
 **Your permission model is still changing shape weekly.** Every reshuffle leaves tokens in the wild carrying the old shape, and middleware that has to understand both until they age out. Wait until it settles.
 
-For the common case — a few dozen permission keys, roles that change on the scale of days, tenant-scoped data — this is a good trade. One signature check and an array scan instead of three joins per request, in exchange for a staleness window you can describe in a sentence and shorten on any endpoint that needs it.
+For the common case (a few dozen permission keys, roles that change on the scale of days, tenant-scoped data) this is a good trade. One signature check and an array scan instead of three joins per request, in exchange for a staleness window you can describe in a sentence and shorten on any endpoint that needs it.
 
 But only if you rebuild the claim on every refresh. Everything else in this post is detail; that part *is* the pattern.
 
