@@ -3,17 +3,22 @@ import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import "@/styles/global.css";
 import { SITE_TITLE, GA_ID } from "@/lib/constants";
+import { graph } from "@/lib/schema";
 
 interface Props {
   title: string;
   description: string;
   image?: string;
   type?: "website" | "article";
+  schema?: object[];
 }
 
-const { title, description, image, type = "website" } = Astro.props;
+const { title, description, image, type = "website", schema = [] } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
-const ogImage = image ? new URL(image, Astro.site) : undefined;
+// Every page gets a card. Without a default, shared links render as bare text
+// on LinkedIn, WhatsApp and Slack, which is where most client links get pasted.
+const ogImage = new URL(image ?? "/og.png", Astro.site);
+const jsonLd = graph(schema);
 ---
 
 <meta charset="utf-8" />
@@ -37,12 +42,22 @@ const ogImage = image ? new URL(image, Astro.site) : undefined;
 <meta property="og:url" content={canonical} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
-{ogImage && <meta property="og:image" content={ogImage} />}
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:site_name" content={SITE_TITLE} />
+<meta property="og:locale" content="en_US" />
 
-<meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
+<meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
-{ogImage && <meta name="twitter:image" content={ogImage} />}
+<meta name="twitter:image" content={ogImage} />
+
+<script
+  type="application/ld+json"
+  is:inline
+  set:html={JSON.stringify(jsonLd)}
+/>
 
 <!-- Google Analytics -->
 <script

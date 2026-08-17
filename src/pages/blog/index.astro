@@ -2,17 +2,39 @@
 import { getCollection } from "astro:content";
 import Base from "@/layouts/Base.astro";
 import { formatDate } from "@/lib/utils";
+import { abs, breadcrumbs } from "@/lib/schema";
 
 const isDev = import.meta.env.DEV;
 let posts = (await getCollection("blog")).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
 if (!isDev) posts = posts.filter((p) => !p.data.draft);
+
+const schema = [
+  breadcrumbs([{ name: "Blog", path: "/blog" }]),
+  {
+    "@type": "Blog",
+    "@id": `${abs("/blog/")}#blog`,
+    name: "Blog",
+    description:
+      "Thoughts on web development, system programming, Linux, Go, and Rust.",
+    url: abs("/blog/"),
+    blogPost: posts.map((post) => ({
+      "@type": "BlogPosting",
+      "@id": `${abs(`/blog/${post.id}/`)}#article`,
+      headline: post.data.title,
+      description: post.data.description,
+      url: abs(`/blog/${post.id}/`),
+      datePublished: post.data.pubDate.toISOString(),
+    })),
+  },
+];
 ---
 
 <Base
   title="Blog"
   description="Thoughts on web development, system programming, Linux, Go, and Rust."
+  schema={schema}
 >
   <div class="mx-auto max-w-3xl px-5 py-16">
     <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Blog</h1>

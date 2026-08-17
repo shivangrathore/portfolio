@@ -3,17 +3,37 @@ import { getCollection } from "astro:content";
 import Base from "@/layouts/Base.astro";
 import Icon from "@/components/icons/Icon.astro";
 import { formatDate } from "@/lib/utils";
+import { abs, breadcrumbs } from "@/lib/schema";
 
 const isDev = import.meta.env.DEV;
 let studies = (await getCollection("caseStudies")).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
 if (!isDev) studies = studies.filter((s) => !s.data.draft);
+
+const schema = [
+  breadcrumbs([{ name: "Case Studies", path: "/case-studies" }]),
+  {
+    "@type": "CollectionPage",
+    "@id": `${abs("/case-studies/")}#collection`,
+    name: "Case Studies",
+    url: abs("/case-studies/"),
+    hasPart: studies.map((study) => ({
+      "@type": "Article",
+      "@id": `${abs(`/case-studies/${study.id}/`)}#article`,
+      headline: study.data.title,
+      description: study.data.description,
+      url: abs(`/case-studies/${study.id}/`),
+      datePublished: study.data.pubDate.toISOString(),
+    })),
+  },
+];
 ---
 
 <Base
   title="Case Studies"
   description="In-depth write-ups of features and projects I've built: the problem, the approach, and the trade-offs."
+  schema={schema}
 >
   <div class="mx-auto max-w-3xl px-5 py-16">
     <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">
