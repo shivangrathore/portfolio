@@ -5,7 +5,9 @@ import Github from "@/components/icons/Github.astro";
 import Icon from "@/components/icons/Icon.astro";
 
 export async function getStaticPaths() {
-  const studies = await getCollection("caseStudies");
+  const all = await getCollection("caseStudies");
+  // Drafts stay out of the production build so they never reach the sitemap.
+  const studies = import.meta.env.DEV ? all : all.filter((s) => !s.data.draft);
   return studies.map((study) => ({
     params: { slug: study.id },
     props: { study },
@@ -33,6 +35,8 @@ const facts = [
   headings={headings}
   backHref="/case-studies"
   backLabel="Back to case studies"
+  sectionName="Case Studies"
+  articleType="Article"
 >
   <div slot="meta" class="mt-6 rounded-xl border border-border bg-surface/40 p-5">
     {

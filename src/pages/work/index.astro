@@ -2,6 +2,7 @@
 import { getCollection } from "astro:content";
 import Base from "@/layouts/Base.astro";
 import ProjectCard from "@/components/ProjectCard.astro";
+import { breadcrumbs } from "@/lib/schema";
 
 const projects = (await getCollection("projects")).sort(
   (a, b) => b.data.order - a.data.order,
@@ -12,19 +13,20 @@ const others = projects.filter((p) => !p.data.featured);
 
 <Base
   title="Work"
-  description="Projects spanning web development, system programming, and open-source."
+  description="Production Go, PostgreSQL and Next.js projects built end to end, including a live esports tournament platform and an e-commerce build."
+  schema={[breadcrumbs([{ name: "Work", path: "/work" }])]}
 >
   <div class="mx-auto max-w-3xl px-5 py-16">
     <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Work</h1>
     <p class="mt-3 max-w-xl text-muted">
-      A collection of projects across web development, system programming, and
-      open source. Some have deeper write-ups in
+      Products and systems I have built end to end. The ones with a write-up go
+      into the problem, the approach and the trade-offs in
       <a href="/case-studies" class="link">case studies</a>.
     </p>
 
     <section class="mt-12">
       <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
-        Featured
+        Products in use
       </h2>
       <div class="mt-5 grid gap-4 sm:grid-cols-2">
         {featured.map((project) => <ProjectCard project={project} />)}
@@ -35,7 +37,7 @@ const others = projects.filter((p) => !p.data.featured);
       others.length > 0 && (
         <section class="mt-12">
           <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
-            More projects
+            Smaller builds and experiments
           </h2>
           <div class="mt-5 grid gap-4 sm:grid-cols-2">
             {others.map((project) => (

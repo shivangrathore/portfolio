@@ -3,7 +3,9 @@ import { getCollection, render } from "astro:content";
 import Post from "@/layouts/Post.astro";
 
 export async function getStaticPaths() {
-  const posts = await getCollection("blog");
+  const all = await getCollection("blog");
+  // Drafts stay out of the production build so they never reach the sitemap.
+  const posts = import.meta.env.DEV ? all : all.filter((p) => !p.data.draft);
   return posts.map((post) => ({
     params: { slug: post.id },
     props: { post },
@@ -24,6 +26,8 @@ const { Content, headings, remarkPluginFrontmatter } = await render(post);
   headings={headings}
   backHref="/blog"
   backLabel="Back to blog"
+  sectionName="Blog"
+  articleType="BlogPosting"
 >
   <Content />
 </Post>

@@ -4,10 +4,10 @@
   /* Neutral dark base, single green accent */
   --color-bg: oklch(0.16 0.005 260);
   --color-surface: oklch(0.2 0.006 260);
-  --color-border: oklch(0.28 0.008 260);
+  --color-border: oklch(0.34 0.008 260);
   --color-fg: oklch(0.96 0 0);
   --color-muted: oklch(0.7 0.012 260);
-  --color-faint: oklch(0.55 0.01 260);
+  --color-faint: oklch(0.62 0.01 260);
   --color-accent: oklch(0.7 0.16 149.2);
   --color-accent-fg: oklch(0.16 0.02 149.2);
 
@@ -73,11 +73,11 @@
   }
 
   h2 {
-    @apply text-2xl mt-12 mb-4;
+    @apply text-2xl mt-12 mb-4 text-balance;
   }
 
   h3 {
-    @apply text-xl mt-8 mb-3;
+    @apply text-xl mt-8 mb-3 text-balance;
   }
 
   h4 {
@@ -85,7 +85,7 @@
   }
 
   p {
-    @apply my-4;
+    @apply my-4 text-pretty;
   }
 
   a {
