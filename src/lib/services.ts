@@ -139,7 +139,7 @@ export const faqs = [
   },
   {
     q: "What is your availability?",
-    a: "I take a small number of projects at a time so each one gets real attention. Tell me your timeline and I will tell you honestly whether I can meet it.",
+    a: "I work on contract and take one project at a time, so whoever I am working with gets my full attention rather than a slice of it. I can usually start within a week or two. Tell me your deadline and I will tell you straight whether I can meet it.",
   },
   {
     q: "Do you work with existing teams?",

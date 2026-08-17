@@ -42,6 +42,11 @@ const { items } = Astro.props;
               )}
             </span>
           </span>
+          {job.engagement && (
+            <span class="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted">
+              {job.engagement}
+            </span>
+          )}
           {job.current && (
             <span class="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-accent">
               Current

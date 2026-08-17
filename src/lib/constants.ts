@@ -16,7 +16,7 @@ export const GA_ID = "G-QJ71GZCPK6";
 export const BOOKING_URL = "";
 
 /** Shown under every CTA. Keep it true, and update it when it stops being true. */
-export const AVAILABILITY = "Taking one new project at a time";
+export const AVAILABILITY = "Available now · one project at a time";
 
 // Contact form -> Google Forms
 export const CONTACT_FORM_URL =

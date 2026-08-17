@@ -7,6 +7,9 @@ export type Experience = {
   summary: string;
   /** A few concrete pieces of work, for roles where the summary can't carry it. */
   highlights?: string[];
+  /** "Contract", "Freelance" and so on. Employment reads differently to a
+      client than a year-long contract engagement does. */
+  engagement?: string;
   stack?: string[];
   current?: boolean;
 };
@@ -18,6 +21,7 @@ export const experience: Experience[] = [
     companyUrl: "https://hauldrive.com",
     period: "Jul 2025 - Present",
     location: "Remote",
+    engagement: "Contract",
     summary:
       "Designed and built both generations of the backend behind a multi-tenant fleet compliance and maintenance platform for UK transport operators: the original Go service, then the current rewrite into domain-separated Go (Gin, sqlc, pgx) with a Next.js monorepo. Around 570 endpoints and 120 migrations today, serving three front-ends (fleet, workshop, platform admin) and the driver mobile API from one codebase, one database and one login. In production with four operators running 80+ vehicles and 60+ drivers.",
     highlights: [
