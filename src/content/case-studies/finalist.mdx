@@ -1,0 +1,218 @@
+---
+title: "Finalist: running Indian esports end to end"
+description: "How I built a scrim and tournament platform for the Indian BR scene: one competition engine behind six formats, a balanced lobby rotation, and a Discord bot fed by a transactional outbox."
+pubDate: "2026-08-17"
+tags: ["Go", "PostgreSQL", "Next.js", "Discord", "Esports"]
+role: "Solo / full-stack"
+timeline: "Dec 2025 — present"
+stack:
+  [
+    "Go",
+    "Gin",
+    "PostgreSQL",
+    "sqlc",
+    "Redis",
+    "Next.js",
+    "TypeScript",
+    "Turborepo",
+    "discord.py",
+  ]
+demo: "https://finalist.live"
+project: "finalist"
+draft: false
+---
+
+## The problem
+
+Indian BGMI and Free Fire scrims run on Discord, and everything around them runs
+on nothing. A slot list is a pinned message. Results are screenshots a captain
+DMs the organizer. The points table is a spreadsheet somebody retypes after
+every match, and the argument about whether row 14 got its kill points is
+settled by whoever shouts longest.
+
+The Western tournament platforms don't fit this. They're built around brackets —
+two teams, one match, a winner — and a BR event is 16 to 25 teams in a lobby
+scored on placement plus kills, played several times, across groups that rotate
+between lobbies. They also assume the browser is where the community lives. Here
+it's Discord, and a tool that makes an organizer leave Discord to use it doesn't
+get used.
+
+So: a platform where the organizer runs the event on the web, and the players
+never have to leave the server they're already in.
+
+## Shape of the system
+
+One Go API, one Postgres database, four Next.js surfaces, and a Discord bot that
+is a first-class client rather than a webhook.
+
+```
+play.finalist.live   ─┐
+app.finalist.live    ─┤                    ┌── workers (lifecycle sweeps, push)
+finalist.live        ─┼──▶  Go API (Gin)  ─┼── WebSocket hub
+platform (internal)  ─┘         │           └── S3, FCM
+                                ▼
+                            PostgreSQL
+                                │  trigger → comms_outbox → pg_notify
+                                ▼
+                          comms-bot (discord.py)
+```
+
+The surfaces are split by *who you are*, not by feature: players get
+`play`, organizers get `app`, the public share pages are on the marketing
+domain, and platform staff get their own console. They share a component
+library and a typed SDK generated against the API docs, so a status label reads
+the same in all four.
+
+The backend is layered — `domain` (models, state machines, repository
+interfaces) → `app` (services) → `infra` (Postgres, workers, S3, FCM) →
+`ports/http`. Queries are sqlc, so the compiler knows the shape of every row,
+and migrations are forward-only and numbered: the schema is in production, so
+"just regenerate it" was never on the table.
+
+## One interface, six competition formats
+
+The first real design decision. An organizer asked for "all the systems", which
+could easily mean six code paths through the same service, each with its own
+bugs about advancement and tiebreaks.
+
+Instead the competition rules live behind a single interface, and everything
+above it — entries, matches, standings, prizes — is format-agnostic:
+
+```go
+type Format interface {
+    Key() tournament.StageFormat
+    // ValidateConfig type-checks the stage's JSONB blob and fills defaults, so
+    // a bad config is a 400 at write time rather than a panic mid-event.
+    ValidateConfig(raw json.RawMessage) (Config, error)
+    // Draw plans the stage. It never writes anything.
+    Draw(in DrawInput, cfg Config) (Draw, error)
+    // Progress recomputes derived state from the stage as it stands.
+    Progress(state StageState, cfg Config) (Progress, error)
+    // Qualifiers returns the entrants advancing out of the stage, in finishing
+    // order, with the seeds they carry into the next one.
+    Qualifiers(state StageState, cfg Config) ([]tournament.Qualifier, error)
+    // Score is the points one result earns.
+    Score(cfg Config, r tournament.MatchResult, fieldSize int) float64
+}
+```
+
+BR points tables, round robin, single and double elimination, Swiss and gauntlet
+are each one file plus a registry entry. `Draw` is pure — it plans, it doesn't
+write — which means the draw for a 64-team double-elimination bracket can be
+tested without a database, and the service layer's job is reduced to persisting
+whatever the plan says.
+
+A stage is one format, and a tournament is an ordered list of stages, so "groups
+into a bracket into a grand final" is composition rather than a special case.
+
+## The rotation is a design, not a shuffle
+
+This is the part that's specific to Indian BR, and the part that's easy to get
+quietly wrong.
+
+Four groups of 16, a 32-slot lobby: each round, two groups share a lobby. If you
+pick those pairings at random, one group can end up facing the strongest group
+twice while another never does — and since placement points are relative to who
+else is in the lobby, that's not a nuisance, it's the whole result.
+
+The pairing is generated with the circle method, which is a true
+1-factorisation: over `groups-1` rounds, every pair of groups meets exactly
+once, and longer events cycle that set again. Every group appears exactly once
+per round and exactly `matchesPerGroup` times overall — a property the tests
+assert directly rather than a claim in a comment.
+
+```
+Round 1   A+B   C+D
+Round 2   A+C   B+D
+Round 3   A+D   B+C
+```
+
+Map rotation had a related bug on the way: the map was picking per lobby rather
+than per round, so two halves of the same round played different maps. Fair
+scoring means the round is the unit.
+
+## Results people can trust
+
+Every result is a scoring dispute waiting to happen, so the flow assumes bad
+faith without treating anyone as a cheat.
+
+Captains submit their placement and kills with a screenshot; a referee approves,
+edits or rejects, and the queue holds disputes rather than resolving them by
+whoever answered first. The organizer can also enter results directly — a lot of
+events have a scorer watching the lobby.
+
+Two rules do most of the work:
+
+- **Points are never client-supplied.** The format computes them from the
+  recorded result at the moment it's approved.
+- **They're frozen at record time.** If someone edits the point preset mid-event
+  — which happens — matches already played keep the points they earned.
+
+Standings then recompute from the stage as it stands, with an explainable
+tiebreak chain (points, then wins, then kills, then head-to-head), so a team can
+be shown *why* they're 4th rather than 3rd.
+
+## Talking to Discord without a broker
+
+The bot doesn't scrape the API and the backend doesn't know the bot exists. A
+Postgres trigger writes to a `comms_outbox` table in the *same transaction* as
+the notification that caused it, then `pg_notify` wakes the bot; the bot listens,
+with a polling sweep as a backstop.
+
+That's a transactional outbox with no Redis queue, no RabbitMQ, and no second
+source of truth. Nothing is lost between "it happened" and "it was queued",
+because there is no gap — either both rows commit or neither does. If the bot is
+down for an hour, it catches up on boot.
+
+Reads and writes from the bot go through the same public REST API a browser
+uses, with a bot JWT and an `X-On-Behalf-Of` header, so a Discord slash command
+can't do anything the user couldn't do on the web. Redis holds one thing: a
+mirror of each guild's channels and roles, so the dashboard's channel pickers
+don't hammer the Discord gateway. If it's missing, the pickers degrade to empty
+instead of failing.
+
+## Money, deliberately not moved
+
+India's Online Gaming Act 2025 draws a hard line around real-money gaming, and
+the cheapest way to stay on the right side of it is to not be near it.
+
+Prize pools and payouts are a **ledger**: an organizer records what they owe and
+marks it paid with their own transfer reference. There's no wallet, no stored
+credits, no gateway, and no entry fees — the tournament schema doesn't have an
+entry-fee column at all, which is the sort of thing that's much easier to hold
+to when the table simply can't express it. The decision is written down in the
+repo next to the rules it follows, so future-me doesn't quietly re-add it.
+
+## Trade-offs
+
+- **Tournaments shipped on their own tables first.** Getting six formats working
+  mattered more than getting the schema right, so tournaments were built
+  alongside scrims rather than through them, with two SQL views unioning both so
+  leaderboards and player history saw everything. That bought speed and left a
+  duplication tax — entrants and registrations, matches and matches, two of
+  every invite flow — which is now being paid off by folding a scrim into what
+  it always was: an event with exactly one stage.
+- **The registry costs a layer of indirection.** Reading "how does Swiss pair
+  round 3" means opening one more file than a switch statement would. The payoff
+  is that adding gauntlet touched no service code at all.
+- **Polling sweeps over a scheduler.** Lifecycle transitions (open registration,
+  open check-in, auto-forfeit no-shows) run as set-based sweeps guarded by
+  `pg_try_advisory_xact_lock`, so every API replica can run the same worker and
+  exactly one does the work. Simpler than a job queue, and it self-heals after
+  downtime — but it's tick-resolution, not to-the-second.
+- **Client-side tab filtering.** The organizer list pulls a page of events and
+  buckets them in the browser. Fine at an organizer's scale, and the wrong
+  answer the day someone has 400 events — that's a server-side filter I know I'll
+  owe.
+
+## Where it is now
+
+Live at [finalist.live](https://finalist.live). Scrims run end to end —
+registration, slot lists, room details, results, leaderboards. Tournaments ship
+all six formats with groups, brackets, standings, staff roles and the payout
+ledger, and the `/tournament` command group puts standings, matches, check-in and
+room details in Discord.
+
+Next: per-lobby Discord channels for tournaments (scrims already have them), and
+richer public event pages — the share link is what an organizer actually posts,
+so it deserves to be the best-looking thing on the platform.

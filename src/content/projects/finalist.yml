@@ -1,0 +1,31 @@
+title: "Finalist"
+description: "An esports platform for the Indian BR scene: organizers run scrims and multi-stage tournaments end to end, players register teams and check in, and a Discord bot mirrors the whole thing into their server."
+date: "2025 — Present"
+featured: true
+order: 110
+status: "beta"
+caseStudy: "finalist"
+technologies:
+  - Go
+  - Gin
+  - PostgreSQL
+  - sqlc
+  - Redis
+  - Next.js
+  - TypeScript
+  - React Query
+  - Tailwind CSS
+  - Turborepo
+  - discord.py
+  - WebSockets
+  - Docker
+features:
+  - "Multi-tenant organizations with role-scoped staff, invite links, and separate player and organizer surfaces on their own subdomains"
+  - "Full scrim lifecycle — registration, slot lists, room details, results entry, and leaderboards"
+  - "Tournaments supporting six competition formats (BR points, round robin, single and double elimination, Swiss, gauntlet) behind one pluggable format engine"
+  - "Balanced cross-group lobby rotation for battle-royale stages, generated as a 1-factorisation so every group meets every other equally often"
+  - "Results captains submit and organizers approve, with screenshot evidence and a dispute queue"
+  - "Discord bot driven by a transactional outbox, so notifications survive restarts and never double-send"
+  - "Realtime match and standings updates over WebSocket, with FCM push for mobile"
+  - "Prize pool and payout tracking kept as a ledger — no wallet or entry fees, staying clear of India's Online Gaming Act 2025"
+demo: "https://finalist.live"
