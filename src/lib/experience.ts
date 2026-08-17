@@ -56,7 +56,7 @@ export const experience: Experience[] = [
     period: "2020 - 2022",
     location: "Remote",
     summary:
-      "Sole developer of a Pokémon collection Discord bot, running the whole codebase as the de facto tech lead. Built in Python (discord.py) on a MongoDB and Redis microservice backend, with Rust handling the image processing for character cards, all containerized with Docker.",
+      "Sole developer of a Pokémon collection Discord bot that reached 132,000 Discord servers and over a million registered players, running the whole codebase as the de facto tech lead. Built in Python (discord.py) on a MongoDB and Redis microservice backend, with Rust handling the image processing for character cards, all containerized with Docker.",
     stack: ["Python", "MongoDB", "Redis", "Rust", "Docker"],
   },
 ];
