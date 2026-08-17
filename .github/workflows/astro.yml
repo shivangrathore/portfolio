@@ -77,10 +77,13 @@ jobs:
           steps.detect-package-manager.outputs.command }}
         working-directory: ${{ env.BUILD_PATH }}
       - name: Build with Astro
+        # No --site/--base override: actions/configure-pages reports the
+        # custom domain as http://, which overwrote the https:// site in
+        # astro.config.mjs and left og:url and og:image on http. Cloudflare
+        # rewrites href attributes to https but not <meta content>, so the
+        # social cards were the only visible symptom.
         run: |
-          ${{ steps.detect-package-manager.outputs.runner }} astro build \
-            --site "${{ steps.pages.outputs.origin }}" \
-            --base "${{ steps.pages.outputs.base_path }}"
+          ${{ steps.detect-package-manager.outputs.runner }} astro build
         working-directory: ${{ env.BUILD_PATH }}
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
