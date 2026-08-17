@@ -19,13 +19,14 @@ export const experience: Experience[] = [
     period: "Jul 2025 - Present",
     location: "Remote",
     summary:
-      "Leading the rewrite of a multi-tenant fleet compliance and maintenance platform for UK transport operators, off the legacy Node.js stack and onto Go (Gin, sqlc, pgx) with a Next.js monorepo. The backend is now around 570 endpoints and 120 migrations across schema-separated domains, serving three front-ends (fleet, workshop, platform admin) plus the driver mobile API from one codebase, one database and one login.",
+      "Designed and built both generations of the backend behind a multi-tenant fleet compliance and maintenance platform for UK transport operators: the original Go service, then the current rewrite into domain-separated Go (Gin, sqlc, pgx) with a Next.js monorepo. Around 570 endpoints and 120 migrations today, serving three front-ends (fleet, workshop, platform admin) and the driver mobile API from one codebase, one database and one login. In production with four operators running 80+ vehicles and 60+ drivers.",
     highlights: [
-      "Shipped a second product (workshop) on the same backend: per-product personas bound at login, permissions carried in the JWT, and a handshake that links an independent workshop tenant to a fleet without merging their data.",
+      "Owned the first backend end to end, schema upward: vehicles, drivers, operating centres and pools, walkaround checks and defects, work orders, maintenance templates, incidents, insurance, driver training and toolbox talks, holidays and audit logging, behind email OTP login with TOTP 2FA and trusted devices.",
+      "Re-architected it into the current platform: domain, app and ports layering with a schema per domain in Postgres and sqlc-generated queries. That separation is what let a second product share one database without the two fighting over tables.",
+      "Shipped that second product (workshop) on the same backend: per-product personas bound at login, permissions carried in the JWT, and a handshake that links an independent workshop tenant to a fleet without merging their data.",
       "Built the billing engine on Stripe rather than Stripe Subscriptions: per-vehicle pricing, base fee in advance with usage in arrears, mid-cycle proration through a ledger, BACS mandates, versioned trial policies and dunning.",
-      "Owned the compliance core: PMI and brake-test cycles, schedules that book a workshop over branded email, per-task document policies, driver walkaround defects into fault workflows, and DVLA vehicle enquiry plus MOT history sync.",
-      "Added AI invoice ingestion for parts and labour, tiered OCR into LLM extraction with alias resolution and anti-fraud checks that flag rather than block.",
-      "Infrastructure work throughout: Redis caching, RabbitMQ, a WebSocket hub for realtime job updates, S3 uploads, Gotenberg PDF generation, TOTP 2FA and an audited platform admin app.",
+      "Built and still own the compliance core: PMI and brake-test cycles, schedules that book a workshop over branded email, per-task document policies, driver walkaround defects into fault workflows, and DVLA vehicle enquiry plus MOT history sync.",
+      "Added AI invoice ingestion for parts and labour (tiered OCR into LLM extraction, alias resolution, anti-fraud checks that flag rather than block) on top of the usual infrastructure work: Redis, RabbitMQ, a WebSocket hub for realtime job updates, S3 uploads, Gotenberg PDFs and Twilio SMS.",
     ],
     stack: [
       "Go",
