@@ -1,6 +1,6 @@
 export const SITE_TITLE = "Shivang Rathore";
 export const SITE_DESCRIPTION =
-  "Freelance full-stack engineer. I build Go backends, Next.js products and real-time systems for founders and product teams.";
+  "Freelance full-stack engineer. I take founders from idea to MVP and build the Go and PostgreSQL backends that keep it standing as it grows.";
 export const BASE_URL = "https://shivangrathore.com";
 
 export const GITHUB_URL = "https://github.com/shivangrathore";
