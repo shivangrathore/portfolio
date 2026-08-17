@@ -9,6 +9,7 @@ interface Props {
   description?: string;
   image?: string;
   type?: "website" | "article";
+  schema?: object[];
 }
 
 const {
@@ -16,9 +17,15 @@ const {
   description = SITE_DESCRIPTION,
   image,
   type = "website",
+  schema,
 } = Astro.props;
 
-const fullTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
+// The homepage previously titled itself "Shivang Rathore", which targets one
+// query: your own name. The tagline is what someone searching for the service
+// actually types.
+const fullTitle = title
+  ? `${title} · ${SITE_TITLE}`
+  : `${SITE_TITLE} · Freelance Go & Next.js Backend Developer`;
 ---
 
 <!doctype html>
@@ -29,6 +36,7 @@ const fullTitle = title ? `${title} · ${SITE_TITLE}` : SITE_TITLE;
       description={description}
       image={image}
       type={type}
+      schema={schema}
     />
   </head>
   <body class="flex min-h-screen flex-col">

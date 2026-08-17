@@ -1,5 +1,5 @@
 ---
-import type { CollectionEntry } from "astro:content";
+import { getCollection, type CollectionEntry } from "astro:content";
 import Github from "@/components/icons/Github.astro";
 import Icon from "@/components/icons/Icon.astro";
 import { toTitleCase } from "@/lib/utils";
@@ -10,6 +10,23 @@ interface Props {
 
 const { project } = Astro.props;
 const p = project.data;
+
+// A project can point at a case study that is still a draft, and drafts are not
+// built in production. Only link when the target page will actually exist.
+const studies = await getCollection("caseStudies");
+const caseStudy =
+  p.caseStudy &&
+  studies.some(
+    (s) => s.id === p.caseStudy && (import.meta.env.DEV || !s.data.draft),
+  )
+    ? p.caseStudy
+    : undefined;
+
+// Long stack lists took more vertical space on the card than the description of
+// what the thing does, which put the tech ahead of the outcome.
+const TECH_LIMIT = 5;
+const shownTech = p.technologies.slice(0, TECH_LIMIT);
+const hiddenTech = p.technologies.length - shownTech.length;
 ---
 
 <article
@@ -18,8 +35,8 @@ const p = project.data;
   <div class="flex items-start justify-between gap-3">
     <h3 class="text-base font-semibold text-fg">
       {
-        p.caseStudy ? (
-          <a href={`/case-studies/${p.caseStudy}`} class="hover:text-accent">
+        caseStudy ? (
+          <a href={`/case-studies/${caseStudy}`} class="hover:text-accent">
             {p.title}
           </a>
         ) : (
@@ -49,11 +66,18 @@ const p = project.data;
 
   <div class="mt-4 flex flex-wrap gap-1.5">
     {
-      p.technologies.map((tech) => (
+      shownTech.map((tech) => (
         <span class="rounded-md bg-surface px-2 py-0.5 font-mono text-xs text-faint">
           {tech}
         </span>
       ))
+    }
+    {
+      hiddenTech > 0 && (
+        <span class="rounded-md px-2 py-0.5 font-mono text-xs text-faint">
+          +{hiddenTech} more
+        </span>
+      )
     }
   </div>
 
@@ -61,8 +85,8 @@ const p = project.data;
     <span>{p.date}</span>
     <span class="inline-flex items-center gap-3">
       {
-        p.caseStudy && (
-          <a href={`/case-studies/${p.caseStudy}`} class="inline-flex items-center gap-1 text-accent hover:underline">
+        caseStudy && (
+          <a href={`/case-studies/${caseStudy}`} class="inline-flex items-center gap-1 text-accent hover:underline">
             Case study
             <Icon name="arrow-right" class="size-3" />
           </a>

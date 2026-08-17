@@ -1,0 +1,57 @@
+---
+import Button from "@/components/Button.astro";
+import Icon from "@/components/icons/Icon.astro";
+import { BOOKING_URL, AVAILABILITY } from "@/lib/constants";
+
+interface Props {
+  /** Overrides for pages that need a more specific ask. */
+  heading?: string;
+  body?: string;
+  class?: string;
+}
+
+// The booking link only renders once it exists, so the primary CTA is never
+// dead, and the heading never promises a call the buttons cannot deliver.
+const booking = BOOKING_URL.length > 0;
+
+const {
+  heading = booking
+    ? "Most projects start with a 20-minute call"
+    : "Tell me what you are building",
+  body = "Send the problem, the deadline and roughly what the budget looks like. You get an honest read on whether I am the right person, a rough timeline, and a price range. If I am not a fit I will say so and point you somewhere better.",
+  class: className,
+} = Astro.props;
+---
+
+<section class:list={["mx-auto max-w-3xl px-5 py-12", className]}>
+  <div class="rounded-xl border border-accent/30 bg-surface/40 p-8 sm:p-10">
+    <h2 class="max-w-lg text-2xl font-semibold tracking-tight">{heading}</h2>
+    <p class="mt-3 max-w-lg leading-relaxed text-muted">{body}</p>
+
+    <div class="mt-7 flex flex-wrap items-center gap-3">
+      {
+        booking ? (
+          <>
+            <Button variant="primary" href={BOOKING_URL} target="_blank" rel="noopener">
+              <Icon name="calendar" class="size-4" />
+              Book a 20-minute call
+            </Button>
+            <Button href="/contact">Send details instead</Button>
+          </>
+        ) : (
+          <>
+            <Button variant="primary" href="/contact">
+              Start a project
+              <Icon name="arrow-right" class="size-4" />
+            </Button>
+            <Button href="/services">What I build</Button>
+          </>
+        )
+      }
+    </div>
+
+    <p class="mt-6 border-t border-border/60 pt-5 font-mono text-xs text-faint">
+      {AVAILABILITY} · Replies within 24 hours
+    </p>
+  </div>
+</section>

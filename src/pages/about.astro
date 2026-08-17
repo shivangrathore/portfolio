@@ -5,14 +5,25 @@ import Button from "@/components/Button.astro";
 import Timeline from "@/components/Timeline.astro";
 import { experience } from "@/lib/experience";
 import { MAIL_ADDRESS } from "@/lib/constants";
+import { abs, breadcrumbs } from "@/lib/schema";
 
 const skills: { group: string; items: string[] }[] = [
   { group: "Languages", items: ["Go", "TypeScript", "JavaScript", "Python", "SQL"] },
   { group: "Frontend", items: ["React", "Next.js", "Tailwind CSS", "TanStack Query", "Zustand", "Jotai"] },
   { group: "Backend", items: ["Gin", "Node.js", "NestJS", "Express", "WebSockets"] },
-  { group: "Data", items: ["PostgreSQL", "Redis", "RabbitMQ"] },
+  { group: "Data", items: ["PostgreSQL", "Redis", "RabbitMQ", "MongoDB"] },
   { group: "Infra", items: ["Docker", "AWS S3", "GitHub Actions", "Turborepo", "Vercel", "Linux"] },
-  { group: "Tools", items: ["sqlc", "pgx", "Prisma", "Drizzle", "Stripe", "Zod"] },
+  {
+    group: "Integrations",
+    items: [
+      "Stripe",
+      "Google OAuth",
+      "Gmail / Drive / Sheets",
+      "Twilio",
+      "OpenAI",
+    ],
+  },
+  { group: "Tools", items: ["sqlc", "pgx", "Prisma", "Drizzle", "Zod"] },
 ];
 
 const education = {
@@ -25,7 +36,17 @@ const education = {
 
 <Base
   title="About"
-  description="Full-stack engineer building scalable Go backends and modern React/Next.js applications."
+  description="Freelance full-stack engineer working in Go, PostgreSQL and Next.js, currently rebuilding a fleet-compliance SaaS from Node to Go."
+  schema={[
+    breadcrumbs([{ name: "About", path: "/about" }]),
+    {
+      "@type": "ProfilePage",
+      "@id": `${abs("/about/")}#profile`,
+      url: abs("/about/"),
+      name: "About Shivang Rathore",
+      mainEntity: { "@id": `${abs("/")}#person` },
+    },
+  ]}
 >
   <div class="mx-auto max-w-3xl px-5 py-16">
     <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">About</h1>
@@ -33,10 +54,12 @@ const education = {
     <div class="prose mt-8">
       <p>
         I'm a full-stack engineer who builds scalable <strong>Go</strong>
-        backends and modern <strong>React/Next.js</strong> applications. My
+        backends and modern <strong>React/Next.js</strong> applications, with
+        <strong>Node.js</strong>, <strong>TypeScript</strong> and
+        <strong>Python</strong> for the work that suits them better. My
         day-to-day is production SaaS: RBAC, real-time infrastructure,
-        compliance workflows, and the distributed services that hold them
-        together.
+        compliance workflows, third-party integrations, and the distributed
+        services that hold them together.
       </p>
       <p>
         I started out on Linux and never left. I'm still pulled toward how
@@ -46,8 +69,9 @@ const education = {
       </p>
       <p>
         Right now I'm leading a Go and Next.js platform rewrite at
-        <strong>Hauldrive</strong>, and writing about the backend and systems
-        work I pick up along the way.
+        <strong>Hauldrive</strong>, where one backend carries a fleet product, a
+        workshop product and the admin tooling behind both, and writing about
+        the backend and systems work I pick up along the way.
       </p>
     </div>
 

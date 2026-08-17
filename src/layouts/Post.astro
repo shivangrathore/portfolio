@@ -2,7 +2,9 @@
 import type { MarkdownHeading } from "astro";
 import Base from "@/layouts/Base.astro";
 import Icon from "@/components/icons/Icon.astro";
+import Cta from "@/components/Cta.astro";
 import { formatDate } from "@/lib/utils";
+import { article, breadcrumbs } from "@/lib/schema";
 
 interface Props {
   title: string;
@@ -14,6 +16,8 @@ interface Props {
   headings?: MarkdownHeading[];
   backHref: string;
   backLabel: string;
+  sectionName: string;
+  articleType: "BlogPosting" | "Article";
   image?: string;
 }
 
@@ -27,14 +31,40 @@ const {
   headings = [],
   backHref,
   backLabel,
+  sectionName,
+  articleType,
   image,
 } = Astro.props;
 
 const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const hasToc = toc.length > 0;
+
+const path = Astro.url.pathname;
+const schema = [
+  article({
+    type: articleType,
+    path,
+    title,
+    description,
+    pubDate,
+    updatedDate,
+    tags,
+    image,
+  }),
+  breadcrumbs([
+    { name: sectionName, path: backHref },
+    { name: title, path },
+  ]),
+];
 ---
 
-<Base title={title} description={description} image={image} type="article">
+<Base
+  title={title}
+  description={description}
+  image={image}
+  type="article"
+  schema={schema}
+>
   <div
     class:list={[
       "mx-auto max-w-3xl px-5 py-12 md:py-16",
@@ -120,6 +150,8 @@ const hasToc = toc.length > 0;
       )
     }
   </div>
+
+  <Cta class="pb-16" />
 
   <script>
     // Clickable anchor beside every heading that has an id, so any section
