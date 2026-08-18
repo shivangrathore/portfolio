@@ -3,7 +3,6 @@ description: "A customizable e-commerce platform for phone cases, offering produ
 date: "2024"
 featured: true
 order: 100
-caseStudy: "casify"
 technologies:
   - Next.js
   - TypeScript
