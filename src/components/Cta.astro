@@ -32,7 +32,13 @@ const {
       {
         booking ? (
           <>
-            <Button variant="primary" href={BOOKING_URL} target="_blank" rel="noopener">
+            <Button
+              variant="primary"
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener"
+              data-track="book-call"
+            >
               <Icon name="calendar" class="size-4" />
               Book a 20-minute call
             </Button>

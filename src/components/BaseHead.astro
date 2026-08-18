@@ -2,22 +2,37 @@
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
 import "@/styles/global.css";
-import { SITE_TITLE, GA_ID } from "@/lib/constants";
+import {
+  SITE_TITLE,
+  GA_ID,
+  X_HANDLE,
+  GOOGLE_SITE_VERIFICATION,
+  BING_SITE_VERIFICATION,
+} from "@/lib/constants";
 import { graph } from "@/lib/schema";
 
 interface Props {
   title: string;
   description: string;
   image?: string;
+  imageAlt?: string;
   type?: "website" | "article";
   schema?: object[];
 }
 
-const { title, description, image, type = "website", schema = [] } = Astro.props;
+const {
+  title,
+  description,
+  image,
+  imageAlt,
+  type = "website",
+  schema = [],
+} = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 // Every page gets a card. Without a default, shared links render as bare text
 // on LinkedIn, WhatsApp and Slack, which is where most client links get pasted.
 const ogImage = new URL(image ?? "/og.png", Astro.site);
+const ogImageAlt = imageAlt ?? title;
 const jsonLd = graph(schema);
 ---
 
@@ -34,6 +49,17 @@ const jsonLd = graph(schema);
 <link rel="canonical" href={canonical} />
 <meta name="generator" content={Astro.generator} />
 
+{
+  GOOGLE_SITE_VERIFICATION && (
+    <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
+  )
+}
+{
+  BING_SITE_VERIFICATION && (
+    <meta name="msvalidate.01" content={BING_SITE_VERIFICATION} />
+  )
+}
+
 <title>{title}</title>
 <meta name="title" content={title} />
 <meta name="description" content={description} />
@@ -45,13 +71,17 @@ const jsonLd = graph(schema);
 <meta property="og:image" content={ogImage} />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={ogImageAlt} />
 <meta property="og:site_name" content={SITE_TITLE} />
 <meta property="og:locale" content="en_US" />
 
 <meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content={X_HANDLE} />
+<meta name="twitter:creator" content={X_HANDLE} />
 <meta name="twitter:title" content={title} />
 <meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={ogImage} />
+<meta name="twitter:image:alt" content={ogImageAlt} />
 
 <script
   type="application/ld+json"
@@ -71,4 +101,37 @@ const jsonLd = graph(schema);
   }
   gtag("js", new Date());
   gtag("config", GA_ID);
+</script>
+
+<!--
+  Conversion tracking. Pageviews alone cannot answer "which page produces
+  leads", so every intent signal fires a named event carrying the page it
+  happened on. One delegated listener covers the whole site, including links
+  rendered later by an island.
+
+  Events: generate_lead (form sent, fired from ContactForm), contact_click
+  (email or booking link), resume_download, form_error.
+-->
+<script is:inline>
+  window.track = function (name, params) {
+    if (typeof window.gtag !== "function") return;
+    window.gtag("event", name, {
+      page_path: window.location.pathname,
+      ...params,
+    });
+  };
+
+  document.addEventListener("click", function (event) {
+    const link = event.target.closest("a[href]");
+    if (!link) return;
+    const href = link.getAttribute("href") || "";
+
+    if (href.startsWith("mailto:")) {
+      window.track("contact_click", { method: "email", link_url: href });
+    } else if (link.dataset.track === "book-call") {
+      window.track("contact_click", { method: "booking", link_url: href });
+    } else if (href.endsWith("/resume.pdf")) {
+      window.track("resume_download", { link_url: href });
+    }
+  });
 </script>

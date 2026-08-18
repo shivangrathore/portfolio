@@ -5,9 +5,23 @@ export const BASE_URL = "https://shivangrathore.com";
 
 export const GITHUB_URL = "https://github.com/shivangrathore";
 export const LINKEDIN_URL = "https://www.linkedin.com/in/shivangrathore";
+export const X_URL = "https://x.com/wiper_dev";
+export const X_HANDLE = "@wiper_dev";
 export const MAIL_ADDRESS = "hello@shivangrathore.com";
 
 export const GA_ID = "G-QJ71GZCPK6";
+
+/**
+ * Search engine ownership tokens. Both render a meta tag only once set, so an
+ * empty string is safe to ship.
+ *
+ * Google: Search Console -> Add property (URL prefix, https://shivangrathore.com)
+ *   -> HTML tag. Paste only the `content` value here, not the whole tag.
+ * Bing: Webmaster Tools -> Add site -> HTML Meta Tag, or import from Google,
+ *   which skips this entirely.
+ */
+export const GOOGLE_SITE_VERIFICATION = "";
+export const BING_SITE_VERIFICATION = "";
 
 /**
  * Cal.com (or similar) booking link. Leave empty until it exists: the CTA

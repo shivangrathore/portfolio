@@ -4,6 +4,7 @@ import {
   SITE_DESCRIPTION,
   GITHUB_URL,
   LINKEDIN_URL,
+  X_URL,
   MAIL_ADDRESS,
 } from "./constants";
 
@@ -29,7 +30,7 @@ export const person = {
   jobTitle: "Full-stack Engineer",
   description: SITE_DESCRIPTION,
   email: `mailto:${MAIL_ADDRESS}`,
-  sameAs: [GITHUB_URL, LINKEDIN_URL],
+  sameAs: [GITHUB_URL, LINKEDIN_URL, X_URL],
   knowsAbout: [
     "Go",
     "PostgreSQL",

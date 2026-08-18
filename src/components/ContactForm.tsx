@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Send } from "lucide-react";
 import { CONTACT_FORM_URL, CONTACT_FORM_FIELDS } from "@/lib/constants";
 import { buttonClass } from "@/lib/button";
+import { track } from "@/lib/analytics";
 
 const PROJECT_TYPES = [
   "Idea to MVP",
@@ -95,9 +96,17 @@ export default function ContactForm() {
         mode: "no-cors",
       });
       setStatus("ok");
+      // The qualifying answers ride along so GA4 can separate a $15k+ enquiry
+      // from someone just exploring. No name, email or message is ever sent.
+      track("generate_lead", {
+        project_type: data.projectType || "unanswered",
+        budget: data.budget || "unanswered",
+        timeline: data.timeline || "unanswered",
+      });
       reset();
     } catch {
       setStatus("error");
+      track("form_error", { form: "contact" });
     }
   };
 
