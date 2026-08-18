@@ -1,9 +1,9 @@
 ---
 title: "The Timezone Bug That Skipped a Month of Invoices"
 description: "Daylight saving started, and every account that onboarded on the 1st of the month stopped being charged for it. The bug, why the tests passed, the fix (civil dates), and the part nobody writes about: cleaning up the wrong rows afterwards."
-pubDate: "2026-08-25"
+pubDate: "2026-08-18"
 tags: ["Backend", "Billing", "Postgres", "Go", "Timezones", "Incident"]
-draft: true
+draft: false
 ---
 
 The billing engine had a good test suite. Pure functions, table-driven cases, no clock, no database. It stayed green through the whole incident.
@@ -222,19 +222,28 @@ The cleanup rule I'd follow again:
 2. **Write the deletion as a guarded statement, not a fixup script.** Bound it to the exact victim set and nothing else:
 
 ```sql
--- Cycles wrongly closed as skipped during the BST window. Bounded by status,
--- by date range, and by the absence of an invoice — a skipped cycle that
--- somehow has a Stripe invoice is NOT part of this incident and must survive.
-DELETE FROM billing_cycles
+-- Victim set: cycles wrongly closed as skipped inside the affected window.
+-- Bounded four ways — by status, by the window (from the clock change that
+-- exposed the bug, to the day the fix deployed), and by the absence of an
+-- invoice. A skipped cycle that somehow HAS an invoice is not part of this
+-- incident and must survive.
+CREATE TABLE billing_cycles_incident_archive AS
+SELECT * FROM billing_cycles
 WHERE status = 'skipped'
-  AND period_start >= DATE '2026-03-29'
-  AND period_start <  DATE '2026-05-01'
+  AND period_start >= :dst_change_date     -- when the offset shifted
+  AND period_start <  :fix_deployed_on     -- when it stopped being produced
   AND stripe_invoice_id IS NULL
   AND total_pence = 0;
+
+-- Read the count. Then delete exactly what you archived, by id.
+DELETE FROM billing_cycles
+WHERE id IN (SELECT id FROM billing_cycles_incident_archive);
 ```
 
-3. **Run the `SELECT` first and read the count.** If the number doesn't match your estimate, your `WHERE` clause is wrong, not your estimate.
-4. **Disable the manual triggers while you work.** There was an internal "check billing now" button that could close a cycle out of band. It went behind a flag until the cleanup landed. Anything that can write to the table you're repairing gets turned off first.
+3. **Archive before you delete, then delete by id.** Copying the victim set into a table first gives you the count, the evidence, and the undo. Deleting by the archived ids — rather than re-running the predicate — means the two statements can't disagree if something writes between them.
+
+4. **Read the count before running the delete.** If the number doesn't match your estimate, your `WHERE` clause is wrong, not your estimate. The archive table makes that check free.
+5. **Disable the manual triggers while you work.** There was an internal "check billing now" button that could close a cycle out of band. It went behind a flag until the cleanup landed. Anything that can write to the table you're repairing gets turned off first.
 
 Data cleanup after a billing bug is genuinely irreversible work, and it's the step where a calm engineer causes more damage than the original bug. Bound the statement, count the rows, keep a copy.
 
