@@ -40,6 +40,13 @@ export const CONTACT_FORM_FIELDS = {
   email: "entry.954503115",
   subject: "entry.1862102079",
   message: "entry.1927721418",
+  // Optional on the site, so they must stay optional on the Google Form too.
+  // A required question that arrives empty makes Google reject the whole
+  // submission, and the no-cors post cannot see the rejection: the visitor
+  // reads "Sent" and the lead is gone.
+  projectType: "entry.1003593163",
+  budget: "entry.2134409229",
+  timeline: "entry.1019092497",
 } as const;
 
 export const NAV_ITEMS = [

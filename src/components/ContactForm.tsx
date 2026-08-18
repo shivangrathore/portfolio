@@ -73,22 +73,17 @@ export default function ContactForm() {
 
   const onSubmit = async (data: FormValues) => {
     setStatus("idle");
-    // The linked Google Form only has four fields, so the qualifying answers
-    // ride along at the top of the message rather than needing new entry ids.
-    // Blank answers are left out entirely instead of arriving as empty labels.
-    const answered = [
-      data.projectType && `Project type: ${data.projectType}`,
-      data.budget && `Budget: ${data.budget}`,
-      data.timeline && `Timeline: ${data.timeline}`,
-    ].filter(Boolean);
-    const body = answered.length
-      ? [...answered, "", data.message].join("\n")
-      : data.message;
+    // Each qualifying answer now has its own question on the form, so they
+    // arrive as their own columns and leads can be sorted by budget rather
+    // than read one message at a time.
     const formData = new FormData();
     formData.append(CONTACT_FORM_FIELDS.name, data.name);
     formData.append(CONTACT_FORM_FIELDS.email, data.email);
     formData.append(CONTACT_FORM_FIELDS.subject, data.subject);
-    formData.append(CONTACT_FORM_FIELDS.message, body);
+    formData.append(CONTACT_FORM_FIELDS.message, data.message);
+    formData.append(CONTACT_FORM_FIELDS.projectType, data.projectType);
+    formData.append(CONTACT_FORM_FIELDS.budget, data.budget);
+    formData.append(CONTACT_FORM_FIELDS.timeline, data.timeline);
     try {
       await fetch(CONTACT_FORM_URL, {
         body: formData,
