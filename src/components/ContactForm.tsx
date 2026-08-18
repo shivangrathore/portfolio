@@ -17,11 +17,13 @@ const PROJECT_TYPES = [
   "Something else",
 ] as const;
 
+// Bands start where the published service floors start, so the form does not
+// invite a budget the services page has already ruled out.
 const BUDGETS = [
-  "Under $2k",
-  "$2k to $5k",
-  "$5k to $15k",
-  "$15k+",
+  "Under $5k",
+  "$5k to $10k",
+  "$10k to $20k",
+  "$20k+",
   "Not sure yet",
 ] as const;
 
