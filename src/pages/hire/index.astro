@@ -1,0 +1,68 @@
+---
+import Base from "@/layouts/Base.astro";
+import Icon from "@/components/icons/Icon.astro";
+import Cta from "@/components/Cta.astro";
+import { landings } from "@/lib/landings";
+import { abs, breadcrumbs } from "@/lib/schema";
+
+const description =
+  "Hire a freelance Go and Next.js developer. Startup MVPs, Go backends and full-stack product builds, scoped as fixed milestones with code you own.";
+---
+
+<Base
+  title="Hire Me"
+  description={description}
+  schema={[
+    breadcrumbs([{ name: "Hire", path: "/hire" }]),
+    {
+      "@type": "CollectionPage",
+      "@id": `${abs("/hire/")}#page`,
+      url: abs("/hire/"),
+      name: "Hire Shivang Rathore",
+      description,
+      hasPart: landings.map((l) => ({
+        "@type": "Service",
+        "@id": `${abs(`/hire/${l.slug}/`)}#service`,
+        name: l.heading,
+        url: abs(`/hire/${l.slug}/`),
+      })),
+    },
+  ]}
+>
+  <div class="mx-auto max-w-3xl px-5 py-16">
+    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Hire me</h1>
+    <p class="mt-3 max-w-xl text-muted">
+      Three ways people usually bring me in. Each page covers what the work
+      includes, where I have done it before, and when I am the wrong person for
+      it. If none of them match, the
+      <a href="/services" class="link">full service list</a> probably does.
+    </p>
+
+    <div class="mt-10 grid gap-4">
+      {
+        landings.map((landing) => (
+          <a
+            href={`/hire/${landing.slug}`}
+            class="group rounded-xl border border-border bg-surface/40 p-6 transition-colors hover:border-accent/50"
+          >
+            <p class="font-mono text-xs uppercase tracking-wider text-accent">
+              {landing.eyebrow}
+            </p>
+            <h2 class="mt-2.5 text-lg font-semibold tracking-tight group-hover:text-accent">
+              {landing.heading}
+            </h2>
+            <p class="mt-1.5 text-sm leading-relaxed text-muted">
+              {landing.intro}
+            </p>
+            <span class="mt-4 inline-flex items-center gap-1.5 text-sm text-muted group-hover:text-accent">
+              What this includes
+              <Icon name="arrow-right" class="size-3.5" />
+            </span>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+
+  <Cta />
+</Base>

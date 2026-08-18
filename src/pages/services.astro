@@ -3,6 +3,7 @@ import Base from "@/layouts/Base.astro";
 import Icon from "@/components/icons/Icon.astro";
 import Cta from "@/components/Cta.astro";
 import { services, process, faqs } from "@/lib/services";
+import { landings } from "@/lib/landings";
 import { abs, breadcrumbs } from "@/lib/schema";
 
 const description =
@@ -113,6 +114,37 @@ const schema = [
           </article>
         ))
       }
+    </div>
+  </section>
+
+  <!-- Deeper pages for the three things people hire me for most -->
+  <section class="mx-auto max-w-3xl px-5 pt-8">
+    <div class="rounded-xl border border-border bg-surface/40 p-6 sm:p-7">
+      <h2 class="text-lg font-semibold tracking-tight">
+        Hiring for something specific?
+      </h2>
+      <p class="mt-2 max-w-xl text-sm leading-relaxed text-muted">
+        These three go further: what the work includes, where I have done it
+        before, and when I am the wrong person for it.
+      </p>
+      <ul class="mt-5 grid gap-2.5">
+        {
+          landings.map((landing) => (
+            <li>
+              <a
+                href={`/hire/${landing.slug}`}
+                class="group inline-flex items-center gap-2 text-sm text-fg hover:text-accent"
+              >
+                {landing.heading}
+                <Icon
+                  name="arrow-right"
+                  class="size-3.5 text-faint transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
+                />
+              </a>
+            </li>
+          ))
+        }
+      </ul>
     </div>
   </section>
 

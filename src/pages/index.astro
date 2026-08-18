@@ -10,6 +10,7 @@ import Icon from "@/components/icons/Icon.astro";
 import { GITHUB_URL, NAV_ITEMS } from "@/lib/constants";
 import { abs } from "@/lib/schema";
 import { services } from "@/lib/services";
+import { landings } from "@/lib/landings";
 import { experience } from "@/lib/experience";
 import { formatDate } from "@/lib/utils";
 
@@ -147,6 +148,19 @@ const writing = [
         ))
       }
     </div>
+    <p class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-faint">
+      <span>Hiring for something specific?</span>
+      {
+        landings.map((landing, i) => (
+          <>
+            {i > 0 && <span aria-hidden="true">·</span>}
+            <a href={`/hire/${landing.slug}`} class="text-muted hover:text-accent">
+              {landing.eyebrow}
+            </a>
+          </>
+        ))
+      }
+    </p>
   </section>
 
   <!-- Selected work -->

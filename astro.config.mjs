@@ -36,6 +36,10 @@ const LASTMOD = contentLastmod();
 const PRIORITY = [
   [/^\/$/, 1.0, "weekly"],
   [/^\/(services|contact)\/$/, 0.9, "monthly"],
+  // Buyer-intent landing pages: the entry points for search, so they rank
+  // alongside /services rather than below the blog.
+  [/^\/hire\/.+/, 0.9, "monthly"],
+  [/^\/hire\/$/, 0.8, "monthly"],
   [/^\/(work|blog|case-studies)\/$/, 0.9, "weekly"],
   [/^\/about\/$/, 0.7, "monthly"],
   [/^\/(blog|case-studies)\/.+/, 0.8, "monthly"],
