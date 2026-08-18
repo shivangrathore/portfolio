@@ -1,7 +1,7 @@
 ---
-import "@fontsource-variable/geist";
-import "@fontsource-variable/geist-mono";
+import "@/styles/fonts.css";
 import "@/styles/global.css";
+import geistLatin from "@/assets/fonts/geist-latin-wght-normal.woff2?url";
 import {
   SITE_TITLE,
   GA_ID,
@@ -39,6 +39,21 @@ const jsonLd = graph(schema);
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<!--
+  Every headline on the site is set in this file. Without the preload the
+  browser cannot even discover it until the stylesheet has downloaded and
+  parsed, which on a slow connection is two round trips of the largest text
+  on the page rendered in a fallback face. crossorigin is required even
+  same-origin: fonts are fetched in CORS mode, and a preload without it
+  fetches a second copy.
+-->
+<link
+  rel="preload"
+  as="font"
+  type="font/woff2"
+  href={geistLatin}
+  crossorigin
+/>
 <link rel="sitemap" href="/sitemap-index.xml" />
 <link
   rel="alternate"
@@ -89,18 +104,47 @@ const jsonLd = graph(schema);
   set:html={JSON.stringify(jsonLd)}
 />
 
-<!-- Google Analytics -->
-<script
-  is:inline
-  async
-  src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}></script>
+<!--
+  Google Analytics, loaded once the page is idle rather than during first
+  paint. On a slow connection the tag was competing with the stylesheet and
+  the font for the same few hundred kilobits, which is a bad trade for data
+  nobody reads in real time.
+
+  gtag is defined immediately and events queue in dataLayer, so anything
+  fired before the tag arrives is sent the moment it does. A visitor who
+  clicks something straight away triggers the load early, so quick bounces
+  still get counted.
+-->
 <script is:inline define:vars={{ GA_ID }}>
   window.dataLayer = window.dataLayer || [];
   function gtag() {
     dataLayer.push(arguments);
   }
+  window.gtag = gtag;
   gtag("js", new Date());
   gtag("config", GA_ID);
+
+  function loadGa() {
+    if (window.__gaRequested) return;
+    window.__gaRequested = true;
+    var tag = document.createElement("script");
+    tag.async = true;
+    tag.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+    document.head.appendChild(tag);
+  }
+
+  var whenIdle =
+    window.requestIdleCallback ||
+    function (fn) {
+      setTimeout(fn, 1200);
+    };
+
+  if (document.readyState === "complete") whenIdle(loadGa);
+  else window.addEventListener("load", function () { whenIdle(loadGa); });
+
+  ["pointerdown", "keydown"].forEach(function (event) {
+    window.addEventListener(event, loadGa, { once: true, passive: true });
+  });
 </script>
 
 <!--

@@ -48,6 +48,13 @@ const PRIORITY = [
 // https://astro.build/config
 export default defineConfig({
   site: "https://shivangrathore.com",
+  build: {
+    // One stylesheet, ~7KB over the wire, needed before anything paints.
+    // Inlining it trades a little repeat-visit caching for one fewer round
+    // trip on the first view, which is the view that decides whether someone
+    // on mobile data stays.
+    inlineStylesheets: "always",
+  },
   integrations: [
     mdx(),
     react(),
