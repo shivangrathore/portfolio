@@ -4,7 +4,14 @@ import ContactForm from "@/components/ContactForm.tsx";
 import Github from "@/components/icons/Github.astro";
 import Linkedin from "@/components/icons/Linkedin.astro";
 import Icon from "@/components/icons/Icon.astro";
-import { GITHUB_URL, LINKEDIN_URL, MAIL_ADDRESS } from "@/lib/constants";
+import Button from "@/components/Button.astro";
+import {
+  GITHUB_URL,
+  LINKEDIN_URL,
+  MAIL_ADDRESS,
+  BOOKING_URL,
+  BOOKING_LENGTH,
+} from "@/lib/constants";
 import { abs, breadcrumbs } from "@/lib/schema";
 
 const methods = [
@@ -72,6 +79,38 @@ const lookingFor = [
       budget looks like. I reply within 24 hours, and if I am not the right
       person I will say so and point you somewhere better.
     </p>
+
+    <!--
+      Booking sits above the form because it converts the buyers who are
+      furthest along: a serious client wants a slot, not a wait for a reply.
+      The form stays for everyone who would rather write it down first.
+    -->
+    {
+      BOOKING_URL && (
+        <div class="mt-8 rounded-xl border border-accent/30 bg-surface/40 p-6 sm:flex sm:items-center sm:justify-between sm:gap-6">
+          <div>
+            <h2 class="font-semibold tracking-tight">
+              Rather talk it through?
+            </h2>
+            <p class="mt-1.5 max-w-md text-sm leading-relaxed text-muted">
+              Pick a {BOOKING_LENGTH} slot that suits you. No charge, no pitch,
+              and you leave knowing whether this is worth doing.
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            href={BOOKING_URL}
+            target="_blank"
+            rel="noopener"
+            data-track="book-call"
+            class="mt-4 shrink-0 sm:mt-0"
+          >
+            <Icon name="calendar" class="size-4" />
+            Book a call
+          </Button>
+        </div>
+      )
+    }
 
     <!-- Direct channels: compact row -->
     <div class="mt-8 flex flex-wrap gap-3">

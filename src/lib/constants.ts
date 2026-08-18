@@ -24,10 +24,12 @@ export const GOOGLE_SITE_VERIFICATION = "";
 export const BING_SITE_VERIFICATION = "";
 
 /**
- * Cal.com (or similar) booking link. Leave empty until it exists: the CTA
- * falls back to the contact form rather than rendering a dead button.
+ * Cal.com booking link. Leave empty to fall the CTA back to the contact form
+ * rather than render a dead button.
  */
-export const BOOKING_URL = "";
+export const BOOKING_URL = "https://cal.com/shivangrathore/30min";
+/** Kept next to the link so the copy and the actual slot cannot drift apart. */
+export const BOOKING_LENGTH = "30-minute";
 
 /** Shown under every CTA. Keep it true, and update it when it stops being true. */
 export const AVAILABILITY = "Available now · one project at a time";

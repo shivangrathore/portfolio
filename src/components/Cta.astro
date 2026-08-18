@@ -1,7 +1,7 @@
 ---
 import Button from "@/components/Button.astro";
 import Icon from "@/components/icons/Icon.astro";
-import { BOOKING_URL, AVAILABILITY } from "@/lib/constants";
+import { BOOKING_URL, BOOKING_LENGTH, AVAILABILITY } from "@/lib/constants";
 
 interface Props {
   /** Overrides for pages that need a more specific ask. */
@@ -16,7 +16,7 @@ const booking = BOOKING_URL.length > 0;
 
 const {
   heading = booking
-    ? "Most projects start with a 20-minute call"
+    ? `Most projects start with a ${BOOKING_LENGTH} call`
     : "Tell me what you are building",
   body = "Send the problem, the deadline and roughly what the budget looks like. You get an honest read on whether I am the right person, a rough timeline, and a price range. If I am not a fit I will say so and point you somewhere better.",
   class: className,
@@ -40,7 +40,7 @@ const {
               data-track="book-call"
             >
               <Icon name="calendar" class="size-4" />
-              Book a 20-minute call
+              Book a {BOOKING_LENGTH} call
             </Button>
             <Button href="/contact">Send details instead</Button>
           </>
