@@ -3,6 +3,7 @@ import BaseHead from "@/components/BaseHead.astro";
 import Nav from "@/components/Nav.astro";
 import Footer from "@/components/Footer.astro";
 import { SITE_TITLE, SITE_DESCRIPTION } from "@/lib/constants";
+import { ogImageFor } from "@/lib/og";
 
 interface Props {
   title?: string;
@@ -20,6 +21,10 @@ const {
   schema,
 } = Astro.props;
 
+// Each page gets the card generated for its own route. Pages without one (the
+// homepage, 404) fall through to the static /og.png in BaseHead.
+const ogImage = image ?? (await ogImageFor(Astro.url.pathname));
+
 // The homepage previously titled itself "Shivang Rathore", which targets one
 // query: your own name. The tagline is what someone searching for the service
 // actually types.
@@ -34,7 +39,7 @@ const fullTitle = title
     <BaseHead
       title={fullTitle}
       description={description}
-      image={image}
+      image={ogImage}
       type={type}
       schema={schema}
     />
