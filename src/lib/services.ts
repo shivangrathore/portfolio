@@ -113,7 +113,7 @@ export const process = [
   {
     step: "Call",
     detail:
-      "30 minutes to understand the problem, the constraints and the deadline. No charge, no pitch.",
+      "20 minutes to understand the problem, the constraints and the deadline. No charge, no pitch.",
   },
   {
     step: "Proposal",
