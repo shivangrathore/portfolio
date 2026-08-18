@@ -1,0 +1,253 @@
+---
+title: "The Timezone Bug That Skipped a Month of Invoices"
+description: "Daylight saving started, and every account that onboarded on the 1st of the month stopped being charged for it. The bug, why the tests passed, the fix (civil dates), and the part nobody writes about: cleaning up the wrong rows afterwards."
+pubDate: "2026-08-25"
+tags: ["Backend", "Billing", "Postgres", "Go", "Timezones", "Incident"]
+draft: true
+---
+
+The billing engine had a good test suite. Pure functions, table-driven cases, no clock, no database. It stayed green through the whole incident.
+
+At the end of March, accounts that had been onboarded on the 1st of a month stopped being charged for their devices. Not all accounts. Not all devices. Just the ones whose billing start date landed exactly on a period boundary — which, since most accounts are set up on the 1st, was a lot of them.
+
+The cause was one hour. Here's the whole thing, because the general lesson is worth more than the specific fix.
+
+## Contents
+
+- [What the engine does](#what-the-engine-does)
+- [The hour](#the-hour)
+- [Why the tests passed](#why-the-tests-passed)
+- [The fix: civil dates are a type](#the-fix-civil-dates-are-a-type)
+- [Where the boundary belongs](#where-the-boundary-belongs)
+- [Cleaning up: the part nobody writes about](#cleaning-up-the-part-nobody-writes-about)
+- [The rules I'd hand to my past self](#the-rules-id-hand-to-my-past-self)
+
+## What the engine does
+
+Short recap of the shape (the long version is in [Don't Use Stripe Subscriptions](/blog/billing-without-stripe-subscriptions)): the customer is charged per active device per month. Base fee is charged **in advance** for every device that's billable on the first day of the period. Devices added partway through are prorated and charged **in arrears** on the next cycle.
+
+So every device gets classified into one of two buckets, and the classifier is one comparison:
+
+```go
+case !effectiveOn.After(periodStart):
+	// billable entering the period → advance base
+	billableAtStart = e.Event == Activated
+
+case !effectiveOn.After(periodEnd):
+	// mid-period addition → prorated, next cycle
+	...
+```
+
+`effectiveOn <= periodStart` means the device was already there. Simple, and correct as long as both sides of that `<=` mean the same thing.
+
+They didn't.
+
+## The hour
+
+The two values arrive from different places, in different locations:
+
+**`periodStart`** is computed by the close job, anchored in the business's timezone. UK-only product, so `Europe/London`:
+
+```go
+london, _ := time.LoadLocation("Europe/London")
+periodStart := time.Date(2026, 4, 1, 0, 0, 0, 0, london)
+```
+
+**`effectiveOn`** is read from a `date` column. The driver hands you a `time.Time` at **UTC midnight**, because a `date` has no timezone and UTC is the sane default for materialising one.
+
+```go
+effectiveOn := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+```
+
+Both of those "are" the 1st of April. As instants, from late March to late October, they are not:
+
+```
+periodStart  = 2026-04-01 00:00 BST = 2026-03-31 23:00 UTC
+effectiveOn  = 2026-04-01 00:00 UTC
+```
+
+`effectiveOn` is one hour **after** `periodStart`. So `!effectiveOn.After(periodStart)` is false, and a device that was plainly there on day one gets classified as a mid-period addition. It drops out of the advance base for that period. It's prorated instead — from the 1st, for the whole period, so the *amount* is nearly identical — but it's now charged on the following cycle rather than this one.
+
+The visible symptom was that the advance base fee shrank to near zero for affected accounts, and the money arrived a month late in a differently-shaped line item.
+
+Under GMT, `periodStart` and `effectiveOn` are the same instant and the comparison is exactly right. The bug was dormant from October to March. It shipped in winter and detonated at 01:00 on the last Sunday in March.
+
+## Why the tests passed
+
+This is the part I want to dwell on, because "add a test" is not the lesson.
+
+Every test constructed both sides the same way:
+
+```go
+periodStart := date(2026, 4, 1)   // helper → UTC midnight
+activated   := date(2026, 4, 1)   // same helper → UTC midnight
+```
+
+Same helper, same location, so the comparison behaved. The tests were a faithful model of the function and a completely unfaithful model of the caller. The production caller built one side in London and the other came out of the database in UTC, and nothing in the test suite could see that seam because the seam wasn't inside the function under test.
+
+A pure function with a great test suite can still be wrong about its **inputs' representation**. Purity buys you determinism, not agreement about what a value means.
+
+The regression test I eventually wrote is the one that would have caught it, and it looks deliberately awkward:
+
+```go
+// Regression: when the caller anchors periodStart in Europe/London (as the
+// close job does) and effective_on loads from a DATE column as UTC midnight,
+// a device activated ON the period start must still count as from-start.
+// Before the fix, the BST offset made effective_on "after" periodStart and
+// the device silently dropped out of the advance base.
+func TestBillableDays_PeriodStartInLondon_DuringBST(t *testing.T) {
+	london, err := time.LoadLocation("Europe/London")
+	if err != nil {
+		t.Skipf("Europe/London tz unavailable: %v", err)
+	}
+
+	periodStart := time.Date(2026, 4, 1, 0, 0, 0, 0, london)
+	periodEnd   := time.Date(2026, 4, 30, 0, 0, 0, 0, london)
+	events := []BillingEvent{{
+		Event:       Activated,
+		EffectiveOn: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC), // DATE column
+	}}
+
+	days, fromStart := billableDaysForDevice(events, periodStart, periodEnd)
+
+	if !fromStart {
+		t.Fatal("device activated on period start must bill from start")
+	}
+	if days != 30 {
+		t.Fatalf("want 30 days, got %d", days)
+	}
+}
+```
+
+Mixed locations, on purpose, because that's what production does. If your test helpers normalise everything to one location, they normalise away the only bug in this class.
+
+## The fix: civil dates are a type
+
+The instinct is to convert everything to UTC. That's wrong too — it just moves the boundary. `2026-04-01 00:00 BST` in UTC is `2026-03-31 23:00`, whose *date* is the 31st of March. Convert consistently to UTC and now the period starts in the previous month.
+
+The actual fix is to admit there are two different types here and stop passing one where the other belongs.
+
+An **instant** is a point on the universal timeline. "The invoice was emailed at 14:32:07Z." Ordering is global, arithmetic is in seconds, and storing it as `timestamptz` is right.
+
+A **civil date** is a label on a calendar. "The period starts on the 1st of April." It has no time and no offset. It is the same date for everyone looking at that calendar, and subtracting two of them gives you days, not hours.
+
+Billing runs entirely on civil dates. The only step that involves an instant is *deciding which civil date it is right now*, which happens once, at the edge:
+
+```go
+// civilDate reduces a timestamp to its calendar date at UTC midnight, using
+// the wall-clock Y/M/D in the value's OWN location.
+//
+// Billing boundaries and ledger events are calendar-date concepts but arrive
+// as time.Time in different locations: periodStart is anchored in
+// Europe/London (during BST its instant is 23:00 the previous UTC day), while
+// effective_on loads from a DATE column as UTC midnight. Comparing those raw
+// instants misclassifies a device activating exactly on the period start.
+// Normalising both sides to the same representation keeps every comparison
+// strictly by-day, independent of the caller's timezone.
+func civilDate(t time.Time) time.Time {
+	y, m, d := t.Date()                                 // wall clock, own location
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)     // canonical carrier
+}
+```
+
+Two lines. The first reads the calendar as the value itself sees it. The second parks it at a canonical representation so that any two civil dates are comparable with `==`, `Before`, `After` and subtract to whole days.
+
+Then normalise at the top of the policy function, once, so no caller can get it wrong:
+
+```go
+func billableDaysForDevice(
+	events []BillingEvent,
+	periodStart, periodEnd time.Time,
+) (days int, fromStart bool) {
+	periodStart = civilDate(periodStart)
+	periodEnd = civilDate(periodEnd)
+	// every event's EffectiveOn goes through civilDate too
+	...
+}
+```
+
+`time.Time` is doing the job of two types and the compiler can't help you. A dedicated `type CivilDate struct{ Y int; M time.Month; D int }` would let it, and if I were starting over I would. Normalising at the boundary is the version you can retrofit into a live system on a Friday.
+
+## Where the boundary belongs
+
+The other half of the fix is deciding *which day it is* in exactly one place.
+
+A daily cron fires at some UTC hour. Whether that instant is "the 1st" depends on where you stand. In London during BST, `2026-04-01 00:30 BST` is `2026-03-31 23:30 UTC`, and a job asking `time.Now().UTC().Day()` will confidently tell you it's the 31st and skip the run.
+
+So the job resolves the civil date once, in the business's timezone, and everything downstream takes it as a parameter:
+
+```go
+// Evaluate the billing day in Europe/London, not UTC: the billing day is a
+// calendar-date concept, and during BST the UTC day rolls over an hour late.
+today := civilDate(now.In(billing.London()))
+
+accounts, err := s.repo.AccountsDueOn(ctx, today)
+```
+
+The same rule applies in SQL. Any query that buckets by day has to say which calendar it means:
+
+```sql
+WHERE (t.scheduled_start_at AT TIME ZONE 'Europe/London')::date = $1
+```
+
+Not `t.scheduled_start_at::date`, which silently means "the UTC day" and puts a 23:30 booking in yesterday.
+
+And the location itself gets loaded once, defensively, because a scratch container without tzdata should not take billing down:
+
+```go
+var londonLoc = func() *time.Location {
+	loc, err := time.LoadLocation("Europe/London")
+	if err != nil {
+		return time.UTC // never panic in the billing path
+	}
+	return loc
+}()
+```
+
+Falling back to UTC reintroduces the one-hour skew in an environment missing its timezone database. That's a bad day, but a much better bad day than a boot loop in the job that takes the money.
+
+## Cleaning up: the part nobody writes about
+
+Shipping the fix is maybe a fifth of the work. The rest is the rows the bug already wrote.
+
+By the time it was found, the engine had produced cycles that were wrong in two distinct ways, and they needed different treatment:
+
+**Cycles that undercharged.** The advance base was near zero because every device was misclassified. Not corrupt data exactly — the ledger was right, the classification was wrong. Since the arrears path picked the money up the following month, these mostly self-healed and were left alone. Correcting them would have double-charged.
+
+**Cycles marked `skipped`.** These are the dangerous ones. An account whose entire base dropped out could close with nothing to charge, and the job recorded `skipped`. That's a real state with real meaning ("this account owed nothing this period"), and now it was recording a lie. Left in place, those rows would suppress future work and confuse every revenue report downstream.
+
+The cleanup rule I'd follow again:
+
+1. **Deploy the fix first, then clean up.** Deleting bad rows while the generator is still running gets you a fresh batch by morning.
+2. **Write the deletion as a guarded statement, not a fixup script.** Bound it to the exact victim set and nothing else:
+
+```sql
+-- Cycles wrongly closed as skipped during the BST window. Bounded by status,
+-- by date range, and by the absence of an invoice — a skipped cycle that
+-- somehow has a Stripe invoice is NOT part of this incident and must survive.
+DELETE FROM billing_cycles
+WHERE status = 'skipped'
+  AND period_start >= DATE '2026-03-29'
+  AND period_start <  DATE '2026-05-01'
+  AND stripe_invoice_id IS NULL
+  AND total_pence = 0;
+```
+
+3. **Run the `SELECT` first and read the count.** If the number doesn't match your estimate, your `WHERE` clause is wrong, not your estimate.
+4. **Disable the manual triggers while you work.** There was an internal "check billing now" button that could close a cycle out of band. It went behind a flag until the cleanup landed. Anything that can write to the table you're repairing gets turned off first.
+
+Data cleanup after a billing bug is genuinely irreversible work, and it's the step where a calm engineer causes more damage than the original bug. Bound the statement, count the rows, keep a copy.
+
+## The rules I'd hand to my past self
+
+**Instants and civil dates are different types.** One is a point on the timeline, the other is a label on a calendar. If your language makes them the same type, normalise at every boundary and write the reason in a comment, because the next person will "simplify" it otherwise.
+
+**Never compare a `date` column to a zoned timestamp.** The database gives you UTC midnight, your code gives you local midnight, and for seven months a year those differ. This one comparison is the whole bug.
+
+**Decide "what day is it" once, at the edge, in the business's timezone.** Pass the answer down. A function that reaches for `time.Now()` in the middle of a policy is untestable and, worse, unstable across a DST boundary.
+
+**In SQL, always say which calendar you mean.** `AT TIME ZONE 'Europe/London'` before `::date`, every time.
+
+**Test with mismatched locations.** Helpers that build both sides of a comparison identically are a comfort, not a check. The bug lives in the seam between two callers, so at least one test must reproduce that seam.
+
+**Assume the bug is dormant, not absent.** This code was correct for five months. Anything involving offsets has a season. Once a year, in the last week of March, is exactly when you should be reading your date-comparison code.

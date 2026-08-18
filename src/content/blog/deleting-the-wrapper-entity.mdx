@@ -1,0 +1,219 @@
+---
+title: "Deleting the Entity That Was Just a Wrapper"
+description: "One table existed only to hold a single child row, and every query in the domain joined through it. How to prove an entity is a wrapper, how to remove it without downtime, and the relationship-ownership rule that stops you creating the next one."
+pubDate: "2026-09-29"
+tags: ["Backend", "Postgres", "Refactoring", "Data Modelling", "Architecture"]
+draft: true
+---
+
+The table was called `work_orders`. It represented "a piece of work sent to a service provider", and underneath it hung the tasks that made up that work.
+
+The design was reasonable: one work order, many tasks. A batch of jobs, sent together, tracked together.
+
+Two years of production data said otherwise. Nearly every work order had exactly one task. Users never thought in work orders — they thought in tasks, and the UI showed tasks. But every query in the domain joined through the work order to get anywhere, every new feature had to decide which of the two levels it belonged on, and half the columns existed in both places with a comment explaining which one won.
+
+It was a wrapper. Here's how to prove it, how to remove it while the system stays up, and the modelling rule that stops you building the next one.
+
+## Contents
+
+- [Proving it, not feeling it](#proving-it-not-feeling-it)
+- [The rule that creates wrappers](#the-rule-that-creates-wrappers)
+- [Relationship ownership](#relationship-ownership)
+- [The removal, in six steps](#the-removal-in-six-steps)
+- [The things attached to the wrapper](#the-things-attached-to-the-wrapper)
+- [Links you already sent](#links-you-already-sent)
+- [When the wrapper is real](#when-the-wrapper-is-real)
+
+## Proving it, not feeling it
+
+"This table feels pointless" is not a mandate to delete a table. Two queries turn the feeling into a decision.
+
+**The cardinality distribution.** If a one-to-many is really one-to-one, the data says so:
+
+```sql
+SELECT child_count, count(*) AS work_orders
+FROM (
+  SELECT wo.id, count(t.id) AS child_count
+  FROM work_orders wo
+  LEFT JOIN maintenance_tasks t ON t.work_order_id = wo.id
+  GROUP BY wo.id
+) x
+GROUP BY child_count
+ORDER BY child_count;
+```
+
+```
+ child_count | work_orders
+-------------+-------------
+           0 |         214
+           1 |       18402
+           2 |          51
+           3 |           6
+```
+
+That's the shape of a wrapper: a dominant `1`, a long thin tail, and — note this — a couple of hundred rows with *zero* children, which are pure overhead that exist because something created a header and then failed before creating its content.
+
+If the distribution had been a real spread, the entity would be real and this post wouldn't exist. Run the query before you argue.
+
+**The column overlap.** List the columns on both tables and mark the ones that mean the same thing. Ours had status, scheduled date, assigned provider, notes, and cost fields on *both*, with a rule (undocumented, of course) about which one the UI displayed. Duplicated columns across a parent and child are the strongest signal that the parent isn't modelling anything of its own — it's just a place people put things when they weren't sure which level owned them.
+
+The third piece of evidence is qualitative but decisive: **can users name it?** Ours couldn't. There was no screen called Work Orders, no filter, no report. It existed entirely inside SQL.
+
+## The rule that creates wrappers
+
+Wrappers get created by a specific, well-intentioned instinct: *"eventually you'll want to group several of these together."*
+
+Sometimes true. But the cost of the grouping level is paid every day, by every query and every developer, while the benefit arrives only if the grouping is real. And if it never arrives, you have a mandatory join and a two-level model where a one-level model would do.
+
+The cheap alternative, when you suspect grouping might matter later: **build the flat thing, add a nullable `group_id` when grouping actually shows up.** Adding a grouping table later is one migration and a backfill. Removing one — as the rest of this post demonstrates — is a fortnight.
+
+## Relationship ownership
+
+The other half of why this table was painful is a modelling rule I now apply everywhere:
+
+> **The many side owns the foreign key. Always.**
+
+That sounds obvious until you see the shape it prevents. The alternative — FK columns on the parent pointing at children — turns up constantly:
+
+```sql
+-- The shape to refuse
+CREATE TABLE work_orders (
+  id                bigserial PRIMARY KEY,
+  inspection_task_id bigint REFERENCES tasks(id),
+  repair_task_id     bigint REFERENCES tasks(id),
+  invoice_id         bigint REFERENCES invoices(id),
+  ...
+);
+```
+
+Every column there is a modelling decision frozen at its current multiplicity. The day a work order needs two repairs, you either add `repair_task_id_2` (which is where this pattern always ends up) or you do the migration you should have done at the start. Meanwhile every one of those columns is nullable, so "which tasks belong to this work order" is a `UNION` of column reads rather than one indexed lookup.
+
+Put the FK on the child and none of that happens:
+
+```sql
+CREATE TABLE tasks (
+  id            bigserial PRIMARY KEY,
+  work_order_id bigint REFERENCES work_orders(id) ON DELETE SET NULL,
+  ...
+);
+CREATE INDEX ON tasks (work_order_id) WHERE work_order_id IS NOT NULL;
+```
+
+Now multiplicity is data, not schema. Zero, one, or six tasks all work with no migration. Queries are one predicate. And — the reason this matters for *this* post — when the parent turns out to be a wrapper, deleting it means dropping one column from the child, rather than unpicking a spray of FK columns across the parent, every one of which some query somewhere is reading.
+
+The wrapper was survivable because the ownership was already right. That's the lucky version.
+
+## The removal, in six steps
+
+No big bang. Six deploys, each individually revertible, roughly one per day with a night of production traffic in between.
+
+**Step 1: give the child everything it needs.** Whatever genuinely lived on the wrapper and had no equivalent below moves down. In our case that was a provider reference, a couple of dates, and a reference code:
+
+```sql
+ALTER TABLE fleet.maintenance_tasks
+  ADD COLUMN provider_id bigint REFERENCES fleet.providers(id),
+  ADD COLUMN sent_at     timestamptz,
+  ADD COLUMN reference   text;
+```
+
+Nullable for now. Constraints come at the end, once the data is proven.
+
+**Step 2: backfill.** One statement, run inside a transaction, with the row count checked against your expectation:
+
+```sql
+UPDATE fleet.maintenance_tasks t
+SET provider_id = wo.provider_id,
+    sent_at     = wo.sent_at,
+    reference   = wo.reference
+FROM fleet.work_orders wo
+WHERE wo.id = t.work_order_id
+  AND t.provider_id IS NULL;
+```
+
+For the tail — the fifty work orders with more than one task — decide the policy explicitly and write it down. Ours copied the parent values to every child, which is right when the parent's fields describe *how* the work was sent rather than an aggregate of the children. If your wrapper carried a true aggregate (a total cost, say), it isn't a wrapper; it's a real entity and you should stop here.
+
+**Step 3: dual-write.** Every path that creates or updates a work order also writes the new task columns. Both tables stay correct. This deploy is boring and it's the one that buys you the ability to revert steps 4 and 5 without data loss.
+
+**Step 4: move reads, one at a time.** List page, detail page, the email templates, the exports, the mobile API, the reporting queries. One per deploy if you can bear it. This is where the calendar time goes, and it's where the surprises are: the third reader is always something nobody remembered, like a CSV a finance person downloads monthly.
+
+A grep for the column name across the whole repo — including templates and the frontend — gives you the checklist. Tick it off literally.
+
+**Step 5: stop writing the wrapper.** Creation paths now create only tasks. The `work_orders` table stops growing. Leave it in place, populated, inert. Run a release like this. If something screams, it screams while the data is still intact and the revert is a config change.
+
+**Step 6: drop it.**
+
+```sql
+ALTER TABLE fleet.maintenance_tasks DROP COLUMN work_order_id;
+DROP TABLE fleet.work_orders;
+```
+
+And only now add the constraints you deferred in step 1:
+
+```sql
+ALTER TABLE fleet.maintenance_tasks
+  ALTER COLUMN provider_id SET NOT NULL;
+```
+
+Ordering matters: constraints go on *after* the backfill has been through a few days of live traffic, because a `NOT NULL` added too early turns "some old rows are odd" into "creates fail in production".
+
+## The things attached to the wrapper
+
+The tables you'll forget are the ones that reference the wrapper from outside the domain. Ours were:
+
+**Documents.** Files uploaded against a work order, with `work_order_id` on the upload row. These have to be re-pointed at the task, and — importantly — the historic ones matter. A compliance document from eighteen months ago must stay attached to something.
+
+**Calendar events.** A `work_order` event type in a `CHECK` constraint on an events table, with rows in production referencing ids that are about to disappear.
+
+**Notification and audit rows.** An enum value like `work_order_linked`, referenced by activity entries going back years.
+
+For each, the choice is migrate or retire, and the honest answer differs:
+
+- **Documents: migrate.** They're customer data, they're referenced from screens, and losing the link loses the file's meaning. Re-point them, verify the count matches, then drop the old column.
+- **Enum values in audit history: retire, don't delete.** Old activity rows legitimately say `work_order_linked`, because that's what happened at the time. Rewriting history to say something else is worse than a slightly odd label. Keep the enum value, stop emitting it, and teach the renderer to show something sensible.
+
+The distinction is whether the row describes *current state* (migrate it) or *a past event* (leave it alone). Rewriting event history to match your new model is the most tempting mistake in this whole exercise, and it destroys the only record of what the system used to do.
+
+## Links you already sent
+
+Every email your system has ever sent containing `/work-orders/1234` is still in someone's inbox, and some of those people will click.
+
+Keep a redirect. It costs nothing and it prevents a support ticket you can't diagnose:
+
+```go
+// Legacy: work orders were folded into tasks. Emails and bookmarks in the
+// wild still point here. Resolve via the archived id map and redirect.
+r.Get("/work-orders/{id}", func(w http.ResponseWriter, req *http.Request) {
+	taskID, ok := legacy.TaskForWorkOrder(chi.URLParam(req, "id"))
+	if !ok {
+		http.NotFound(w, req)
+		return
+	}
+	http.Redirect(w, req, "/tasks/"+taskID, http.StatusMovedPermanently)
+})
+```
+
+Which means step 6 isn't quite "drop the table". Keep a two-column archive — old id, new id — indefinitely. It's a few hundred kilobytes and it's the difference between an old link working and an old link 404ing on a customer who's already annoyed.
+
+If your user-visible reference codes lived on the wrapper (`WO-4821` printed on a document sent to a supplier), the same logic applies with more force: those codes are in other companies' filing systems. Either carry the code down to the task, or keep the lookup forever. Reference codes leak out of your system permanently, and they're not yours to invalidate.
+
+## When the wrapper is real
+
+Not every intermediate entity is a wrapper. Keep it when any of these is true:
+
+**It carries state of its own that isn't derivable from the children.** An approval, a submission timestamp, a signature, a negotiated total that isn't the sum of the parts. That's a real thing with its own lifecycle.
+
+**The multiplicity genuinely varies.** Go back to the distribution query. A real spread across 1 to 20 means users think in groups, whatever the UI currently shows.
+
+**It's the unit of an external contract.** If a supplier's system, an EDI feed, or a regulator's form has the concept, you're keeping it even if internally it's always one task, because the boundary object isn't yours to redesign.
+
+**It's the unit of permission or ownership.** If access control is expressed over the group, collapsing it means re-expressing every rule over the children, and that's a bigger change than the one you're trying to make.
+
+Ours failed all four, which is what made it safe. Failing three out of four means think harder, not go ahead.
+
+---
+
+The lasting version of this, in two lines:
+
+**Put the foreign key on the many side, always.** Multiplicity should be data, not schema, so that being wrong about it costs a row rather than a migration.
+
+**Don't build the grouping level until something is grouped.** The flat model plus a nullable `group_id` later is one migration. The wrapper you no longer want is six deploys, three tables of attachments, and a redirect you maintain forever.

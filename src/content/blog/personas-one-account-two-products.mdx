@@ -1,0 +1,210 @@
+---
+title: "Personas: One Account, Two Products, Different Roles"
+description: "The same human is a manager in one product and a technician in another. Where the product scope belongs (on roles, not users), why the client has to name its persona at login, and the two different 403s you owe your frontend."
+pubDate: "2026-10-13"
+tags: ["Backend", "Auth", "RBAC", "Multi-tenancy", "Go", "SaaS"]
+draft: true
+---
+
+Two products on one backend. A fleet product used by transport managers, and a workshop product used by service centres. Same accounts, same login, same database — the arrangement from [One Backend, Multiple Products](/blog/one-backend-multiple-products).
+
+Then a customer who runs their own in-house workshop signs up for both, and one person needs to be a **manager** in the fleet product and a **technician** in the workshop product. Same human, same email, same company, two capacities.
+
+Every naive model of that breaks, and they break in ways that look like permission bugs rather than modelling bugs, which is what makes this worth writing down.
+
+## Contents
+
+- [The three models that don't work](#the-three-models-that-dont-work)
+- [Personas belong on roles](#personas-belong-on-roles)
+- [The client names its persona at login](#the-client-names-its-persona-at-login)
+- [Hide memberships with no entitled persona](#hide-memberships-with-no-entitled-persona)
+- [Two 403s](#two-403s)
+- [The 403 that wasn't RBAC at all](#the-403-that-wasnt-rbac-at-all)
+- [Switching, remembering, deep-linking](#switching-remembering-deep-linking)
+- [The rules, condensed](#the-rules-condensed)
+
+## The three models that don't work
+
+**A `type` column on the user.** `user.type = 'manager' | 'technician'`. Dead the moment one person is both, which is the exact scenario that prompted the feature. It also conflates *what a person does* with *which product they're doing it in*, and those come apart immediately: a technician in the workshop product and a driver in the fleet product are different roles in different products, not two values of one field.
+
+**Separate accounts per product.** Give the person two logins. Genuinely tempting, because it makes the backend trivial. It also means two passwords, two sessions, two notification preferences, and an inbox where they can't tell which account an email is about. You've exported your modelling problem to the customer, and they'll route it back to you as support tickets.
+
+**A persona column on the membership.** `org_members.persona = 'workshop'`. Closer — it's at least per-account — but it still allows exactly one, and a member of a company that runs both products needs both. You end up with two membership rows for the same person in the same company, and now every query that assumed one membership per (user, account) is subtly wrong.
+
+The common failure in all three: they put the product scope on the **wrong object**. The thing that's product-specific isn't the person, and isn't their membership. It's the *role*.
+
+## Personas belong on roles
+
+"Transport manager" only means something in the fleet product. "Workshop technician" only means something in the workshop product. "Account owner" means something in both. So the scope is a property of the role, and it's a set, not a value:
+
+```sql
+CREATE TYPE persona_type AS ENUM ('fleet', 'workshop');
+
+CREATE TABLE roles (
+  id          bigserial PRIMARY KEY,
+  account_id  bigint REFERENCES accounts(id),   -- NULL = system role
+  key         text NOT NULL,
+  name        text NOT NULL,
+  personas    persona_type[] NOT NULL DEFAULT '{}',
+  permissions text[] NOT NULL DEFAULT '{}'
+);
+```
+
+An array rather than a single column, because overlap is real: an owner role legitimately applies in both products, and forcing a choice means duplicating the role and keeping two permission lists in sync forever.
+
+A member's available personas then *derive* from the roles they hold. Nothing else stores it:
+
+```go
+// AvailablePersonas returns the distinct personas this member is entitled to
+// via their assigned roles. Derived, never stored — assign a workshop role and
+// the workshop persona appears; remove it and it disappears, with no second
+// place to update.
+func (m Membership) AvailablePersonas() []PersonaType {
+	seen := map[PersonaType]struct{}{}
+	var out []PersonaType
+
+	for _, r := range m.Roles {
+		for _, p := range r.Personas {
+			if _, dup := seen[p]; dup {
+				continue
+			}
+			seen[p] = struct{}{}
+			out = append(out, p)
+		}
+	}
+	return out
+}
+```
+
+This is the [computed-not-persisted](/blog/never-persist-a-computed-status) rule again, in an auth context. A `member.persona` column would need updating every time a role assignment changed, and the day it's missed the user is either locked out of a product they should have or shown one they shouldn't.
+
+Worth stating what personas are **not**: they aren't permissions. A persona says *which product a role makes sense in*; permissions say *what may be done*. Both checks run, and they answer different questions. Collapsing them — a `workshop:*` permission prefix standing in for a persona — seems to work until you need to hide the workshop app entirely from someone who happens to hold one workshop permission for reporting.
+
+## The client names its persona at login
+
+Here's the decision that removed the most complexity: **the client tells the server which persona it is.** The workshop web app sends `persona: "workshop"`. The fleet app sends `persona: "fleet"`. The technician mobile app sends `persona: "workshop"`.
+
+The server doesn't guess from a `Referer`, a subdomain, or the user's most recent activity. It's told, and it validates the claim against the user's entitled personas.
+
+```go
+// Issue a session bound to the requested persona. The client knows which app
+// it is; the server checks the user is entitled to be there.
+func (s *Issuer) Issue(
+	ctx context.Context, user User, accountID int64, persona PersonaType,
+) (Tokens, error) {
+	member, err := s.members.Get(ctx, user.ID, accountID)
+	if err != nil {
+		return Tokens{}, err
+	}
+
+	if !slices.Contains(member.AvailablePersonas(), persona) {
+		return Tokens{}, ErrPersonaNotEntitled
+	}
+
+	// Only the permissions from roles that grant THIS persona travel in the
+	// token — a fleet-only role contributes nothing to a workshop session.
+	perms := member.PermissionsForPersona(persona)
+
+	// Persist the persona on the session row so a refresh restores it rather
+	// than silently dropping the user back to a default.
+	return s.mint(ctx, user, member, persona, perms)
+}
+```
+
+Three consequences, all good:
+
+**The token is scoped.** A workshop session carries workshop permissions. If that session leaks, it isn't a fleet session. This is the same "narrow the token to the session's context" idea from [Permissions Inside JWT](/blog/permissions-inside-jwt), with the persona as the scope.
+
+**The filter is by role, not by permission.** Take every permission from every role that grants this persona — all of it, even permissions that "belong" to the other product. A workshop role legitimately needs to read fleet asset data to service a vehicle. Filtering by permission category instead strips those and produces a bug that presents as a missing feature.
+
+**The persona lives on the session.** Not just in the access token. Otherwise the first refresh, fifteen minutes in, quietly returns a default-persona token and the app breaks in a way nobody can reproduce because it only happens after they've been logged in a while.
+
+## Hide memberships with no entitled persona
+
+A subtle one that shows up on the account picker.
+
+A user can be a member of a company and hold no roles that grant the persona of the app they're using. A fleet-only manager opening the workshop app is a member of that company — but not, from the workshop's point of view, a participant in it.
+
+Showing that company in the picker is a trap: they select it, and every subsequent request 403s. So the account list is filtered by entitled persona:
+
+```go
+// viableMembership pairs an entitled membership with the personas it grants.
+// Memberships with zero entitled personas for the requested app are omitted
+// entirely — offering an account the user can't act in is worse than hiding it.
+for _, m := range memberships {
+	personas := m.AvailablePersonas()
+	if len(personas) == 0 || !slices.Contains(personas, requested) {
+		continue
+	}
+	viable = append(viable, viableMembership{Member: m, Personas: personas})
+}
+```
+
+And the edge case that follows: if the filtered list is *empty*, don't show an empty picker. Say the thing that's true — "your account doesn't have workshop access; ask an administrator to assign you a workshop role" — because the user's next action is a conversation with a colleague, not another attempt at logging in.
+
+## Two 403s
+
+There are two entirely different reasons to refuse a request, and giving clients one code for both makes them behave badly:
+
+**`insufficient_permissions`** — their roles don't grant this. Permanent. Retrying, re-authenticating, or switching anything will not help.
+
+**`persona_required`** — they *have* this permission, in a persona their current session isn't in. Fixable: get a token in the right persona and retry.
+
+```go
+// Their roles don't grant it. Nothing to retry.
+respondError(w, http.StatusForbidden, ErrorBody{
+	Code: "insufficient_permissions",
+})
+
+// They hold this via a role in another persona. Re-issue and retry.
+respondError(w, http.StatusForbidden, ErrorBody{
+	Code:            "persona_required",
+	RequiredPersona: "workshop",
+})
+```
+
+With one code, a client does one of two unhelpful things: retries a request that can never succeed, or tells a user they lack a permission they demonstrably have. With two, the client can call the switch-persona endpoint, get a correctly scoped token, and retry once — invisible to the user.
+
+Add both codes on day one. Retrofitting the distinction means auditing every 403 handler in every client you've shipped, including the mobile app that half your users haven't updated.
+
+## The 403 that wasn't RBAC at all
+
+Worth telling because the debugging lesson generalises.
+
+A workshop user reported 403s on a page they should have had access to. Obvious hypothesis: the persona filter is dropping a permission. So: check their roles, check the role's persona array, check the permission list, decode the token, confirm the permission is *right there* in the claims. Everything correct. Meanwhile the user is still blocked.
+
+The 403 was coming from the frontend. A route guard in the client checked a hardcoded role name — not a permission, not a persona — and rendered its own permission-denied screen. The backend was never called. There was no request to find in the logs, which is exactly why an hour went into the backend before anyone questioned the premise.
+
+Three things came out of it that I'd now do reflexively:
+
+**Client-side guards must be UI hints only, expressed in the same vocabulary as the server.** Check the permission key, not a role name. A guard that hardcodes `role === 'workshop_admin'` will be wrong the first time someone creates a custom role, and it fails closed and silently.
+
+**A client-rendered denial must look different from a server one.** Different copy, an error code visible somewhere, anything. "Access denied" appearing identically for both means every report is ambiguous, and you'll debug the wrong layer.
+
+**Check for the request before theorising about the response.** If the access log has no entry, no amount of RBAC reasoning is going to help. It's the auth-flavoured version of asking whether it's plugged in, and I now start there.
+
+## Switching, remembering, deep-linking
+
+Three product decisions that follow from the model:
+
+**Switching persona is a token exchange, not a flag.** Hitting an endpoint that returns a new access token scoped to the new persona, with the session row updated. Never a client-side toggle over one all-encompassing token, which would defeat the entire point of scoping.
+
+**Never auto-pick a persona silently for a user who has several.** Ask once, remember the choice, and make switching obvious. Silently landing a dual-persona user in the wrong product produces confused support tickets ("half my menu is missing") that are genuinely hard to diagnose from the outside.
+
+**Cross-product deep links carry the persona.** A workshop notification linking to a fleet asset needs to land the user in the fleet app in the fleet persona. That means the link target knows which app it belongs to, and the auth flow honours it rather than restoring whatever session was last used. Get this wrong and every cross-product email is a coin flip.
+
+One more, easy to forget: when the last role granting a persona is removed from a member, existing sessions in that persona should die. Not at the next refresh — immediately, by deleting the session rows for that (user, account, persona). Otherwise someone who has just been removed from the workshop side keeps working there until their access token expires, and "revoked but still working for fifteen minutes" is the kind of detail that turns up in a security questionnaire.
+
+## The rules, condensed
+
+**Put the product scope on roles, as a set.** Not on the user, not on the membership, and not as a single value — real roles span products.
+
+**Derive a member's personas from their roles.** Never store them. One source of truth means one place to be wrong.
+
+**Let the client declare its persona at login, and validate it.** The app knows what it is; the server's job is to check entitlement, not to guess intent.
+
+**Bind the persona to the session, not just the token.** Otherwise refresh silently changes what the session means, fifteen minutes after login.
+
+**Filter roles by persona, take all their permissions.** Filtering permissions by category strips legitimate cross-product reads and looks like a bug.
+
+**Ship both 403 codes.** One says "never"; the other says "not here, try again over there". Clients need to tell them apart, and adding the distinction later is a migration across every client you've shipped.

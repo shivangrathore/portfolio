@@ -1,0 +1,206 @@
+---
+title: "Never Persist a Computed Status"
+description: "A status column that depends on today's date or a configurable window is stale the moment either one moves. How to tell derived state from real state, how to compute it at read time without wrecking your queries, and what you should store instead."
+pubDate: "2026-09-01"
+tags: ["Backend", "Postgres", "Data Modelling", "Architecture"]
+draft: true
+---
+
+Somewhere in your schema there's a column like this:
+
+```sql
+status text NOT NULL DEFAULT 'valid'   -- valid | expiring_soon | expired
+```
+
+And somewhere else there's a nightly job that updates it, and a bug report saying a customer's dashboard shows `valid` for a document that expired eight days ago, and a support engineer who has learned to fix it by clicking Save on the record so the trigger re-fires.
+
+The column is the bug. Not the job, not the trigger, not the missing index. The column.
+
+Here's the test that catches every instance of this, and it's one sentence long:
+
+> **Can this value become wrong while nothing writes to the row?**
+
+If yes, it isn't state. It's a view of state, and it belongs in a query.
+
+## Contents
+
+- [Two kinds of status](#two-kinds-of-status)
+- [The two things that move underneath you](#the-two-things-that-move-underneath-you)
+- [Compute it in the query](#compute-it-in-the-query)
+- [But I need to filter and sort by it](#but-i-need-to-filter-and-sort-by-it)
+- [What you do store](#what-you-do-store)
+- [The one legitimate reason to write it down](#the-one-legitimate-reason-to-write-it-down)
+- [Getting rid of an existing status column](#getting-rid-of-an-existing-status-column)
+
+## Two kinds of status
+
+Put two status columns side by side and the difference is obvious once you look for it.
+
+**An invoice's status** is `pending`, then `invoiced`, then `paid`. Every one of those transitions is caused by something *happening*: a job closed the period, a provider took the money, a webhook arrived. Leave the row alone for a year and the value stays correct. That's real state and it belongs in a column.
+
+**A document's status** is `valid`, `expiring_soon`, or `expired`. Nothing has to happen for it to change. The Earth goes round the Sun. The value is a function of `expiry_date` and `today` and a threshold someone picked, and it changes at midnight without a single write.
+
+Same word, opposite nature. One is a state machine, the other is arithmetic.
+
+The examples multiply once you have the lens:
+
+- A compliance certificate that's `expiring_soon` within 30 days.
+- An asset that's `service_due` because 90 days have passed since its last service.
+- A trial that's `ending_soon` in its final week.
+- A task that's `overdue` past its due date.
+- A subscription that's `in_grace_period` for 14 days after a failed payment.
+
+Every one of them is `f(stored fact, today, config)`. Not one of them is state.
+
+## The two things that move underneath you
+
+Persisting a computed status fails in two distinct ways, and people usually only defend against the first.
+
+**Time moves.** This is the obvious one, and it's why the nightly job exists. The job is a patch, and it has a permanent staleness window equal to its interval: a document that crosses the threshold at 00:01 reads wrong until the job runs. You can shrink the window by running more often. You can't close it, and you're now doing a full-table write every hour to maintain a value you could have computed in the `SELECT`.
+
+**Config moves, and this is the one that actually bites.** The threshold isn't a constant, it's a setting. An admin opens settings and changes "warn me before expiry" from 30 days to 60. Every row that should now be `expiring_soon` is still sitting there saying `valid`, and *nothing* in the write path knows to revisit them, because nobody wrote to those rows.
+
+So you write a second job to re-evaluate everything when a setting changes. Now you have a fan-out: one settings update touches every document in the account. Then someone adds per-category thresholds, so the fan-out is conditional. Then the window becomes per-asset-type with a fallback to per-account with a fallback to a platform default, and your recompute job is a reimplementation of the read query, except it runs on a schedule and can be behind.
+
+That's the real cost. Not staleness — **duplication**. You end up maintaining the same policy twice: once in the code that computes the status for the write path, once in whatever the read path does when it doesn't trust the column. They will disagree, and the bug report will be "the list page and the detail page show different things".
+
+## Compute it in the query
+
+The alternative is unglamorous.
+
+```sql
+SELECT
+  d.id,
+  d.name,
+  d.expiry_date,
+  CASE
+    WHEN d.expiry_date IS NULL                       THEN 'none'
+    WHEN d.expiry_date <  $today                     THEN 'expired'
+    WHEN d.expiry_date <= $today + ($warn || ' days')::interval
+                                                     THEN 'expiring_soon'
+    ELSE                                                  'valid'
+  END AS status
+FROM documents d
+WHERE d.account_id = $account_id;
+```
+
+Always right, by construction. Change the threshold and the next request reflects it. There is no job, no trigger, no backfill, and no second implementation to drift.
+
+Two details worth doing deliberately:
+
+**Pass `today` in, don't call `now()` in the query.** A query that reaches for the clock is untestable and picks its own timezone. Resolve the business's calendar date once at the edge and pass it as a parameter — the reasons are the whole of [The Timezone Bug That Skipped a Month of Invoices](/blog/timezone-bug-that-skipped-invoices), but the short version is that `expiry_date::date < now()::date` quietly means "the UTC day" and that isn't your day for seven months a year.
+
+**Write the ladder once.** The `CASE` belongs in one query file, or one view, and every caller uses it. The moment two endpoints each hand-roll their own ladder you're back to two implementations, just without the column.
+
+If the ladder is genuinely used everywhere, a view earns its keep:
+
+```sql
+CREATE VIEW document_status AS
+SELECT
+  d.*,
+  CASE
+    WHEN d.expiry_date IS NULL         THEN 'none'
+    WHEN d.expiry_date < CURRENT_DATE  THEN 'expired'
+    WHEN d.expiry_date <= CURRENT_DATE + COALESCE(s.warn_days, 30) * INTERVAL '1 day'
+                                       THEN 'expiring_soon'
+    ELSE                                    'valid'
+  END AS status
+FROM documents d
+LEFT JOIN account_settings s ON s.account_id = d.account_id;
+```
+
+Note the `LEFT JOIN` to settings: the per-account threshold participates in the computation instead of being frozen into a column at write time. That's the whole point. And note it's a plain view, not materialised — a materialised view is a persisted status column wearing a hat, with the same staleness and the same refresh job.
+
+## But I need to filter and sort by it
+
+This is the real objection, and it deserves a real answer rather than "just add a computed column".
+
+You can't index a `CASE` over `CURRENT_DATE`. What you can do is notice that **every status filter is a date-range filter in disguise**, and translate at the edge:
+
+```go
+// Statuses are windows over expiry_date. Translate the filter into a range
+// predicate so the index on (account_id, expiry_date) does the work.
+switch filter.Status {
+case "expired":
+	q = q.Where("d.expiry_date < ?", today)
+case "expiring_soon":
+	q = q.Where("d.expiry_date >= ? AND d.expiry_date <= ?",
+		today, today.AddDate(0, 0, warnDays))
+case "valid":
+	q = q.Where("d.expiry_date > ?", today.AddDate(0, 0, warnDays))
+}
+```
+
+```sql
+CREATE INDEX ON documents (account_id, expiry_date);
+```
+
+That's a plain range scan on a b-tree — the query planner's favourite thing in the world. It is *faster* than filtering on an indexed `status` column with three distinct values, because low-cardinality equality on a huge table is a bad index and a date range is a good one.
+
+Sorting is easier still. "Sort by urgency" is "sort by `expiry_date` ascending, nulls last". The status labels are ordered *because* the underlying date is ordered; sorting by the label would only ever be a worse version of sorting by the date.
+
+Counts for a dashboard are one pass:
+
+```sql
+SELECT
+  count(*) FILTER (WHERE expiry_date < $today)                       AS expired,
+  count(*) FILTER (WHERE expiry_date BETWEEN $today AND $threshold)  AS expiring_soon,
+  count(*) FILTER (WHERE expiry_date > $threshold)                   AS valid
+FROM documents
+WHERE account_id = $1;
+```
+
+If the computation is genuinely expensive — a status derived from aggregating child rows across several tables, say — cache the *response*, in your cache store, with a TTL you control and an explicit invalidation on write. That's a cache, and it's honest about being one. A status column is a cache that nobody labelled as a cache, with no TTL and no invalidation strategy, which is why it's still wrong on Tuesday.
+
+## What you do store
+
+Store the **inputs**, and store the **events**, and let the status fall out.
+
+For an expiring document, the input is `expiry_date`, plus whatever settings row holds the threshold. That's the entire persistent footprint.
+
+For "this asset is due for service", the inputs are the last service date and the interval — and the interval is itself layered: per-asset override, falling back to per-customer, falling back to the account default. Resolve that ladder in the read query. Freeze it into a `next_due_date` column and the day someone edits the account default, every asset with an inherited interval is silently wrong, with no write to any of those rows to tell you.
+
+For a trial: store `trial_started_at` and the policy that was in force when it started. `ending_soon` is arithmetic on those two.
+
+There's a real subtlety in that last one. Some inputs *should* be frozen, and freezing them is not the same mistake. If a customer started a trial under a 30-day policy and you later change the default to 14, their trial is still 30 days, because that's what they were told. So you snapshot the *policy* onto the trial at the moment it starts — and then compute the status from the snapshot forever after. That's the pattern in [Version Your Policies, Snapshot at Bind Time](/blog/versioned-policies), and it's compatible with this post rather than in tension with it: **snapshot the inputs that were agreed; compute the status that follows from them.** Never the reverse.
+
+## The one legitimate reason to write it down
+
+Notifications.
+
+If you email an account when a document hits `expiring_soon`, you need to not email them again tomorrow. That requires state — but the state you need isn't the status. It's the fact that **you sent an email**:
+
+```sql
+CREATE TABLE document_expiry_notices (
+  document_id   bigint NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  threshold_days integer NOT NULL,      -- which window fired: 60, 30, 7
+  sent_at       timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (document_id, threshold_days)
+);
+```
+
+The status stays computed. The side effect gets a row, keyed so that re-running the job is a no-op and each threshold can fire exactly once. If the expiry date gets extended, delete the notice rows for that document and the ladder is armed again — one explicit line in the update path, rather than a status column you hope somebody remembers to recompute.
+
+Same principle in a different shape: don't persist "is overdue", persist "we told them it was overdue, at this time, at this threshold". One is derived, one is a fact about the world.
+
+## Getting rid of an existing status column
+
+If you already have one, the migration is boring, which is what you want:
+
+**1. Add the computed read path.** Ship the `CASE` (or the view) and have new code paths read from it. Don't touch the column.
+
+**2. Compare them in production.** Log where the computed value and the stored value disagree, with the row id. This is worth doing for a week — the disagreements are your existing bug list, and you'll find rows that have been wrong for months.
+
+**3. Move readers over one at a time.** List page, detail page, exports, the notification job, the CSV your finance team downloads. The job is usually last because it's the one that also *writes* the column.
+
+**4. Stop writing it.** Drop the trigger and the recompute job. Leave the column in place, now inert.
+
+**5. Drop the column** — in its own migration, after a release where nothing wrote to it and nothing read it. Never in the same migration as step 4, because you want an easy revert if some forgotten reporting query was reading it.
+
+The upside shows up immediately at step 4: a nightly full-table update disappears, and with it a lock window, a replication spike, and an entire class of "why did every row's `updated_at` change at 3am" questions.
+
+---
+
+**The rule, once more:** if a value can go wrong while the row sits untouched, it's derived. Store the facts, store the side effects, compute the rest.
+
+The status column feels like it's saving you work. It's borrowing it, at interest, from whoever is on call the day somebody changes a setting.

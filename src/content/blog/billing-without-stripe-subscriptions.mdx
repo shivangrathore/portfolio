@@ -1,0 +1,308 @@
+---
+title: "Don't Use Stripe Subscriptions"
+description: "Why a metered B2B product outgrows subscription APIs, and what a custom billing engine actually looks like: an activity ledger, immutable cycles, proration you control, and Stripe demoted to a payment gateway."
+pubDate: "2026-08-18"
+tags: ["Backend", "Billing", "Stripe", "Postgres", "Go", "SaaS"]
+draft: true
+---
+
+Every billing post on the internet gives the same advice: don't build billing, use Stripe Subscriptions. It's good advice for the product it was written about, which is a product with plans, seats, and customers who change plan twice a year.
+
+It stops being good advice the moment your price depends on something that moves on its own. Devices that come online on a Tuesday and go offline on a Thursday. Assets a customer adds nine of on the day they onboard and three more the week after. Anything where the quantity is a *consequence* of the customer using the product rather than a number they typed into a checkout page.
+
+At that point you have two sources of truth for what the customer owes, and one of them lives in another company's database.
+
+What follows is the shape that worked instead: a billing engine you own, with Stripe kept on as a payment gateway and invoice renderer. Running example throughout is a B2B platform that charges **per active device, per month**.
+
+## Contents
+
+- [What actually breaks](#what-actually-breaks)
+- [The split: you decide, Stripe collects](#the-split-you-decide-stripe-collects)
+- [An activity ledger, not a counter](#an-activity-ledger-not-a-counter)
+- [Proration is policy, and policy is yours](#proration-is-policy-and-policy-is-yours)
+- [Cycles are immutable once closed](#cycles-are-immutable-once-closed)
+- [Advance for the base, arrears for the rest](#advance-for-the-base-arrears-for-the-rest)
+- [No payment method is a state, not an error](#no-payment-method-is-a-state-not-an-error)
+- [The close job](#the-close-job)
+- [What this buys you: tests](#what-this-buys-you-tests)
+- [When to just use Subscriptions](#when-to-just-use-subscriptions)
+
+## What actually breaks
+
+Subscription APIs model *a thing the customer bought*. Metered products need to model *a thing that happened*. Four specific failures follow from that mismatch.
+
+**Quantity churn.** Update a subscription quantity mid-period and the provider decides what that means: credit the unused portion, charge the difference now, or roll it to next invoice. Those are three different business policies, and yours has to match what your salespeople told the customer. "We don't credit removals, but additions are charged pro rata from the day they're added" is one sentence, and it maps onto exactly none of the built-in options cleanly.
+
+**Your invoice line items aren't theirs.** As soon as an invoice has a base charge, a prorated mid-cycle addition, and a one-off usage charge, you're building line items by hand anyway. The subscription is no longer generating your invoice, it's just holding a number you keep overwriting.
+
+**Reconciliation is now a distributed-systems problem.** The customer's real device count lives in your database. The billed quantity lives in theirs. Every mid-cycle change is a write that can fail, retry, or land out of order. When support asks "why were they charged for 41 devices in March", you need one query, not two systems and a webhook log.
+
+**Trials, grace periods, suspension.** These are product rules. Encoding them as subscription statuses means your product's state machine is a projection of a vendor's state machine, and every new rule is a puzzle about which vendor state to abuse.
+
+None of these are Stripe being bad. They're the cost of putting the *decision* of what to charge outside your own database.
+
+## The split: you decide, Stripe collects
+
+Draw the line in one place and everything downstream gets simpler:
+
+**You own** what a customer is entitled to, what they're worth this period, when the period starts and ends, what the line items are, and what happens when they don't pay.
+
+**Stripe owns** card and bank details, the actual movement of money, the hosted invoice page and PDF, SCA, and the receipt email if you want it.
+
+Concretely: you keep using `SetupIntent` to collect and store a payment method, `Invoice` + `InvoiceItem` to render and host the document, and `PaymentIntent` to take the money. You don't use `Subscription`, `Price`, or `SubscriptionSchedule` at all. Your pricing lives in your own table where you can join to it.
+
+That's not "building billing from scratch". Payments are the genuinely hard, regulated, don't-do-it-yourself part, and you're still not doing it yourself.
+
+## An activity ledger, not a counter
+
+The first instinct is a `device_count` column on the account, incremented and decremented. It's wrong for the same reason a bank balance column is wrong: you can read today's number but you can't answer any question about the past, and billing is entirely questions about the past.
+
+Store the events:
+
+```sql
+CREATE TYPE device_billing_event AS ENUM ('activated', 'deactivated');
+
+CREATE TABLE device_billing_events (
+  id           bigserial PRIMARY KEY,
+  account_id   bigint NOT NULL REFERENCES accounts(id),
+  device_id    bigint NOT NULL REFERENCES devices(id),
+  event        device_billing_event NOT NULL,
+  effective_on date NOT NULL,           -- calendar date, not a timestamp
+  reason       text,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX ON device_billing_events (account_id, effective_on);
+```
+
+Two things in that table earn their place.
+
+`effective_on` is a `date`, not a `timestamptz`. Billing boundaries are calendar concepts: a device added "on the 3rd" is added on the 3rd regardless of what hour the API call happened to land on. (This distinction has a whole failure mode of its own, which I wrote up separately in [The Timezone Bug That Skipped a Month of Invoices](/blog/timezone-bug-that-skipped-invoices).)
+
+`reason` is free text and it will save you a support ticket a week. "deactivated — customer request", "activated — trial converted", "deactivated — data migration". You will be asked.
+
+Deactivation rows look pointless if you never credit for removals. Keep them: they drop the device out of *future* periods, and they're the audit trail for the question you'll actually be asked, which is why the charge went down.
+
+## Proration is policy, and policy is yours
+
+Here's the whole policy, stated as three rules, and then as code:
+
+1. **Front-prorate additions.** A device that becomes billable mid-period is charged from its activation day to the period end.
+2. **No credit on removal.** Once billable within a period, it's charged to the period end regardless of a later deactivation.
+3. **Re-adds dedupe.** Remove and re-add in the same period and the earliest activation governs. Exactly one charge window, never two.
+
+```go
+// billableDaysForDevice applies the billing policy to one device's events for
+// the [periodStart, periodEnd] window (inclusive calendar dates). Events need
+// not be pre-sorted. fromStart reports whether the device was billable on the
+// first day of the period (full-period charge) versus a mid-period addition.
+func billableDaysForDevice(
+	events []BillingEvent,
+	periodStart, periodEnd time.Time,
+) (days int, fromStart bool) {
+	sorted := slices.SortedStableFunc(slices.Values(events), byEffectiveOn)
+
+	billableAtStart := false
+	hasInPeriodActivation := false
+	var earliestInPeriodActivation time.Time
+
+	for _, e := range sorted {
+		d := e.EffectiveOn
+		switch {
+		case !d.After(periodStart):
+			// d <= periodStart, so it defines the state entering the period.
+			// Later rows overwrite earlier ones: last one wins.
+			billableAtStart = e.Event == Activated
+
+		case !d.After(periodEnd):
+			// periodStart < d <= periodEnd: a mid-period change.
+			if e.Event == Activated && !hasInPeriodActivation {
+				hasInPeriodActivation = true
+				earliestInPeriodActivation = d
+			}
+		}
+	}
+
+	var windowStart time.Time
+	switch {
+	case billableAtStart:
+		windowStart = periodStart
+	case hasInPeriodActivation:
+		windowStart = earliestInPeriodActivation
+	default:
+		return 0, false // never billable in this period
+	}
+
+	return daysInclusive(windowStart, periodEnd), billableAtStart
+}
+```
+
+Note what the function *doesn't* do: no database access, no clock, no config lookup. Events in, days out. That property is the entire reason to own this code, and I'll come back to it.
+
+The money conversion is four lines and one decision:
+
+```go
+// prorateAmount returns the net charge for billableDays out of daysInPeriod,
+// rounded half-up. A full period returns exactly unitPricePence — never
+// unitPrice*30/31, which is how a full month quietly becomes £29.03.
+func prorateAmount(unitPricePence, billableDays, daysInPeriod int) int {
+	if daysInPeriod <= 0 || billableDays <= 0 || unitPricePence <= 0 {
+		return 0
+	}
+	if billableDays >= daysInPeriod {
+		return unitPricePence
+	}
+	return (unitPricePence*billableDays + daysInPeriod/2) / daysInPeriod
+}
+```
+
+Integer pence throughout. No floats anywhere near money, and the rounding rule written down once so every line item rounds the same way.
+
+## Cycles are immutable once closed
+
+One row per account per period, and once it closes it never changes:
+
+```sql
+CREATE TABLE billing_cycles (
+  id                bigserial PRIMARY KEY,
+  account_id        bigint NOT NULL REFERENCES accounts(id),
+  period_start      date NOT NULL,
+  period_end        date NOT NULL,
+  device_count      integer NOT NULL,
+  unit_price_pence  integer NOT NULL,   -- snapshot, not a join
+  currency          char(3) NOT NULL,
+  subtotal_pence    integer NOT NULL,
+  vat_pence         integer NOT NULL,
+  total_pence       integer NOT NULL,
+  status            billing_cycle_status NOT NULL,
+  stripe_invoice_id text,
+  hosted_invoice_url text,
+  closed_at         timestamptz,
+  invoiced_at       timestamptz,
+  paid_at           timestamptz,
+  UNIQUE (account_id, period_start)
+);
+```
+
+`unit_price_pence` is copied onto the row rather than joined from the pricing table. Raise your prices in eighteen months and every historic invoice still reproduces exactly. The same argument applies to trial terms, tax rates, and anything else a customer was quoted at a point in time — see [Version Your Policies, Snapshot at Bind Time](/blog/versioned-policies).
+
+The `UNIQUE (account_id, period_start)` is your idempotency key. The close job will run twice one day, because a deploy will overlap a cron, and this constraint is what makes that a no-op instead of a duplicate invoice.
+
+The status enum is where the payment provider's reality leaks in, and it's worth getting right:
+
+```go
+const (
+	CycleStatusPending  CycleStatus = "pending"  // computed, not yet invoiced
+	CycleStatusInvoiced CycleStatus = "invoiced" // sent, awaiting payment
+	CycleStatusProcessing CycleStatus = "processing"
+	CycleStatusPaid     CycleStatus = "paid"
+	CycleStatusFailed   CycleStatus = "failed"
+	CycleStatusSkipped  CycleStatus = "skipped"  // nothing to charge
+)
+```
+
+`processing` exists because direct debit isn't a card. A card authorises in seconds and lands on `paid` or `failed`. A bank debit is submitted and then clears about three business days later. Without a distinct state, either your UI tells the customer their payment failed for three days, or your dunning job chases someone who has already paid. Model the provider's asynchrony as a state instead of pretending it away.
+
+## Advance for the base, arrears for the rest
+
+Two conventions, both defensible:
+
+**Arrears.** Close the period, count what happened, charge for it. Simple, and every number is known when you compute it.
+
+**Advance.** Charge on day one for the period ahead. Better cashflow, and it matches how customers expect subscriptions to feel.
+
+The workable answer is a hybrid, and the split falls out of what's knowable at the start of a period:
+
+- **Base fee in advance.** Devices billable on day one bill for the whole period, up front. Their count is known at that moment.
+- **Everything else in arrears.** Mid-period additions are prorated and charged on the *next* cycle. Usage charges the same. Neither can be known in advance without inventing a number.
+
+That's why `billableDaysForDevice` returns `fromStart` alongside the day count. It's not a detail, it's the discriminator that routes a device into this period's advance base or next period's arrears block.
+
+If you're migrating an existing arrears engine to advance, the tricky bit is the seam month, where a naive cutover either charges twice or skips a period entirely. The cleanest treatment is a one-off ledger top-up row: compute what advance billing *would* have charged, subtract what arrears already collected, write the difference as an explicit line item with a human-readable description. It shows up on the invoice, support can explain it, and the engine on both sides of the seam stays honest about what it charged.
+
+## No payment method is a state, not an error
+
+The rule that removes the most special-casing: **an account with no payment method is not billable.**
+
+Not "billable and failing". Not "billable with a retry". Not billable at all.
+
+- Trial ends with no method stored → the account moves to suspended. No invoice is raised, nothing enters dunning.
+- Method added later → activate, and collect from that point forward.
+- The close job, finding no method, writes the cycle as `skipped` rather than `pending`.
+- Skipped and pending cycles are internal states. The customer's billing page shows invoices, not the engine's scratch work.
+
+Get this wrong and you generate a backlog of failed invoices for accounts that never agreed to pay anything, which then pollutes every revenue metric you have and eventually gets emailed to somebody as a dunning notice.
+
+One related decision worth making early: what happens when the payment provider is simply *absent*, because a developer is running the stack without API keys. The answer is that the app boots, billing endpoints return `503`, and nothing anywhere falls back to fabricated data. A billing surface showing plausible fake numbers is worse than one that's honestly unavailable.
+
+## The close job
+
+A cron that runs daily and does almost nothing on most days:
+
+```go
+func (s *Service) RunDailyClose(ctx context.Context, now time.Time) error {
+	// Decide the billing day in the business's own timezone, not UTC.
+	today := civilDateIn(now, billingLocation)
+
+	accounts, err := s.repo.AccountsDueOn(ctx, today)
+	if err != nil {
+		return err
+	}
+
+	for _, a := range accounts {
+		if err := s.closeOne(ctx, a, today); err != nil {
+			// One account's failure must not abort the run. Log, count,
+			// continue; the next day's run retries via the unique constraint.
+			s.log.Error("close cycle failed", "account_id", a.ID, "err", err)
+			s.metrics.CloseFailures.Inc()
+			continue
+		}
+	}
+	return nil
+}
+```
+
+Three properties to preserve as this grows: it's idempotent (the unique constraint), it's per-account isolated (one bad account can't stop the run), and it's driven by a date you passed in rather than a clock it reached for itself. The last one is what makes the whole thing testable.
+
+## What this buys you: tests
+
+This is the actual payoff, and it's easy to undersell.
+
+Because the policy is a pure function over events and dates, you can write the test suite a billing system deserves:
+
+```go
+func TestBillableDays(t *testing.T) {
+	cases := []struct {
+		name             string
+		events           []BillingEvent
+		wantDays         int
+		wantFromStart    bool
+	}{
+		{"active before period", activated("2026-02-10"), 31, true},
+		{"added mid-period", activated("2026-03-15"), 17, false},
+		{"removed mid-period, no credit", both("2026-02-01", "2026-03-15"), 31, true},
+		{"remove then re-add dedupes", churn("2026-03-05", "2026-03-09"), 27, false},
+		{"activated on period start", activated("2026-03-01"), 31, true},
+		{"activated after period end", activated("2026-04-02"), 0, false},
+	}
+	// ...
+}
+```
+
+Every one of those is a real support question, answered by a test that runs in microseconds with no database, no HTTP, and no clock. Rerun the whole ledger for an account and you get byte-identical invoices. Try that against a vendor's proration engine.
+
+The last row in that table — a device activating exactly on the period boundary — is the one that will eventually go wrong in production for a reason that has nothing to do with billing. That story is [the next post](/blog/timezone-bug-that-skipped-invoices).
+
+## When to just use Subscriptions
+
+Use them, genuinely, if:
+
+**Your price is a plan the customer picks.** Seats they buy deliberately, tiers they upgrade between, an annual contract. That's the product Subscriptions were designed for and reimplementing it is pure loss.
+
+**You need a self-serve checkout and pricing page tomorrow.** Checkout plus Subscriptions gets you a working paid product in an afternoon. Build the engine at the point pricing stops fitting, not before.
+
+**Nobody on the team will own billing.** A custom engine is code that must be maintained by someone who understands cash, tax, and refunds. Without that person, a vendor's engine is better than your unowned one.
+
+Build your own when the quantity moves by itself, when your proration rules are written in a contract rather than picked from a dropdown, and when "why was this account charged this amount" needs to be one SQL query.
+
+At that point you're not choosing between building billing and not building it. You're choosing between building it deliberately and discovering you already did, in webhook handlers, one special case at a time.

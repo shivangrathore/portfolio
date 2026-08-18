@@ -1,0 +1,222 @@
+---
+title: "Version Your Policies, Snapshot at Bind Time"
+description: "Trial lengths, pricing, terms of service, service intervals — configurable rules that customers are quoted at a moment in time. One pattern handles all of them: immutable published versions, a resolution ladder, and a snapshot taken when the customer binds to it."
+pubDate: "2026-09-22"
+tags: ["Backend", "Postgres", "Data Modelling", "Architecture", "SaaS"]
+draft: true
+---
+
+Three tickets, three quarters apart, same bug:
+
+*"This account's trial ended after 14 days but sales promised them 30."*
+
+*"We raised prices in April and this customer's March invoice now reprints at the new rate."*
+
+*"Legal changed the terms. Do our existing customers count as having accepted them?"*
+
+Each looks like a domain problem — billing, trials, compliance. They're the same problem: **a configurable rule that a customer was bound to at a specific moment, stored in a way that only remembers the current value.**
+
+One pattern fixes all three. It's three moving parts and about a day's work, and retrofitting it later costs a great deal more.
+
+## Contents
+
+- [The three broken shapes](#the-three-broken-shapes)
+- [Part 1: versions are immutable, publishing is a state change](#part-1-versions-are-immutable-publishing-is-a-state-change)
+- [Part 2: a resolution ladder, not a column](#part-2-a-resolution-ladder-not-a-column)
+- [Part 3: snapshot at bind time](#part-3-snapshot-at-bind-time)
+- [Reference or copy?](#reference-or-copy)
+- [Terms of service: the same pattern with a gate on it](#terms-of-service-the-same-pattern-with-a-gate-on-it)
+- [Backfilling an existing system](#backfilling-an-existing-system)
+- [What not to snapshot](#what-not-to-snapshot)
+
+## The three broken shapes
+
+**Shape 1: the constant.** `const TrialDays = 14`. Works until sales offers someone 30 days, at which point it becomes a config value, then a per-account column, then a per-account column plus a special case, and no one can answer what a given customer was actually promised.
+
+**Shape 2: the mutable settings row.** One row of platform settings, edited in place. The instant someone edits it, every in-flight trial changes length retroactively. Nobody intended that; nothing in the UI suggests it; the edit silently rewrites history for every customer mid-trial.
+
+**Shape 3: the per-account copy with no lineage.** `accounts.trial_days`. Better — the customer's value is stable — but now you have no idea *which policy* it came from, whether it was the default or a negotiated exception, or what the default even was that day. Every account is an island, and "which customers are on non-standard terms" is unanswerable.
+
+What all three lack is a distinction between **the rule as published** and **the rule as applied to this customer**. Those are different objects with different lifetimes and they both need to exist.
+
+## Part 1: versions are immutable, publishing is a state change
+
+A policy table where rows are never edited after publication:
+
+```sql
+CREATE TABLE trial_policies (
+  id             bigserial PRIMARY KEY,
+  version        integer NOT NULL,
+  name           text NOT NULL,
+  trial_days     integer NOT NULL,
+  max_assets     integer,
+  requires_card  boolean NOT NULL DEFAULT false,
+  grace_days     integer NOT NULL DEFAULT 0,
+  status         policy_status NOT NULL DEFAULT 'draft',  -- draft | published | retired
+  published_at   timestamptz,
+  created_by     bigint REFERENCES users(id),
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (version)
+);
+
+-- At most one published policy at a time.
+CREATE UNIQUE INDEX trial_policies_one_published
+  ON trial_policies ((status)) WHERE status = 'published';
+```
+
+The rules around it, in order of how much pain each one saves:
+
+**Published rows are immutable.** Changing a policy means inserting a new version and publishing it, which retires the previous one. Enforce it with a trigger if you don't trust future-you, and future-you should not be trusted here.
+
+**Draft is a real state.** Someone composes the next version, reviews it, and publishes it deliberately. Editing production behaviour by typing into a form and hitting Save with no review step is how the wrong trial length reaches every new signup for a weekend.
+
+**Retired versions stay forever.** They're referenced by customers who bound to them. Deleting one destroys the answer to "what were they promised", which is the entire purpose of the table.
+
+**One published version at a time**, enforced by a partial unique index rather than by application discipline. Two published policies is not a state your code should ever have to resolve, and the database is better at guaranteeing that than your service layer.
+
+This is exactly the shape of a pricing table, a notice-period policy, a service-interval policy, or a terms-of-service document. The columns differ; the lifecycle doesn't.
+
+## Part 2: a resolution ladder, not a column
+
+Some customers get non-standard terms. That's a sales reality, not an edge case, so it needs a first-class home rather than a nullable override column that grows a sibling every quarter.
+
+```sql
+CREATE TABLE account_trial_policies (
+  account_id  bigint PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+  policy_id   bigint NOT NULL REFERENCES trial_policies(id),
+  reason      text,                     -- 'enterprise pilot, agreed by RB'
+  granted_by  bigint REFERENCES users(id),
+  granted_at  timestamptz NOT NULL DEFAULT now()
+);
+```
+
+A custom policy is *also* a version row — it just isn't the published one. So the ladder is short:
+
+```go
+// resolveTrialPolicy walks the ladder: account override, then the currently
+// published default. Returns the policy that governs a trial starting NOW.
+// Nothing here is stored; this is the "what would apply today" question.
+func (s *Service) resolveTrialPolicy(
+	ctx context.Context, accountID int64,
+) (TrialPolicy, error) {
+	if p, err := s.repo.AccountTrialPolicy(ctx, accountID); err == nil {
+		return p, nil
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return TrialPolicy{}, err
+	}
+	return s.repo.PublishedTrialPolicy(ctx)
+}
+```
+
+Two properties worth preserving as this grows a third rung (a per-segment or per-reseller policy, say): every rung returns the *same type*, and the ladder is one function that everything calls. The moment two callers each implement their own fallback order, they disagree, and the disagreement surfaces as "the signup page said 30 days but the account got 14".
+
+The custom row carries `reason` and `granted_by` because someone will ask, in a year, why this one customer has different terms — and the honest answer is usually a conversation that happened in a meeting.
+
+## Part 3: snapshot at bind time
+
+The ladder above answers "what applies today". The customer needs "what applied when I signed up", and those diverge the moment you publish version 2.
+
+So at the moment of binding — trial start, subscription start, terms acceptance — you resolve the ladder once and write the answer down:
+
+```sql
+ALTER TABLE accounts
+  ADD COLUMN trial_policy_id bigint REFERENCES trial_policies(id),
+  ADD COLUMN trial_started_on date;
+```
+
+```go
+func (s *Service) StartTrial(ctx context.Context, accountID int64, today time.Time) error {
+	policy, err := s.resolveTrialPolicy(ctx, accountID)
+	if err != nil {
+		return err
+	}
+	// Snapshot: from here on, this account's trial is governed by THIS policy
+	// version, whatever we publish afterwards.
+	return s.repo.SetTrial(ctx, accountID, policy.ID, today)
+}
+```
+
+Everything downstream reads the snapshot, never the ladder:
+
+```sql
+SELECT
+  a.id,
+  a.trial_started_on,
+  a.trial_started_on + p.trial_days * INTERVAL '1 day' AS trial_ends_on
+FROM accounts a
+JOIN trial_policies p ON p.id = a.trial_policy_id
+WHERE a.id = $1;
+```
+
+Now all three original tickets are answered by one join. Publish a shorter trial policy tomorrow and in-flight trials are untouched. Ask "what was this customer promised" and it's `SELECT` with a join, not archaeology through an audit log.
+
+Notice what is *not* snapshotted: `trial_ends_on`. That's arithmetic over the snapshot and today's date, so it's computed at read time — the reasoning is [Never Persist a Computed Status](/blog/never-persist-a-computed-status). The two patterns fit together neatly, and the seam between them is the useful bit:
+
+> **Snapshot the inputs that were agreed. Compute the state that follows from them.**
+
+Snapshot the policy, compute the end date. Snapshot the unit price, compute the invoice total. Snapshot the service interval, compute whether it's due. Getting this backwards — computing the terms and storing the status — gives you a system where the customer's agreement drifts and their status is stale, which is both bugs at once.
+
+## Reference or copy?
+
+Two ways to snapshot, and the choice depends on one thing.
+
+**Store a foreign key to the version row.** Cheap, normalised, and always in sync because the row can't change. Requires that the version really is immutable and never deleted. This is the default and it's what the examples above do.
+
+**Copy the values onto the entity.** More columns, denormalised, but survives anything — including the policy table being restructured in two years, or a compliance requirement that the entity be exportable standalone.
+
+The deciding question: **would you ever need this without the policy table?** Invoices say yes — a historic invoice must reprint exactly even if pricing gets redesigned — so billing cycles copy `unit_price_pence` onto the row rather than joining. Trials say no, so a foreign key is fine.
+
+A hybrid is also legitimate and often best: FK for lineage plus a copy of the two or three fields you render most, so the common query doesn't join and the audit trail still points at a version. Just be explicit that the copy is a snapshot, in a comment, or someone will "fix" the duplication.
+
+## Terms of service: the same pattern with a gate on it
+
+Terms are a policy with a published version and an acceptance record. Nothing new except that the binding event is a user action:
+
+```sql
+CREATE TABLE terms_versions (
+  id           bigserial PRIMARY KEY,
+  version      text NOT NULL UNIQUE,      -- '2026-04'
+  body_md      text NOT NULL,
+  summary      text,                      -- "what changed" for the modal
+  status       policy_status NOT NULL DEFAULT 'draft',
+  published_at timestamptz
+);
+
+CREATE TABLE terms_acceptances (
+  user_id     bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_id  bigint NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  terms_id    bigint NOT NULL REFERENCES terms_versions(id),
+  accepted_at timestamptz NOT NULL DEFAULT now(),
+  ip          inet,
+  user_agent  text,
+  PRIMARY KEY (user_id, account_id, terms_id)
+);
+```
+
+Three decisions that turned out to matter more than the schema:
+
+**Gate the right people.** Not every user can agree to a contract on behalf of a company. Blocking a field technician's phone app until they accept new commercial terms is both legally meaningless and operationally hostile — they're standing in a yard trying to do their job. The gate belongs on the account-administrator role, and everyone else keeps working.
+
+**Store the acceptance, compute the gate.** Whether a user needs to accept is `published version has no acceptance row for this user` — a query, not a `terms_accepted` boolean that goes stale the moment you publish. Same rule as everywhere else in this post.
+
+**Keep `summary`.** "What changed" is what makes the modal honest rather than a dark pattern, and writing it forces someone to articulate the change.
+
+## Backfilling an existing system
+
+You already have customers on the old implicit rules. The migration is three steps and the middle one is the only one anybody skips:
+
+**1. Create version 1 describing what is in force today.** Whatever the constant or settings row currently says. Publish it.
+
+**2. Create a version 0 for history if the rules ever changed before.** If trials used to be 14 days and became 30 last year, that's two historic versions, and existing accounts should point at whichever governed them. If you genuinely can't reconstruct it, create one version named honestly — `legacy-pre-2026` — and point everyone at it. A row that says "we don't precisely know" beats a row that confidently asserts today's rules applied in 2024.
+
+**3. Backfill the snapshot column, then make it `NOT NULL`.** In that order, in two migrations. A nullable policy FK that's meant to always be set will eventually be unset by a code path someone forgets, and then your join drops rows silently. The constraint is what stops that.
+
+## What not to snapshot
+
+Two failure modes on the other side, both from over-applying the pattern.
+
+**Don't snapshot a whole config blob you can't query.** `policy_snapshot jsonb` containing the entire policy feels thorough and makes "how many accounts are on a 30-day trial" an unindexable JSON scan. Snapshot a version reference or specific columns, so the data stays queryable.
+
+**Don't snapshot things that are meant to track.** Feature flags, rate limits, UI defaults, support SLAs — these are operational settings, not promises. Nobody was quoted a rate limit. Freezing them per-account gives you thousands of tiny configuration islands and no way to change anything globally, which is the opposite failure and just as annoying.
+
+The test is a question about the customer, not about the code: **were they told this number?** If yes, version it and snapshot it. If no, it's config, and config is allowed to move.
