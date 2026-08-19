@@ -6,116 +6,150 @@ interface Props {
 const { class: className } = Astro.props;
 
 /*
-  The pitch, drawn and running: whatever the clients are, they hit one Go
-  service over one database, with workers off to the side. Requests travel the
-  wires, the API pulses as each lands, and a response chip comes back. Kept
-  generic on purpose, so it describes the work rather than one client's
-  product.
+  The pitch, drawn and running: clients hit a gateway, the gateway hits one Go
+  service, the service checks a cache, writes one database, and hands the slow
+  work to a queue that workers drain out to the world. Generic on purpose, so
+  it describes the work rather than one client's product.
 
-  The motion is SVG <animateMotion> along the same paths that are stroked, so
-  a dot can never drift off its wire and no JS runs to keep them in sync.
+  Everything lives inside a 12px inset of the viewBox, so no node is clipped by
+  the container, and only the Go API carries a second line. Nine boxes with a
+  caption each was more text than the panel could hold.
+
+  Timing is one shared cycle. Every dot animates for the full cycle and only
+  moves during its own slice (keyPoints parks it at either end), so the whole
+  thing reads as a single request making its way through the system rather
+  than several loops drifting out of phase.
 */
+const CYCLE = "4s";
+
+/** A dot's slice of the shared cycle, as fractions from 0 to 1. */
+function slice(from: number, to: number) {
+  const eps = 0.004;
+  return {
+    keyPoints: "0;0;1;1",
+    keyTimes: `0;${from};${to};1`,
+    fadeValues: "0;0;1;1;0;0",
+    fadeTimes: `0;${Math.max(from - eps, 0)};${from};${to};${Math.min(to + eps, 1)};1`,
+  };
+}
+
+/*
+  Clients take turns rather than firing together. Their dots run on a 12s
+  super-cycle, one client per 4s pass, so each pass is a request from a
+  different front-end and the top of the diagram is never three dots abreast.
+  The sending box lights up as its request leaves, which is what makes the
+  turn readable without giving each client its own colour and breaking the
+  one-accent rule the rest of the site keeps to.
+*/
+const SUPER_CYCLE = "12s";
+
+/** The client leg of pass `k`, expressed against the 12s super-cycle. */
+const pass = (k: number) => slice((k * 4 + 0.08) / 12, (k * 4 + 0.72) / 12);
+
 const clients = [
-  { id: "web", label: "Web", x: 4, begin: "0s" },
-  { id: "mobile", label: "Mobile", x: 140, begin: "1.1s" },
-  { id: "admin", label: "Admin", x: 276, begin: "2.2s" },
+  { id: "web", label: "Web", x: 12, timing: pass(0), delay: "0s" },
+  { id: "mobile", label: "Mobile", x: 150, timing: pass(1), delay: "4s" },
+  { id: "admin", label: "Admin", x: 288, timing: pass(2), delay: "8s" },
 ];
 
-const wire = (x: number) =>
-  `M ${x + 60} 62 L ${x + 60} 96 Q ${x + 60} 112 200 112 L 200 146`;
+/** Client box down to the gateway, as a squared elbow through a shared bus. */
+const clientWire = (x: number) => `M ${x + 60} 46 V 64 H 210 V 82`;
 
-// Responses. Three fixed pairs cycling, rather than random numbers: a figure
-// that changes every second reads as a toy, not as traffic.
+// Everything downstream, in the order one request touches it.
+const hops = [
+  { id: "gateway-api", d: "M 210 122 V 158", timing: slice(0.28, 0.4) },
+  // Lookup out, hit back, on separate lanes so both stay legible.
+  { id: "api-cache", d: "M 110 176 H 96", timing: slice(0.42, 0.5) },
+  { id: "cache-api", d: "M 96 194 H 110", timing: slice(0.5, 0.58) },
+  { id: "api-db", d: "M 210 216 V 258", timing: slice(0.58, 0.72) },
+  { id: "api-queue", d: "M 310 176 H 324", timing: slice(0.6, 0.68) },
+  { id: "queue-workers", d: "M 367 194 V 222", timing: slice(0.68, 0.78) },
+  { id: "workers-out", d: "M 367 258 V 286", timing: slice(0.8, 0.92) },
+];
+
+// Fixed pairs cycling, not random numbers: a figure that rerolls every second
+// reads as a toy rather than as traffic.
 const responses = ["200 OK · 14 ms", "200 OK · 9 ms", "201 · 22 ms"];
+
+const boxes = [
+  { x: 130, y: 82, w: 160, h: 40, label: "Gateway" },
+  { x: 12, y: 158, w: 84, h: 36, label: "Redis" },
+  { x: 324, y: 158, w: 84, h: 36, label: "Queue" },
+  { x: 324, y: 222, w: 84, h: 36, label: "Workers" },
+  { x: 324, y: 286, w: 84, h: 34, label: "Webhooks", quiet: true },
+  { x: 110, y: 258, w: 200, h: 44, label: "PostgreSQL" },
+];
 ---
 
 <div class:list={["relative", className]}>
   <svg
-    viewBox="0 0 400 336"
+    viewBox="0 0 420 332"
     fill="none"
-    class="w-full overflow-visible"
+    class="w-full"
     role="img"
-    aria-label="Web, mobile and admin clients sending requests to one Go API, which reads and writes a PostgreSQL database and hands work to background workers."
+    aria-label="Web, mobile and admin clients calling a gateway, which passes requests to one Go API. The API reads a Redis cache, writes a PostgreSQL database, and pushes background jobs onto a queue that workers drain out to webhooks."
   >
-    <!-- Wires, drawn first so the boxes sit on top of them -->
+    <!-- Wires first, so every box sits on top of them -->
     {
       clients.map((client) => (
         <path
           id={`wire-${client.id}`}
-          d={wire(client.x)}
+          d={clientWire(client.x)}
           class="stroke-line"
           stroke-width="1"
         />
       ))
     }
-    <path id="wire-db" d="M 200 214 L 200 250" class="stroke-line" stroke-width="1" />
-    <path id="wire-workers" d="M 282 180 L 300 180" class="stroke-line" stroke-width="1" />
-
-    <!-- Requests in flight -->
     {
-      clients.map((client) => (
-        <circle r="3.5" class="fill-accent">
-          <animateMotion dur="1.5s" begin={client.begin} repeatCount="indefinite" keyPoints="0;1" keyTimes="0;1" calcMode="linear">
-            <mpath href={`#wire-${client.id}`} />
+      hops.map((hop) => (
+        <path id={`wire-${hop.id}`} d={hop.d} class="stroke-line" stroke-width="1" />
+      ))
+    }
+
+    <!-- One request, followed the whole way through -->
+    {
+      [
+        ...clients.map((c) => ({ ...c, dur: SUPER_CYCLE })),
+        ...hops.map((h) => ({ ...h, dur: CYCLE })),
+      ].map((step) => (
+        <circle r={step.id === "cache-api" ? 2.5 : 3} class="fill-accent">
+          <animateMotion
+            dur={step.dur}
+            repeatCount="indefinite"
+            calcMode="linear"
+            keyPoints={step.timing.keyPoints}
+            keyTimes={step.timing.keyTimes}
+          >
+            <mpath href={`#wire-${step.id}`} />
           </animateMotion>
           <animate
             attributeName="opacity"
-            values="0;1;1;0"
-            keyTimes="0;0.12;0.82;1"
-            dur="1.5s"
-            begin={client.begin}
+            dur={step.dur}
             repeatCount="indefinite"
+            values={step.timing.fadeValues}
+            keyTimes={step.timing.fadeTimes}
           />
         </circle>
       ))
     }
 
-    <!-- The write that follows, on to the database -->
-    <circle r="3" class="fill-accent">
-      <animateMotion dur="0.9s" begin="1.4s" repeatCount="indefinite">
-        <mpath href="#wire-db" />
-      </animateMotion>
-      <animate
-        attributeName="opacity"
-        values="0;1;1;0"
-        keyTimes="0;0.15;0.8;1"
-        dur="0.9s"
-        begin="1.4s"
-        repeatCount="indefinite"
-      />
-    </circle>
-
-    <!-- The job handed off to the workers, after the request lands -->
-    <circle r="2.5" class="fill-accent">
-      <animateMotion dur="0.7s" begin="1.75s" repeatCount="indefinite">
-        <mpath href="#wire-workers" />
-      </animateMotion>
-      <animate
-        attributeName="opacity"
-        values="0;1;1;0"
-        keyTimes="0;0.2;0.75;1"
-        dur="0.7s"
-        begin="1.75s"
-        repeatCount="indefinite"
-      />
-    </circle>
-
-    <!-- Product front-ends -->
+    <!-- Clients -->
     {
       clients.map((client) => (
         <>
           <rect
             x={client.x}
-            y="18"
+            y="10"
             width="120"
-            height="44"
+            height="36"
             rx="4"
-            class="fill-bg stroke-border"
+            class="sender fill-bg stroke-border"
             stroke-width="1"
+            style={`animation-delay: ${client.delay}`}
           />
           <text
             x={client.x + 60}
-            y="45"
+            y="33"
             text-anchor="middle"
             class="fill-fg font-mono text-[13px]"
           >
@@ -125,97 +159,80 @@ const responses = ["200 OK · 14 ms", "200 OK · 9 ms", "201 · 22 ms"];
       ))
     }
 
-    <!-- The backend. The ring pulses as each request lands. -->
+    <!-- Supporting infrastructure -->
+    {
+      boxes.map((box) => (
+        <>
+          <rect
+            x={box.x}
+            y={box.y}
+            width={box.w}
+            height={box.h}
+            rx="4"
+            class="fill-bg stroke-border"
+            stroke-width="1"
+          />
+          <text
+            x={box.x + box.w / 2}
+            y={box.y + box.h / 2 + 4}
+            text-anchor="middle"
+            class:list={[
+              "font-mono text-[12px]",
+              box.quiet ? "fill-muted" : "fill-fg",
+            ]}
+          >
+            {box.label}
+          </text>
+        </>
+      ))
+    }
+
+    <!-- The service itself. The ring pulses as the request lands. -->
     <rect
-      x="118"
-      y="144"
-      width="164"
-      height="72"
+      x="108"
+      y="156"
+      width="204"
+      height="62"
       rx="5"
       class="ring stroke-accent"
       stroke-width="1"
       fill="none"
     />
     <rect
-      x="120"
-      y="146"
-      width="160"
-      height="68"
+      x="110"
+      y="158"
+      width="200"
+      height="58"
       rx="4"
       class="fill-bg stroke-accent"
       stroke-width="1.5"
     />
     <text
-      x="200"
-      y="176"
+      x="210"
+      y="184"
       text-anchor="middle"
       class="fill-fg font-mono text-[15px] font-semibold"
     >
       Go API
     </text>
     <text
-      x="200"
-      y="196"
+      x="210"
+      y="202"
       text-anchor="middle"
-      class="fill-faint font-mono text-[11px]"
+      class="fill-faint font-mono text-[10px]"
     >
       one service
     </text>
 
-    <!-- The database -->
-    <rect
-      x="120"
-      y="250"
-      width="160"
-      height="68"
-      rx="4"
-      class="fill-bg stroke-border"
-      stroke-width="1"
-    />
-    <text
-      x="200"
-      y="280"
-      text-anchor="middle"
-      class="fill-fg font-mono text-[15px] font-semibold"
-    >
-      PostgreSQL
-    </text>
-    <text
-      x="200"
-      y="300"
-      text-anchor="middle"
-      class="fill-faint font-mono text-[11px]"
-    >
-      one source of truth
-    </text>
-
-    <!-- Background workers, off to the side so the shape is not a plain column -->
-    <rect
-      x="300"
-      y="160"
-      width="96"
-      height="40"
-      rx="4"
-      class="fill-bg stroke-border"
-      stroke-width="1"
-    />
-    <text
-      x="348"
-      y="185"
-      text-anchor="middle"
-      class="fill-muted font-mono text-[12px]"
-    >
-      Workers
-    </text>
-
-    <!-- Responses, cycling one at a time beside the API -->
+    <!-- Responses, one at a time, landing at the end of each cycle -->
     {
       responses.map((response, i) => (
         <text
-          x="290"
-          y="132"
+          x="306"
+          y="148"
+          text-anchor="end"
           class="chip fill-accent font-mono text-[11px]"
-          style={`animation-delay: ${i * 1.1}s`}
+          style={`animation-delay: ${i * 4}s`}
         >
           {response}
         </text>
@@ -226,40 +243,59 @@ const responses = ["200 OK · 14 ms", "200 OK · 9 ms", "201 · 22 ms"];
 
 <style>
   .ring {
-    transform-origin: 200px 180px;
-    animation: land 1.1s ease-out infinite;
+    transform-origin: 210px 187px;
+    animation: land 4s ease-out infinite;
   }
 
-  /* Each chip is visible for its third of the cycle, so they never overlap. */
+  /* Each client border turns accent for the half second its request is on the
+     wire, then hands the turn to the next one. */
+  .sender {
+    animation: sending 12s linear infinite;
+  }
+
+  @keyframes sending {
+    0%,
+    7% {
+      stroke: var(--color-accent);
+    }
+    9%,
+    100% {
+      stroke: var(--color-border);
+    }
+  }
+
+  /* Three chips share a 12s loop, each visible near the end of its own 4s
+     cycle, so a response always follows the request that earned it. */
   .chip {
     opacity: 0;
-    animation: chip 3.3s ease-out infinite;
+    animation: chip 12s ease-out infinite;
   }
 
   @keyframes land {
     0%,
-    55%,
+    46%,
     100% {
       opacity: 0;
       transform: scale(1);
     }
-    12% {
-      opacity: 0.55;
-      transform: scale(1.02);
+    40% {
+      opacity: 0.5;
+      transform: scale(1.015);
     }
   }
 
   @keyframes chip {
-    0% {
+    0%,
+    20% {
       opacity: 0;
       transform: translateY(4px);
     }
-    8%,
-    26% {
+    24%,
+    30% {
       opacity: 1;
       transform: none;
     }
-    36%,
+    33%,
     100% {
       opacity: 0;
       transform: none;
@@ -267,14 +303,18 @@ const responses = ["200 OK · 14 ms", "200 OK · 9 ms", "201 · 22 ms"];
   }
 
   /*
-    Motion off means off: SMIL keeps running under a CSS media query, so the
-    dots are hidden outright rather than left spinning invisibly.
+    Motion off means off: SMIL keeps running regardless of a CSS media query,
+    so the dots are hidden outright rather than left moving invisibly.
   */
   @media (prefers-reduced-motion: reduce) {
     .ring,
     .chip {
       animation: none;
       opacity: 0;
+    }
+
+    .sender {
+      animation: none;
     }
 
     circle {
