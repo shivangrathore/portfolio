@@ -38,16 +38,14 @@ const facts = [
   sectionName="Case Studies"
   articleType="Article"
 >
-  <div slot="meta" class="mt-6 rounded-xl border border-border bg-surface/40 p-5">
+  <div slot="meta" class="mt-10 border-t border-line pt-6">
     {
       facts.length > 0 && (
-        <dl class="grid gap-3 sm:grid-cols-3">
+        <dl class="grid gap-6 sm:grid-cols-3">
           {facts.map((f) => (
             <div>
-              <dt class="font-mono text-xs uppercase tracking-wider text-faint">
-                {f.label}
-              </dt>
-              <dd class="mt-1 text-sm text-fg">{f.value}</dd>
+              <dt class="label">{f.label}</dt>
+              <dd class="mt-2 text-sm text-fg">{f.value}</dd>
             </div>
           ))}
         </dl>
@@ -55,13 +53,13 @@ const facts = [
     }
     {
       (d.github || d.demo) && (
-        <div class="mt-4 flex flex-wrap gap-3 border-t border-border/60 pt-4">
+        <div class="mt-6 flex flex-wrap gap-5">
           {d.github && (
             <a
               href={d.github}
               target="_blank"
               rel="noopener"
-              class="inline-flex items-center gap-2 text-sm text-muted hover:text-fg"
+              class="inline-flex items-center gap-2 text-sm text-muted hover:text-accent"
             >
               <Github class="size-4" />
               Source
@@ -72,7 +70,7 @@ const facts = [
               href={d.demo}
               target="_blank"
               rel="noopener"
-              class="inline-flex items-center gap-2 text-sm text-muted hover:text-fg"
+              class="inline-flex items-center gap-2 text-sm text-muted hover:text-accent"
             >
               <Icon name="arrow-up-right" class="size-4" />
               Live demo

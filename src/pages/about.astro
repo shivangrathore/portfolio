@@ -1,8 +1,12 @@
 ---
 import Base from "@/layouts/Base.astro";
-import Icon from "@/components/icons/Icon.astro";
-import Button from "@/components/Button.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import Section from "@/components/Section.astro";
+import Portrait from "@/components/Portrait.astro";
 import Timeline from "@/components/Timeline.astro";
+import Button from "@/components/Button.astro";
+import Cta from "@/components/Cta.astro";
+import Icon from "@/components/icons/Icon.astro";
 import { experience } from "@/lib/experience";
 import { MAIL_ADDRESS } from "@/lib/constants";
 import { abs, breadcrumbs } from "@/lib/schema";
@@ -48,10 +52,21 @@ const education = {
     },
   ]}
 >
-  <div class="mx-auto max-w-3xl px-5 py-16">
-    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">About</h1>
+  <PageHeader
+    label="About"
+    title="Backend engineer who ships the front end too"
+    lede="Production SaaS is the day job: RBAC, real-time infrastructure, compliance workflows, third-party integrations, and the distributed services that hold them together."
+  >
+    <!-- Reads from src/assets/portrait.*; the header closes up if it is removed. -->
+    <Portrait
+      slot="aside"
+      class="aspect-3/4 w-full max-w-sm lg:mt-2 lg:max-w-none"
+      sizes="(min-width: 1024px) 22rem, 24rem"
+    />
+  </PageHeader>
 
-    <div class="prose mt-8">
+  <Section index="01" title="Background" seamless>
+    <div class="prose">
       <p>
         I'm a full-stack engineer who builds scalable <strong>Go</strong>
         backends and modern <strong>React/Next.js</strong> applications, with
@@ -74,58 +89,55 @@ const education = {
         the backend and systems work I pick up along the way.
       </p>
     </div>
+  </Section>
 
-    <section class="mt-12">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
-        Experience
-      </h2>
-      <Timeline items={experience} />
-    </section>
+  <Section index="02" title="Experience">
+    <Timeline items={experience} class="border-b border-line" />
+  </Section>
 
-    <section class="mt-12">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
-        Tools &amp; technologies
-      </h2>
-      <dl class="mt-5 space-y-4">
-        {
-          skills.map((s) => (
-            <div class="flex flex-col gap-1 sm:flex-row sm:gap-6">
-              <dt class="w-28 shrink-0 font-mono text-sm text-faint">{s.group}</dt>
-              <dd class="flex flex-wrap gap-1.5">
-                {s.items.map((item) => (
-                  <span class="rounded-md bg-surface px-2 py-0.5 font-mono text-xs text-muted">
-                    {item}
-                  </span>
-                ))}
-              </dd>
-            </div>
-          ))
-        }
-      </dl>
-    </section>
+  <Section
+    index="03"
+    title="Tools and technologies"
+    lede="What I reach for, grouped by where it sits in a system."
+  >
+    <dl class="border-t border-line">
+      {
+        skills.map((s) => (
+          <div class="grid gap-x-6 gap-y-2 border-b border-line py-4 sm:grid-cols-[9.5rem_1fr]">
+            <dt class="label pt-1">{s.group}</dt>
+            <dd class="flex flex-wrap gap-x-3 gap-y-1.5 font-mono text-xs text-muted">
+              {s.items.map((item) => (
+                <span>{item}</span>
+              ))}
+            </dd>
+          </div>
+        ))
+      }
+    </dl>
+  </Section>
 
-    <section class="mt-12">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
-        Education
-      </h2>
-      <div class="mt-5">
-        <p class="font-mono text-xs text-faint">
-          {education.period} · {education.location}
-        </p>
-        <h3 class="mt-1 font-medium text-fg">{education.degree}</h3>
-        <p class="text-sm text-muted">{education.school}</p>
-      </div>
-    </section>
+  <Section index="04" title="Education">
+    <div class="border-y border-line py-6">
+      <p class="font-mono text-xs text-faint">
+        {education.period} · {education.location}
+      </p>
+      <h3 class="mt-2.5 font-semibold tracking-tight text-fg">
+        {education.degree}
+      </h3>
+      <p class="mt-1 text-sm text-muted">{education.school}</p>
+    </div>
 
-    <div class="mt-12 flex flex-wrap gap-3">
+    <div class="mt-8 flex flex-wrap gap-3">
       <Button href="/resume.pdf" target="_blank" rel="noopener">
         <Icon name="download" class="size-4" />
-        Download Resume
+        Download resume
       </Button>
       <Button variant="primary" href={`mailto:${MAIL_ADDRESS}`}>
         <Icon name="mail" class="size-4" />
         Get in touch
       </Button>
     </div>
-  </div>
+  </Section>
+
+  <Cta />
 </Base>

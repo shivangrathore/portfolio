@@ -1,5 +1,6 @@
 ---
 import Base from "@/layouts/Base.astro";
+import PageHeader from "@/components/PageHeader.astro";
 import Icon from "@/components/icons/Icon.astro";
 import Cta from "@/components/Cta.astro";
 import { landings } from "@/lib/landings";
@@ -29,39 +30,48 @@ const description =
     },
   ]}
 >
-  <div class="mx-auto max-w-3xl px-5 py-16">
-    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Hire me</h1>
-    <p class="mt-3 max-w-xl text-muted">
-      Three ways people usually bring me in. Each page covers what the work
-      includes, where I have done it before, and when I am the wrong person for
-      it. If none of them match, the
-      <a href="/services" class="link">full service list</a> probably does.
-    </p>
+  <PageHeader
+    label="Hire me"
+    title="Three ways people bring me in"
+    lede="Each page covers what the work includes, where I have done it before, and when I am the wrong person for it. If none of them match, the full service list probably does."
+  />
 
-    <div class="mt-10 grid gap-4">
+  <div class="shell py-14 md:py-16">
+    <div class="border-t border-line">
       {
-        landings.map((landing) => (
+        landings.map((landing, i) => (
           <a
             href={`/hire/${landing.slug}`}
-            class="group rounded-xl border border-border bg-surface/40 p-6 transition-colors hover:border-accent/50"
+            class="group relative grid grid-cols-[2.5rem_1fr] gap-x-4 border-b border-line py-7 transition-colors hover:bg-surface sm:gap-x-6 lg:px-4"
           >
-            <p class="font-mono text-xs uppercase tracking-wider text-accent">
-              {landing.eyebrow}
-            </p>
-            <h2 class="mt-2.5 text-lg font-semibold tracking-tight group-hover:text-accent">
-              {landing.heading}
-            </h2>
-            <p class="mt-1.5 text-sm leading-relaxed text-muted">
-              {landing.intro}
-            </p>
-            <span class="mt-4 inline-flex items-center gap-1.5 text-sm text-muted group-hover:text-accent">
-              What this includes
-              <Icon name="arrow-right" class="size-3.5" />
+            <span class="label pt-1.5 group-hover:text-accent">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span class="min-w-0">
+              <span class="label block text-accent">{landing.eyebrow}</span>
+              <span class="mt-2.5 block text-heading text-fg group-hover:text-accent">
+                {landing.heading}
+              </span>
+              <span class="measure mt-2.5 block text-sm leading-relaxed text-muted">
+                {landing.intro}
+              </span>
+              <span class="mt-4 inline-flex items-center gap-1.5 text-sm text-muted group-hover:text-accent">
+                What this includes
+                <Icon
+                  name="arrow-right"
+                  class="size-3.5 transition-transform group-hover:translate-x-0.5"
+                />
+              </span>
             </span>
           </a>
         ))
       }
     </div>
+
+    <p class="mt-6 text-sm text-faint">
+      Not one of these? The <a href="/services" class="link">full service list</a>
+      covers everything else I take on.
+    </p>
   </div>
 
   <Cta />
