@@ -1,7 +1,7 @@
 title: "Casify"
 description: "A customizable e-commerce platform for phone cases, offering product design, cart, checkout, and order tracking functionalities."
 date: "2024"
-featured: true
+featured: false
 order: 100
 technologies:
   - Next.js

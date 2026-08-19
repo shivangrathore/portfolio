@@ -1,7 +1,7 @@
 title: "Social Connect"
 description: "A modern, full-stack social media platform focused on fast, reliable post creation, media uploads with progress feedback, and strong data consistency."
 date: "2025-07-08"
-featured: true
+featured: false
 order: 103
 technologies:
   - "Next.js"
