@@ -54,67 +54,85 @@ const elsewhere = [
 ] as const;
 ---
 
-<footer class="mt-24 border-t border-border/60">
-  <div class="mx-auto max-w-3xl px-5 py-12">
-    <div class="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-      {
-        columns.map((column) => (
-          <div>
-            <h2 class="font-mono text-xs uppercase tracking-wider text-faint">
-              {column.title}
-            </h2>
-            <ul class="mt-4 space-y-2.5">
-              {column.links.map((link) => (
+<footer class="border-t border-line">
+  <div class="shell py-16">
+    <div class="grid gap-x-12 gap-y-12 lg:grid-cols-12">
+      <!-- Sign-off, at display size. The site ends on the name. -->
+      <div class="lg:col-span-4">
+        <p class="text-heading tracking-tight text-fg">
+          Shivang Rathore<span class="text-accent">.</span>
+        </p>
+        <p class="measure mt-3 text-sm leading-relaxed text-muted">
+          Freelance full-stack engineer. Go and PostgreSQL for the parts that
+          have to be correct, Next.js for the parts people touch.
+        </p>
+        <a
+          href={`mailto:${MAIL_ADDRESS}`}
+          class="mt-5 inline-block text-sm text-fg underline decoration-border underline-offset-4 hover:text-accent hover:decoration-accent"
+        >
+          {MAIL_ADDRESS}
+        </a>
+      </div>
+
+      <div class="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4 lg:col-span-8">
+        {
+          columns.map((column) => (
+            <div>
+              <h2 class="label">{column.title}</h2>
+              <ul class="mt-4 space-y-2.5">
+                {column.links.map((link) => (
+                  <li>
+                    <a href={link.href} class="text-sm text-muted hover:text-accent">
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+
+        <div>
+          <h2 class="label">Elsewhere</h2>
+          <ul class="mt-4 space-y-2.5">
+            {
+              elsewhere.map((link) => (
                 <li>
-                  <a href={link.href} class="text-sm text-muted hover:text-accent">
+                  <a
+                    href={link.href}
+                    target={link.icon === "mail" ? undefined : "_blank"}
+                    rel={link.icon === "mail" ? undefined : "noopener"}
+                    class="group inline-flex items-center gap-2 text-sm text-muted hover:text-accent"
+                  >
+                    <span class="text-faint group-hover:text-accent">
+                      {link.icon === "github" ? (
+                        <Github class="size-3.5" />
+                      ) : link.icon === "linkedin" ? (
+                        <Linkedin class="size-3.5" />
+                      ) : link.icon === "x" ? (
+                        <X class="size-3.5" />
+                      ) : (
+                        <Icon name="mail" class="size-3.5" />
+                      )}
+                    </span>
                     {link.label}
                   </a>
                 </li>
-              ))}
-            </ul>
-          </div>
-        ))
-      }
-
-      <div>
-        <h2 class="font-mono text-xs uppercase tracking-wider text-faint">
-          Elsewhere
-        </h2>
-        <ul class="mt-4 space-y-2.5">
-          {
-            elsewhere.map((link) => (
-              <li>
-                <a
-                  href={link.href}
-                  target={link.icon === "mail" ? undefined : "_blank"}
-                  rel={link.icon === "mail" ? undefined : "noopener"}
-                  class="group inline-flex items-center gap-2 text-sm text-muted hover:text-accent"
-                >
-                  <span class="text-faint group-hover:text-accent">
-                    {link.icon === "github" ? (
-                      <Github class="size-3.5" />
-                    ) : link.icon === "linkedin" ? (
-                      <Linkedin class="size-3.5" />
-                    ) : link.icon === "x" ? (
-                      <X class="size-3.5" />
-                    ) : (
-                      <Icon name="mail" class="size-3.5" />
-                    )}
-                  </span>
-                  {link.label}
-                </a>
-              </li>
-            ))
-          }
-        </ul>
+              ))
+            }
+          </ul>
+        </div>
       </div>
     </div>
 
     <div
-      class="mt-12 flex flex-col gap-3 border-t border-border/60 pt-6 text-sm text-faint sm:flex-row sm:items-center sm:justify-between"
+      class="mt-16 flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p>© {year} Shivang Rathore</p>
-      <p class="font-mono text-xs">{AVAILABILITY}</p>
+      <p class="label">© {year} Shivang Rathore</p>
+      <p class="label inline-flex items-center gap-2">
+        <span class="size-1.5 rounded-full bg-accent" aria-hidden="true"></span>
+        {AVAILABILITY}
+      </p>
     </div>
   </div>
 </footer>

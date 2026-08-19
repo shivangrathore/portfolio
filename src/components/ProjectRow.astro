@@ -1,0 +1,114 @@
+---
+import { getCollection, type CollectionEntry } from "astro:content";
+import Github from "@/components/icons/Github.astro";
+import Icon from "@/components/icons/Icon.astro";
+import { toTitleCase } from "@/lib/utils";
+
+interface Props {
+  project: CollectionEntry<"projects">;
+  /** Position in the list, 1-based. Rendered as 01, 02, ... */
+  index: number;
+}
+
+const { project, index } = Astro.props;
+const p = project.data;
+
+// A project can point at a case study that is still a draft, and drafts are not
+// built in production. Only link when the target page will actually exist.
+const studies = await getCollection("caseStudies");
+const caseStudy =
+  p.caseStudy &&
+  studies.some(
+    (s) => s.id === p.caseStudy && (import.meta.env.DEV || !s.data.draft),
+  )
+    ? p.caseStudy
+    : undefined;
+
+// Whatever the row as a whole should open. A write-up beats a demo, a demo
+// beats source, and a project with none of the three stays plain text.
+const primary = caseStudy ? `/case-studies/${caseStudy}` : (p.demo ?? p.github);
+const external = !caseStudy && Boolean(primary);
+
+const TECH_LIMIT = 5;
+const shownTech = p.technologies.slice(0, TECH_LIMIT);
+const hiddenTech = p.technologies.length - shownTech.length;
+---
+
+<article
+  class="group relative border-t border-line transition-colors first:border-t-0 hover:bg-surface"
+>
+  <div class="grid grid-cols-[2.5rem_1fr] gap-x-4 py-7 sm:gap-x-6 lg:px-4">
+    <span class="label pt-1.5 group-hover:text-accent">
+      {String(index).padStart(2, "0")}
+    </span>
+
+    <div class="min-w-0">
+      <div class="flex items-start justify-between gap-4">
+        <h3 class="text-lg font-semibold tracking-tight text-fg">
+          {
+            primary ? (
+              // Stretched link: the whole row is the target. The icon links
+              // below sit above it on z-index so they stay separately clickable.
+              <a
+                href={primary}
+                target={external ? "_blank" : undefined}
+                rel={external ? "noopener" : undefined}
+                class="after:absolute after:inset-0 group-hover:text-accent"
+              >
+                {p.title}
+              </a>
+            ) : (
+              p.title
+            )
+          }
+        </h3>
+
+        <div class="relative z-10 flex shrink-0 items-center gap-3 text-faint">
+          {
+            p.github && (
+              <a
+                href={p.github}
+                target="_blank"
+                rel="noopener"
+                aria-label={`${p.title} on GitHub`}
+                class="hover:text-fg"
+              >
+                <Github class="size-4" />
+              </a>
+            )
+          }
+          {
+            p.demo && (
+              <a
+                href={p.demo}
+                target="_blank"
+                rel="noopener"
+                aria-label={`${p.title} live demo`}
+                class="hover:text-fg"
+              >
+                <Icon name="arrow-up-right" class="size-4" />
+              </a>
+            )
+          }
+        </div>
+      </div>
+
+      <p class="measure mt-2 text-sm leading-relaxed text-muted">
+        {p.description}
+      </p>
+
+      <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-xs text-faint">
+        {shownTech.map((tech) => <span>{tech}</span>)}
+        {hiddenTech > 0 && <span>+{hiddenTech}</span>}
+        <span aria-hidden="true" class="text-line">|</span>
+        <span>{p.date}</span>
+        <span>{toTitleCase(p.status)}</span>
+        {
+          caseStudy && (
+            <span class="text-accent">Case study &rarr;</span>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</article>

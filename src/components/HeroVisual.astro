@@ -1,0 +1,100 @@
+---
+import HeroDiagram from "@/components/HeroDiagram.astro";
+import Portrait from "@/components/Portrait.astro";
+import { hasPortrait } from "@/lib/portrait";
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<!--
+  The hero plate: a hairline grid, one slow accent bloom, and the architecture
+  diagram on top. Built as a stack on purpose. When a portrait lands in
+  src/assets it snaps onto the same plate as the top layer, overlapping the
+  diagram, and nothing else about the hero has to change.
+-->
+<div class:list={["hero-plate relative", className]}>
+  <div class="grid-field absolute inset-0" aria-hidden="true"></div>
+  <div class="bloom absolute inset-0" aria-hidden="true"></div>
+
+  <div
+    class:list={[
+      "relative px-4 py-6 transition-all duration-500",
+      // The diagram steps back and to the side once it is a backdrop rather
+      // than the main event.
+      hasPortrait && "ml-auto w-4/5 opacity-70",
+    ]}
+  >
+    <HeroDiagram />
+  </div>
+
+  {
+    hasPortrait && (
+      <Portrait
+        class="absolute -bottom-4 left-0 aspect-3/4 w-3/5 shadow-xl"
+        loading="eager"
+        sizes="(min-width: 1024px) 18rem, 55vw"
+      />
+    )
+  }
+</div>
+
+<style>
+  .hero-plate {
+    /* Space for the portrait to hang below the plate without clipping. */
+    padding-bottom: 1rem;
+  }
+
+  /*
+    Engineering graph paper. Drawn in CSS rather than shipped as an image, and
+    masked so it dissolves at the edges instead of ending on a hard line.
+  */
+  .grid-field {
+    background-image:
+      linear-gradient(to right, var(--color-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
+    background-size: 34px 34px;
+    opacity: 0.55;
+    mask-image: radial-gradient(120% 90% at 60% 40%, #000 30%, transparent 78%);
+    animation: drift 60s linear infinite;
+  }
+
+  /* One slow accent bloom behind the API node, so the panel is not inert. */
+  .bloom {
+    background: radial-gradient(
+      42% 34% at 52% 52%,
+      color-mix(in oklch, var(--color-accent) 22%, transparent),
+      transparent 70%
+    );
+    filter: blur(18px);
+    animation: breathe 9s ease-in-out infinite;
+  }
+
+  @keyframes drift {
+    to {
+      background-position: 34px 34px;
+    }
+  }
+
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.06);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .grid-field,
+    .bloom {
+      animation: none;
+    }
+  }
+</style>

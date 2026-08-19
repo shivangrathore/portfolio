@@ -49,9 +49,9 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const field =
-  "w-full rounded-lg border border-border bg-bg px-3.5 py-2.5 text-sm text-fg placeholder:text-faint outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/40";
-const labelCls = "mb-2 block text-sm font-medium text-muted";
-const errorCls = "mt-1 text-xs text-red-400";
+  "w-full rounded-md border border-border bg-bg px-3.5 py-2.5 text-sm text-fg placeholder:text-faint outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-accent/40";
+const labelCls = "mb-2 block text-sm font-medium text-fg";
+const errorCls = "mt-1.5 text-xs text-danger";
 
 export default function ContactForm() {
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
@@ -115,7 +115,7 @@ export default function ContactForm() {
             Name
           </label>
           <input id="name" className={field} placeholder="Your name" {...register("name")} />
-          {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>}
+          {errors.name && <p className={errorCls}>{errors.name.message}</p>}
         </div>
         <div>
           <label className={labelCls} htmlFor="email">
@@ -128,7 +128,7 @@ export default function ContactForm() {
             placeholder="you@example.com"
             {...register("email")}
           />
-          {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email.message}</p>}
+          {errors.email && <p className={errorCls}>{errors.email.message}</p>}
         </div>
       </div>
 
@@ -222,7 +222,7 @@ export default function ContactForm() {
         </p>
       )}
       {status === "error" && (
-        <p className="text-sm text-red-400">Something went wrong. Please email me directly.</p>
+        <p className="text-sm text-danger">Something went wrong. Please email me directly.</p>
       )}
     </form>
   );

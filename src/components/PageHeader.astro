@@ -1,0 +1,38 @@
+---
+interface Props {
+  /** Mono micro-label above the title, e.g. "Services". */
+  label?: string;
+  title: string;
+  /** Standfirst. One paragraph, kept to a reading measure. */
+  lede?: string;
+  class?: string;
+}
+
+const { label, title, lede, class: className } = Astro.props;
+---
+
+<!--
+  Interior page opener. Same rhythm as the homepage hero at a smaller size, so
+  a visitor who lands on /services from search sees the same site as someone
+  who came through the front door.
+-->
+<header class:list={["border-b border-line", className]}>
+  <div class="shell grid gap-x-12 gap-y-10 pb-14 pt-14 md:pt-20 lg:grid-cols-12">
+    <div class="lg:col-span-8">
+      {label && <p class="label text-accent">{label}</p>}
+      <h1 class:list={["text-title text-balance", label && "mt-5"]}>{title}</h1>
+      {
+        lede && (
+          <p class="measure mt-5 text-lg leading-relaxed text-pretty text-muted">
+            {lede}
+          </p>
+        )
+      }
+      <slot />
+    </div>
+
+    <div class="lg:col-span-4">
+      <slot name="aside" />
+    </div>
+  </div>
+</header>

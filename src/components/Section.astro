@@ -1,0 +1,67 @@
+---
+import Icon from "@/components/icons/Icon.astro";
+
+interface Props {
+  /** Section number, e.g. "01". Kept as data so pages control the sequence. */
+  index?: string;
+  title: string;
+  /** One or two lines under the title, in the label rail. */
+  lede?: string;
+  href?: string;
+  linkLabel?: string;
+  /** Drops the top rule, for the first band under a hero. */
+  seamless?: boolean;
+  class?: string;
+}
+
+const {
+  index,
+  title,
+  lede,
+  href,
+  linkLabel,
+  seamless = false,
+  class: className,
+} = Astro.props;
+---
+
+<!--
+  The band: a hairline, a label rail, and the content. Every section on the
+  site is one of these, which is what makes the pages read as one document
+  rather than a stack of unrelated cards.
+-->
+<section
+  class:list={["reveal", !seamless && "border-t border-line", className]}
+>
+  <div class="shell grid gap-x-12 gap-y-8 py-16 md:py-20 lg:grid-cols-12">
+    <!-- The rail tracks the reader down long sections instead of scrolling
+         out of sight at the top. -->
+    <div class="lg:sticky lg:top-24 lg:col-span-4 lg:self-start">
+      {index && <p class="label">{index}</p>}
+      <h2 class="mt-3 text-heading text-balance">{title}</h2>
+      {
+        lede && (
+          <p class="measure mt-3 text-sm leading-relaxed text-muted">{lede}</p>
+        )
+      }
+      {
+        href && (
+          <a
+            href={href}
+            class="group mt-5 inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent"
+          >
+            {linkLabel ?? "See all"}
+            <Icon
+              name="arrow-right"
+              class="size-3.5 transition-transform group-hover:translate-x-0.5"
+            />
+          </a>
+        )
+      }
+    </div>
+
+    <div class="lg:col-span-8">
+      <slot />
+    </div>
+  </div>
+</section>

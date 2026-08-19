@@ -1,23 +1,110 @@
 @import "tailwindcss";
 
+/*
+  v4 palette. Two themes off one token set.
+
+  The light values live in @theme because they are the default a browser with
+  no stored preference and no system preference gets. The dark values live in
+  --d-* below and are aliased onto the same tokens, so a colour is written
+  once and every utility (bg-bg, text-muted, border-line) keeps working in
+  both themes without a single dark: variant in the markup.
+*/
 @theme {
-  /* Neutral dark base, single green accent */
-  --color-bg: oklch(0.16 0.005 260);
-  --color-surface: oklch(0.2 0.006 260);
-  --color-border: oklch(0.34 0.008 260);
-  --color-fg: oklch(0.96 0 0);
-  --color-muted: oklch(0.7 0.012 260);
-  --color-faint: oklch(0.62 0.01 260);
-  --color-accent: oklch(0.7 0.16 149.2);
-  --color-accent-fg: oklch(0.16 0.02 149.2);
+  /* Warm paper rather than white: pure #fff next to a dark headline vibrates. */
+  --color-bg: oklch(0.985 0.004 95);
+  --color-surface: oklch(0.955 0.005 95);
+  /* Hairline, for the rules that carry the layout. */
+  --color-line: oklch(0.895 0.006 95);
+  /* Heavier edge, for controls and anything that has to read as a container. */
+  --color-border: oklch(0.83 0.008 95);
+  --color-fg: oklch(0.21 0.012 265);
+  --color-muted: oklch(0.45 0.012 265);
+  /* Quiet, but it carries dates and meta lines at 12px, so it still has to
+     clear 4.5:1 against both bg and surface. 0.58 measured 4.1 and failed. */
+  --color-faint: oklch(0.53 0.012 265);
+  /* Darkened for light mode: the dark-mode green fails contrast on paper. */
+  --color-accent: oklch(0.5 0.13 150);
+  --color-accent-fg: oklch(0.99 0 0);
+  /* Form errors. Themed, because a fixed red fails on one background or the other. */
+  --color-danger: oklch(0.52 0.19 27);
 
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+
+  /* Editorial type scale. Fluid, so the display size is set once. */
+  --text-display: clamp(2.1rem, 4.6vw, 3.9rem);
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.035em;
+  --text-display--font-weight: 600;
+
+  --text-title: clamp(1.9rem, 3.6vw, 2.6rem);
+  --text-title--line-height: 1.06;
+  --text-title--letter-spacing: -0.028em;
+  --text-title--font-weight: 600;
+
+  --text-heading: clamp(1.35rem, 2vw, 1.6rem);
+  --text-heading--line-height: 1.2;
+  --text-heading--letter-spacing: -0.02em;
+  --text-heading--font-weight: 600;
+
+  /* Micro label: mono, caps, wide. The only decorative type on the site. */
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1;
+  --text-label--letter-spacing: 0.18em;
+
+  --container-shell: 78rem;
 }
 
 @layer base {
-  html {
+  :root {
+    --d-bg: oklch(0.155 0.006 265);
+    --d-surface: oklch(0.195 0.007 265);
+    --d-line: oklch(0.27 0.008 265);
+    --d-border: oklch(0.36 0.009 265);
+    --d-fg: oklch(0.97 0 0);
+    --d-muted: oklch(0.73 0.012 265);
+    --d-faint: oklch(0.6 0.011 265);
+    --d-accent: oklch(0.74 0.15 150);
+    --d-accent-fg: oklch(0.17 0.02 150);
+    --d-danger: oklch(0.72 0.16 25);
+  }
+
+  /*
+    System preference, unless the visitor has explicitly chosen light. The
+    :not() keeps a stored light choice winning over a dark OS.
+  */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --color-bg: var(--d-bg);
+      --color-surface: var(--d-surface);
+      --color-line: var(--d-line);
+      --color-border: var(--d-border);
+      --color-fg: var(--d-fg);
+      --color-muted: var(--d-muted);
+      --color-faint: var(--d-faint);
+      --color-accent: var(--d-accent);
+      --color-accent-fg: var(--d-accent-fg);
+      --color-danger: var(--d-danger);
+    }
+  }
+
+  /* Explicit choice. Declared last so it beats the media query either way. */
+  :root[data-theme="dark"] {
     color-scheme: dark;
+    --color-bg: var(--d-bg);
+    --color-surface: var(--d-surface);
+    --color-line: var(--d-line);
+    --color-border: var(--d-border);
+    --color-fg: var(--d-fg);
+    --color-muted: var(--d-muted);
+    --color-faint: var(--d-faint);
+    --color-accent: var(--d-accent);
+    --color-accent-fg: var(--d-accent-fg);
+    --color-danger: var(--d-danger);
+  }
+
+  html {
     scroll-behavior: smooth;
   }
 
@@ -31,6 +118,11 @@
 
   a {
     @apply transition-colors;
+  }
+
+  /* One focus treatment everywhere, visible on paper and on ink. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
   }
 
   /* Geist Mono ships coding ligatures (=>, ===, ..., !=) whose glyphs
@@ -50,6 +142,61 @@
   :target {
     scroll-margin-top: 6rem;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/*
+  Scroll reveal. The hidden state is scoped to .js-reveal, which the script
+  adds to <html> before first paint, so a visitor with JS disabled or a
+  crawler reading the page gets everything at full opacity.
+*/
+.js-reveal .reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.js-reveal .reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js-reveal .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* The page gutter. Every full-width band puts its content in one of these. */
+@utility shell {
+  @apply mx-auto w-full max-w-shell px-5 sm:px-8 lg:px-12;
+}
+
+/* Reading measure for body copy that is not inside .prose. */
+@utility measure {
+  max-width: 62ch;
+}
+
+/* Mono micro-caps. Used for section numbers, field names and status lines. */
+@utility label {
+  @apply font-mono text-label uppercase text-faint;
 }
 
 /* Subtle link underline that lives under the baseline */
@@ -105,7 +252,7 @@
   }
 
   hr {
-    @apply border-0 border-t border-border my-10;
+    @apply border-0 border-t border-line my-10;
   }
 
   ul {
@@ -117,7 +264,7 @@
   }
 
   img {
-    @apply rounded-lg my-6 mx-auto border border-border;
+    @apply rounded-lg my-6 mx-auto border border-line;
   }
 
   /* Inline code */
@@ -125,8 +272,12 @@
     @apply bg-surface text-fg rounded px-1.5 py-0.5 text-[0.85em] font-mono;
   }
 
-  /* Shiki code blocks. pr-14 reserves a gutter for the copy button so
-     code never renders underneath it. */
+  /*
+    Shiki code blocks. pr-14 reserves a gutter for the copy button so code
+    never renders underneath it. The theme is dark in both site themes: a
+    code block is a quoted terminal, and re-tinting it per theme would mean
+    shipping two Shiki themes for no reading benefit.
+  */
   pre {
     @apply rounded-lg border border-border p-4 pr-14 my-6 overflow-x-auto text-sm leading-relaxed;
   }
@@ -149,12 +300,30 @@
   }
 
   td {
-    @apply px-3 py-2 border-b border-border/50;
+    @apply px-3 py-2 border-b border-line;
   }
 
   figcaption {
     @apply text-sm text-faint text-center mt-2;
   }
+}
+
+/*
+  Theme toggle icons. Both ship in the markup and CSS picks the one that
+  describes what clicking does: moon while the page is light, sun while it is
+  dark. Global rather than scoped to the component, because the icons are
+  rendered by <Icon /> and carry no scoping attribute of their own.
+*/
+.theme-icon-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-icon-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-icon-light {
+  display: inline;
 }
 
 /* Permalink injected beside each article heading */

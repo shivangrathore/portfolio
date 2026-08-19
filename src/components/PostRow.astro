@@ -1,0 +1,59 @@
+---
+import { formatDate } from "@/lib/utils";
+
+interface Props {
+  href: string;
+  title: string;
+  description: string;
+  pubDate: Date;
+  /** "Blog", "Case study". Omitted on lists that are already one kind. */
+  kind?: string;
+  /** Extra mono facts on the meta line, e.g. role and timeline. */
+  facts?: string[];
+  tags?: string[];
+}
+
+const { href, title, description, pubDate, kind, facts = [], tags = [] } =
+  Astro.props;
+---
+
+<article
+  class="group relative border-t border-line transition-colors first:border-t-0 hover:bg-surface"
+>
+  <div class="grid gap-x-6 gap-y-2 py-7 lg:grid-cols-[10.5rem_1fr] lg:px-4">
+    <!-- Mono for alignment, but without the wide label tracking: a full date
+         does not fit this column at 0.18em. -->
+    <div class="pt-1.5 font-mono text-xs text-faint">
+      <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+    </div>
+
+    <div class="min-w-0">
+      {kind && <p class="label mb-2 text-accent">{kind}</p>}
+      <h3 class="text-lg font-semibold tracking-tight text-fg">
+        <a href={href} class="after:absolute after:inset-0 group-hover:text-accent">
+          {title}
+        </a>
+      </h3>
+      <p class="measure mt-2 text-sm leading-relaxed text-muted">
+        {description}
+      </p>
+      {
+        (facts.length > 0 || tags.length > 0) && (
+          <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-xs text-faint">
+            {facts.map((fact) => (
+              <span>{fact}</span>
+            ))}
+            {facts.length > 0 && tags.length > 0 && (
+              <span aria-hidden="true" class="text-line">
+                |
+              </span>
+            )}
+            {tags.slice(0, 4).map((tag) => (
+              <span>{tag}</span>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  </div>
+</article>

@@ -50,5 +50,32 @@ const fullTitle = title
       <slot />
     </main>
     <Footer />
+
+    <script>
+      // Sections rise into place once, as they are reached. The hidden state
+      // only exists while this class is set, so nothing can leave content
+      // invisible if the observer never runs.
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const targets = document.querySelectorAll(".reveal");
+
+      if (!reduced && "IntersectionObserver" in window && targets.length > 0) {
+        document.documentElement.classList.add("js-reveal");
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              entry.target.classList.add("is-in");
+              observer.unobserve(entry.target);
+            }
+          },
+          // Fires slightly before the band reaches the fold, so the motion has
+          // finished by the time it is properly in view.
+          { rootMargin: "0px 0px -12% 0px", threshold: 0.05 },
+        );
+
+        targets.forEach((target) => observer.observe(target));
+      }
+    </script>
   </body>
 </html>
