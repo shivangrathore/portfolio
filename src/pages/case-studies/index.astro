@@ -1,8 +1,9 @@
 ---
 import { getCollection } from "astro:content";
 import Base from "@/layouts/Base.astro";
-import Icon from "@/components/icons/Icon.astro";
-import { formatDate } from "@/lib/utils";
+import PageHeader from "@/components/PageHeader.astro";
+import PostRow from "@/components/PostRow.astro";
+import Cta from "@/components/Cta.astro";
 import { abs, breadcrumbs } from "@/lib/schema";
 
 const isDev = import.meta.env.DEV;
@@ -35,48 +36,32 @@ const schema = [
   description="In-depth write-ups of features and projects I've built: the problem, the approach, and the trade-offs."
   schema={schema}
 >
-  <div class="mx-auto max-w-3xl px-5 py-16">
-    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">
-      Case Studies
-    </h1>
-    <p class="mt-3 max-w-xl text-muted">
-      Long-form write-ups of features and projects: the problem, the approach,
-      the trade-offs, and what I'd do differently.
-    </p>
+  <PageHeader
+    label="Case studies"
+    title="The problem, the approach, the trade-offs"
+    lede="Long-form write-ups of what I built, what it had to survive, and the decisions I would defend in a review."
+  />
 
+  <div class="shell py-14 md:py-16">
     {
       studies.length === 0 ? (
-        <p class="mt-12 text-muted">No case studies yet. Check back soon.</p>
+        <p class="text-muted">No case studies yet. Check back soon.</p>
       ) : (
-        <div class="mt-10 grid gap-5">
+        <div class="border-b border-line">
           {studies.map((s) => (
-            <a
+            <PostRow
               href={`/case-studies/${s.id}`}
-              class="group rounded-xl border border-border bg-surface/40 p-6 transition-colors hover:border-accent/50"
-            >
-              <div class="flex items-center justify-between gap-4">
-                <h2 class="text-lg font-semibold text-fg group-hover:text-accent">
-                  {s.data.title}
-                </h2>
-                <Icon
-                  name="arrow-up-right"
-                  class="size-4 shrink-0 text-faint group-hover:text-accent"
-                />
-              </div>
-              <p class="mt-2 text-sm leading-relaxed text-muted">
-                {s.data.description}
-              </p>
-              <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs text-faint">
-                <time datetime={s.data.pubDate.toISOString()}>
-                  {formatDate(s.data.pubDate)}
-                </time>
-                {s.data.role && <span>{s.data.role}</span>}
-                {s.data.timeline && <span>{s.data.timeline}</span>}
-              </div>
-            </a>
+              title={s.data.title}
+              description={s.data.description}
+              pubDate={s.data.pubDate}
+              facts={[s.data.role, s.data.timeline].filter(Boolean) as string[]}
+              tags={s.data.tags}
+            />
           ))}
         </div>
       )
     }
   </div>
+
+  <Cta />
 </Base>

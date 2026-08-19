@@ -1,18 +1,25 @@
 ---
 import { getCollection } from "astro:content";
 import Base from "@/layouts/Base.astro";
-import ProjectCard from "@/components/ProjectCard.astro";
+import Section from "@/components/Section.astro";
+import ProjectRow from "@/components/ProjectRow.astro";
+import PostRow from "@/components/PostRow.astro";
 import Button from "@/components/Button.astro";
-import Timeline from "@/components/Timeline.astro";
+import HeroVisual from "@/components/HeroVisual.astro";
 import Cta from "@/components/Cta.astro";
-import Github from "@/components/icons/Github.astro";
 import Icon from "@/components/icons/Icon.astro";
-import { GITHUB_URL, NAV_ITEMS } from "@/lib/constants";
+import { NAV_ITEMS } from "@/lib/constants";
+import { proof } from "@/lib/proof";
 import { abs } from "@/lib/schema";
-import { services } from "@/lib/services";
+// `process` is aliased: an unaliased import shadows Node's global process
+// in this module, and the dev runtime reads process.env on every request.
+import {
+  services,
+  process as steps,
+  usd,
+  WEEKLY_RATE,
+} from "@/lib/services";
 import { landings } from "@/lib/landings";
-import { experience } from "@/lib/experience";
-import { formatDate } from "@/lib/utils";
 
 const isDev = import.meta.env.DEV;
 const visible = <T extends { data: { draft: boolean } }>(items: T[]) =>
@@ -22,6 +29,9 @@ const projects = (await getCollection("projects")).sort(
   (a, b) => b.data.order - a.data.order,
 );
 const featured = projects.filter((p) => p.data.featured).slice(0, 3);
+// The top project carries the section on its own. The rest are rows under it,
+// because three equal-weight entries make a visitor choose where to look.
+const [lead, ...rest] = featured;
 
 const posts = visible(await getCollection("blog")).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
@@ -35,7 +45,19 @@ const writing = [
   ...posts.map((p) => ({ kind: "Blog", entry: p, base: "/blog/" })),
 ]
   .sort((a, b) => b.entry.data.pubDate.valueOf() - a.entry.data.pubDate.valueOf())
-  .slice(0, 4);
+  .slice(0, 3);
+
+// Everything a buyer checks before writing the first email, answered in the
+// hero rather than three pages deep.
+const facts = [
+  { term: "Core stack", detail: "Go · PostgreSQL · Next.js" },
+  // The location is going to come out anyway, so it leads with the answer to
+  // the objection it raises rather than making a US buyer go looking.
+  { term: "Works from", detail: "India · 4 hrs US overlap" },
+  { term: "Projects from", detail: `${usd(1500)} USD` },
+  { term: "Weekly rate", detail: `${usd(WEEKLY_RATE)} USD` },
+  { term: "Available", detail: "Now · one project at a time" },
+];
 ---
 
 <Base
@@ -56,180 +78,279 @@ const writing = [
   ]}
 >
   <!-- Hero -->
-  <section class="mx-auto max-w-3xl px-5 pb-14 pt-12 sm:pt-20 md:pt-28">
-    <span
-      class="inline-flex items-center gap-2 rounded-full border border-border bg-surface/40 px-3 py-1 text-xs text-muted"
+  <section>
+    <div
+      class="shell grid gap-x-12 gap-y-12 pb-16 pt-14 md:pb-20 md:pt-20 lg:grid-cols-12"
     >
-      <span class="relative flex size-2">
-        <span
-          class="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75"
-        ></span>
-        <span class="relative inline-flex size-2 rounded-full bg-accent"></span>
-      </span>
-      Taking new projects
-    </span>
-    <h1
-      class="mt-5 text-[2.1rem] font-semibold leading-[1.1] tracking-tight text-balance sm:text-5xl md:text-[3.4rem]"
-    >
-      I build MVPs with backends
-      <span class="text-accent sm:block">that don't buckle later</span>
-    </h1>
-    <p class="mt-5 max-w-xl text-lg leading-relaxed text-pretty text-muted sm:mt-6">
-      Freelance full-stack engineer. I take founders from an idea to something
-      running in production, then keep it standing as it grows. Go and
-      PostgreSQL for the parts that have to be correct, Next.js for the parts
-      people touch.
-    </p>
+      <div class="lg:col-span-7">
+        <p class="label inline-flex items-center gap-2.5 text-accent">
+          <span class="relative flex size-2">
+            <span
+              class="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-75"
+            ></span>
+            <span class="relative inline-flex size-2 rounded-full bg-accent"></span>
+          </span>
+          Taking new projects
+        </p>
 
-    <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-      <Button variant="primary" href="/contact" class="justify-center sm:justify-start">
-        Start a project
-        <Icon name="arrow-right" class="size-4" />
-      </Button>
-      <Button href="/services" class="justify-center sm:justify-start">
-        What I build
-      </Button>
+        <!-- No text-balance: it evens the line lengths, which pulls the
+             headline in to about 60% of the column and leaves a hole. -->
+        <h1 class="mt-6 text-display">
+          I build MVPs with backends
+          <span class="text-accent">that don't buckle later</span>
+        </h1>
+
+        <p class="measure mt-7 text-lg leading-relaxed text-pretty text-muted">
+          Freelance full-stack engineer. I take founders from an idea to
+          something running in production, then keep it standing as it grows.
+          Go and PostgreSQL for the parts that have to be correct, Next.js for
+          the parts people touch.
+        </p>
+
+        <div class="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Button variant="primary" href="/contact">
+            Start a project
+            <Icon
+              name="arrow-right"
+              class="size-4 transition-transform group-hover/btn:translate-x-0.5"
+            />
+          </Button>
+          <Button href="/services">What I build</Button>
+        </div>
+
+        <!-- Sits directly under the buttons, where the hesitation actually happens. -->
+        <p class="mt-4 text-sm text-faint">
+          No obligation. I reply to every enquiry within 24 hours.
+        </p>
+      </div>
+
+      <!--
+        The right of the hero shows the thing being sold rather than more
+        prose: several front-ends and a mobile client on one Go service over
+        one database. Text blocks here competed with the headline.
+      -->
+      <div class="lg:col-span-5 lg:pt-2">
+        <HeroVisual />
+      </div>
     </div>
+  </section>
 
-    <!-- Sits directly under the buttons, where the hesitation actually happens. -->
-    <p class="mt-4 text-sm text-faint">
-      No obligation. I reply to every enquiry within 24 hours.
-    </p>
-
-    <dl
-      class="mt-10 flex flex-col gap-4 border-t border-border/60 pt-8 sm:flex-row sm:flex-wrap sm:gap-x-10 sm:gap-y-5"
-    >
-      <div class="flex items-baseline gap-3 sm:block">
-        <dt class="w-28 shrink-0 font-mono text-xs uppercase tracking-wider text-faint sm:w-auto">
-          Core stack
-        </dt>
-        <dd class="text-sm text-fg sm:mt-1.5">Go · PostgreSQL · Next.js</dd>
-      </div>
-      <div class="flex items-baseline gap-3 sm:block">
-        <dt class="w-28 shrink-0 font-mono text-xs uppercase tracking-wider text-faint sm:w-auto">
-          Works from
-        </dt>
-        <!--
-          The location is going to come out anyway, so it leads with the answer
-          to the objection it raises rather than making a US buyer go looking.
-        -->
-        <dd class="text-sm text-fg sm:mt-1.5">India · 4 hrs US overlap</dd>
-      </div>
-      <div class="flex items-baseline gap-3 sm:block">
-        <dt class="w-28 shrink-0 font-mono text-xs uppercase tracking-wider text-faint sm:w-auto">
-          Available
-        </dt>
-        <dd class="text-sm text-fg sm:mt-1.5">Now · one project at a time</dd>
-      </div>
+  <!--
+    The answers a buyer checks before writing the first email. Horizontal, so
+    they scan in one pass rather than stacking in a narrow rail.
+  -->
+  <section class="border-t border-line">
+    <dl class="shell grid grid-cols-2 gap-x-6 gap-y-7 py-8 sm:grid-cols-3 lg:grid-cols-5">
+      {
+        facts.map((fact, i) => (
+          <div
+            class:list={[
+              "lg:border-l lg:border-line lg:pl-6",
+              i === 0 && "lg:border-l-0 lg:pl-0",
+            ]}
+          >
+            <dt class="label">{fact.term}</dt>
+            <dd class="mt-2.5 text-sm text-fg">{fact.detail}</dd>
+          </div>
+        ))
+      }
     </dl>
   </section>
 
-  <!-- Services -->
-  <section class="mx-auto max-w-3xl px-5 py-12">
-    <div class="flex items-baseline justify-between">
-      <h2 class="text-lg font-semibold tracking-tight">What I can build</h2>
-      <a href="/services" class="text-sm text-muted hover:text-accent">
-        Scope and pricing →
-      </a>
+  <!--
+    Proof strip. The hero makes a claim; this is the first thing under it that
+    substantiates one, before a visitor has to trust anything. Tinted, so the
+    page has a second texture rather than eight identical white bands.
+  -->
+  <section class="border-y border-line bg-surface">
+    <div class="shell py-12 md:py-14">
+      <h2 class="label">Shipped, not planned</h2>
+      <dl class="mt-8 grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          proof.map((point) => (
+            <div class="border-t-2 border-accent pt-4">
+              <dt class="font-mono text-4xl font-semibold tracking-tight text-fg">
+                {point.value}
+              </dt>
+              <dd class="mt-3 text-sm leading-relaxed text-muted">
+                {point.label}
+                <span class="label mt-2.5 block">{point.source}</span>
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
     </div>
-    <div class="mt-6 grid gap-4 sm:grid-cols-2">
+  </section>
+
+  <!-- Selected work: one lead project, then the rest as rows -->
+  <Section
+    index="01"
+    title="Selected work"
+    lede="Products with users behind them, and what each one had to survive."
+    href="/work"
+    linkLabel="All projects"
+    seamless
+  >
+    {
+      lead && (
+        <article class="border-t-2 border-fg pt-7">
+          <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span class="label text-accent">Current build</span>
+            <span class="font-mono text-xs text-faint">{lead.data.date}</span>
+          </div>
+
+          <h3 class="mt-5 text-title text-balance">
+            {lead.data.demo ? (
+              <a
+                href={lead.data.demo}
+                target="_blank"
+                rel="noopener"
+                class="hover:text-accent"
+              >
+                {lead.data.title}
+              </a>
+            ) : (
+              lead.data.title
+            )}
+          </h3>
+
+          <p class="measure mt-5 text-lg leading-relaxed text-pretty text-muted">
+            {lead.data.description}
+          </p>
+
+          <ul class="mt-7 grid gap-3 sm:grid-cols-2">
+            {lead.data.features.slice(0, 4).map((feature) => (
+              <li class="flex items-start gap-2.5 text-sm leading-relaxed text-muted">
+                <Icon name="check" class="mt-0.5 size-4 shrink-0 text-accent" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div class="mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-4 font-mono text-xs text-faint">
+            {lead.data.technologies.slice(0, 6).map((tech) => (
+              <span>{tech}</span>
+            ))}
+            {lead.data.technologies.length > 6 && (
+              <span>+{lead.data.technologies.length - 6}</span>
+            )}
+          </div>
+        </article>
+      )
+    }
+
+    <div class="mt-12 border-b border-line">
+      {rest.map((project, i) => <ProjectRow project={project} index={i + 2} />)}
+    </div>
+  </Section>
+
+  <!-- Services, with the numbers attached -->
+  <Section
+    index="02"
+    title="What I can build"
+    lede="Scoped engagements with fixed milestones. You own the code at the end of every one."
+    href="/services"
+    linkLabel="Scope and pricing"
+  >
+    <div class="grid border-t border-line sm:grid-cols-2">
       {
         services.slice(0, 4).map((service) => (
           <a
             href="/services"
-            class="group rounded-xl border border-border bg-surface/40 p-5 transition-colors hover:border-accent/50"
+            class="group flex flex-col gap-4 border-b border-line p-5 transition-colors hover:bg-surface sm:odd:border-r"
           >
-            <span class="inline-flex rounded-lg border border-border bg-bg p-2 text-accent">
-              <Icon name={service.icon} class="size-4" />
+            <span class="flex gap-4">
+              <span class="mt-0.5 shrink-0 text-accent">
+                <Icon name={service.icon} class="size-5" />
+              </span>
+              <span class="min-w-0">
+                <span class="block font-semibold tracking-tight text-fg group-hover:text-accent">
+                  {service.name}
+                </span>
+                <span class="mt-1.5 block text-sm leading-relaxed text-muted">
+                  {service.tagline}
+                </span>
+              </span>
             </span>
-            <h3 class="mt-3 font-semibold tracking-tight group-hover:text-accent">
-              {service.name}
-            </h3>
-            <p class="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted">
-              {service.tagline}
-            </p>
+            {/* A price and a duration on the card answer the two questions the
+                tagline raises, without a click. */}
+            <span class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pl-9 font-mono text-xs">
+              <span class="text-fg">From {usd(service.startingAt)}</span>
+              <span aria-hidden="true" class="text-line">
+                |
+              </span>
+              <span class="text-faint">{service.timeline}</span>
+            </span>
           </a>
         ))
       }
     </div>
-    <p class="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-faint">
+
+    <p class="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-faint">
       <span>Hiring for something specific?</span>
       {
-        landings.map((landing, i) => (
-          <>
-            {i > 0 && <span aria-hidden="true">·</span>}
-            <a href={`/hire/${landing.slug}`} class="text-muted hover:text-accent">
-              {landing.eyebrow}
-            </a>
-          </>
+        landings.map((landing) => (
+          <a
+            href={`/hire/${landing.slug}`}
+            class="text-muted underline decoration-line underline-offset-4 hover:text-accent hover:decoration-accent"
+          >
+            {landing.eyebrow}
+          </a>
         ))
       }
     </p>
-  </section>
+  </Section>
 
-  <!-- Selected work -->
-  <section class="mx-auto max-w-3xl px-5 py-12">
-    <div class="flex items-baseline justify-between">
-      <h2 class="text-lg font-semibold tracking-tight">Selected work</h2>
-      <a href="/work" class="text-sm text-muted hover:text-accent">All projects →</a>
-    </div>
-    <div class="mt-6 grid gap-4 sm:grid-cols-2">
-      {featured.map((project) => <ProjectCard project={project} />)}
-    </div>
-  </section>
-
-  <!-- Experience -->
-  <section class="mx-auto max-w-3xl px-5 py-12">
-    <div class="flex items-baseline justify-between">
-      <h2 class="text-lg font-semibold tracking-tight">Where I have done this</h2>
-      <a href="/about" class="text-sm text-muted hover:text-accent">
-        Full background →
-      </a>
-    </div>
-    <Timeline items={experience.slice(0, 2)} />
-  </section>
+  <!--
+    What happens after someone sends the email. Four steps, one line each: the
+    unknown on the other side of the CTA is a reason people do not press it.
+  -->
+  <Section
+    index="03"
+    title="How it runs"
+    lede="No long discovery phase, no surprise invoice at the end."
+    href="/services"
+    linkLabel="Full process and FAQ"
+  >
+    <ol class="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+      {
+        steps.map((item, i) => (
+          <li class="border-t border-line pt-4">
+            <span class="label text-accent">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <h3 class="mt-3 font-semibold tracking-tight text-fg">{item.step}</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted">{item.detail}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </Section>
 
   <!-- Writing -->
-  <section class="mx-auto max-w-3xl px-5 py-12">
-    <div class="flex items-baseline justify-between">
-      <h2 class="text-lg font-semibold tracking-tight">Writing</h2>
-      <a href="/blog" class="text-sm text-muted hover:text-accent">All posts →</a>
-    </div>
-    <div class="mt-6 grid gap-4">
+  <Section
+    index="04"
+    title="Writing"
+    lede="Decisions from things that shipped, written up while they were still fresh."
+    href="/blog"
+    linkLabel="All posts"
+  >
+    <div class="border-b border-line">
       {
         writing.map(({ kind, entry, base }) => (
-          <a
+          <PostRow
             href={`${base}${entry.id}`}
-            class="group rounded-xl border border-border bg-surface/40 p-6 transition-colors hover:border-accent/50"
-          >
-            <div class="flex items-center gap-3 font-mono text-xs text-faint">
-              <span class="rounded-full bg-accent/10 px-2 py-0.5 text-accent">
-                {kind}
-              </span>
-              <time datetime={entry.data.pubDate.toISOString()}>
-                {formatDate(entry.data.pubDate)}
-              </time>
-            </div>
-            <h3 class="mt-3 text-lg font-semibold text-fg group-hover:text-accent">
-              {entry.data.title}
-            </h3>
-            <p class="mt-1.5 line-clamp-2 text-sm leading-relaxed text-muted">
-              {entry.data.description}
-            </p>
-            {entry.data.tags.length > 0 && (
-              <div class="mt-4 flex flex-wrap gap-1.5">
-                {entry.data.tags.slice(0, 4).map((tag) => (
-                  <span class="rounded-full border border-border px-2 py-0.5 text-xs text-faint">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </a>
+            kind={kind}
+            title={entry.data.title}
+            description={entry.data.description}
+            pubDate={entry.data.pubDate}
+            tags={entry.data.tags}
+          />
         ))
       }
     </div>
-  </section>
+  </Section>
 
   <!-- Contact CTA -->
   <Cta />

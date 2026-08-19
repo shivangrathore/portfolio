@@ -1,7 +1,10 @@
 ---
 import { getCollection } from "astro:content";
 import Base from "@/layouts/Base.astro";
-import ProjectCard from "@/components/ProjectCard.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import Section from "@/components/Section.astro";
+import ProjectRow from "@/components/ProjectRow.astro";
+import Cta from "@/components/Cta.astro";
 import { breadcrumbs } from "@/lib/schema";
 
 const projects = (await getCollection("projects")).sort(
@@ -16,36 +19,38 @@ const others = projects.filter((p) => !p.data.featured);
   description="Production Go, PostgreSQL and Next.js projects built end to end, including a live esports tournament platform and an e-commerce build."
   schema={[breadcrumbs([{ name: "Work", path: "/work" }])]}
 >
-  <div class="mx-auto max-w-3xl px-5 py-16">
-    <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Work</h1>
-    <p class="mt-3 max-w-xl text-muted">
-      Products and systems I have built end to end. The ones with a write-up go
-      into the problem, the approach and the trade-offs in
-      <a href="/case-studies" class="link">case studies</a>.
-    </p>
+  <PageHeader
+    label="Work"
+    title="Products and systems, built end to end"
+    lede="The ones with a write-up go into the problem, the approach and the trade-offs in case studies."
+  />
 
-    <section class="mt-12">
-      <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
-        Products in use
-      </h2>
-      <div class="mt-5 grid gap-4 sm:grid-cols-2">
-        {featured.map((project) => <ProjectCard project={project} />)}
-      </div>
-    </section>
+  <Section
+    index="01"
+    title="Products in use"
+    lede="Live systems with real users behind them."
+    seamless
+  >
+    <div class="border-b border-line">
+      {featured.map((project, i) => <ProjectRow project={project} index={i + 1} />)}
+    </div>
+  </Section>
 
-    {
-      others.length > 0 && (
-        <section class="mt-12">
-          <h2 class="text-sm font-medium uppercase tracking-wider text-faint">
-            Smaller builds and experiments
-          </h2>
-          <div class="mt-5 grid gap-4 sm:grid-cols-2">
-            {others.map((project) => (
-              <ProjectCard project={project} />
-            ))}
-          </div>
-        </section>
-      )
-    }
-  </div>
+  {
+    others.length > 0 && (
+      <Section
+        index="02"
+        title="Smaller builds and experiments"
+        lede="Language work, tooling and the things I built to find out how something works."
+      >
+        <div class="border-b border-line">
+          {others.map((project, i) => (
+            <ProjectRow project={project} index={featured.length + i + 1} />
+          ))}
+        </div>
+      </Section>
+    )
+  }
+
+  <Cta />
 </Base>

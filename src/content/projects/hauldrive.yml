@@ -1,0 +1,28 @@
+title: "Hauldrive"
+description: "Multi-tenant fleet compliance and maintenance platform for UK transport operators. One Go backend carries a fleet product, a workshop product, the platform admin tooling and the driver mobile API, from one database and one login."
+date: "2025 - Present"
+featured: true
+order: 130
+status: "live"
+technologies:
+  - Go
+  - Gin
+  - sqlc
+  - pgx
+  - PostgreSQL
+  - Next.js
+  - TypeScript
+  - Redis
+  - RabbitMQ
+  - Stripe
+  - WebSockets
+  - Docker
+features:
+  - "Domain-separated Go backend with a schema per domain in Postgres: around 570 endpoints and 120 migrations serving three front-ends and the driver mobile API"
+  - "A second product (workshop) shipped on the same backend, with per-product personas bound at login and permissions carried in the JWT"
+  - "Billing built directly on Stripe rather than Stripe Subscriptions: per-vehicle pricing, base fee in advance with usage in arrears, mid-cycle proration through a ledger, BACS mandates and dunning"
+  - "Compliance core: PMI and brake-test cycles, workshop booking over branded email, per-task document policies, walkaround defects into fault workflows, DVLA and MOT history sync"
+  - "AI invoice ingestion for parts and labour: tiered OCR into LLM extraction, alias resolution, and anti-fraud checks that flag rather than block"
+  - "Email OTP login with TOTP 2FA and trusted devices, plus full audit logging"
+  - "In production with four operators running 80+ vehicles and 60+ drivers"
+demo: "https://hauldrive.com"

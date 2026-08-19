@@ -48,7 +48,9 @@ const projects = defineCollection({
     github: z.string().url().optional(),
     demo: z.string().url().optional(),
     order: z.number().default(0),
-    status: z.enum(["completed", "early", "beta"]).default("completed"),
+    // "live" is for products with paying or production users behind them, as
+    // distinct from a finished build that nobody is running.
+    status: z.enum(["completed", "early", "beta", "live"]).default("completed"),
     // slug of a related case study (filename in src/content/case-studies)
     caseStudy: z.string().optional(),
   }),

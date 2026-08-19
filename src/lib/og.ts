@@ -16,16 +16,20 @@ import { Resvg } from "@resvg/resvg-js";
 import { getCollection } from "astro:content";
 import { landings } from "./landings";
 
-// Hex equivalents of the oklch values in global.css. satori has no oklch
+// Hex equivalents of the dark oklch values in global.css. satori has no oklch
 // support, so these are converted once here and must be updated together.
+//
+// The card is always dark, whichever theme the visitor is using: a share card
+// is pasted onto someone else's timeline, not onto this site, and the dark
+// version is the one that holds up as a thumbnail on both.
 const COLOR = {
-  bg: "#0c0d0f",
-  surface: "#141619",
-  border: "#36383c",
-  fg: "#f2f2f2",
-  muted: "#9a9fa6",
-  faint: "#83868c",
-  accent: "#46b964",
+  bg: "#1a1a1e",
+  surface: "#212126",
+  border: "#4a4b52",
+  fg: "#f7f7f7",
+  muted: "#a4a5ad",
+  faint: "#87888f",
+  accent: "#4dc074",
 };
 
 const FONT_DIR = path.join(process.cwd(), "src/assets/fonts");

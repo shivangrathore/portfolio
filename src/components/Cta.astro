@@ -23,41 +23,56 @@ const {
 } = Astro.props;
 ---
 
-<section class:list={["mx-auto max-w-3xl px-5 py-12", className]}>
-  <div class="rounded-xl border border-accent/30 bg-surface/40 p-8 sm:p-10">
-    <h2 class="max-w-lg text-2xl font-semibold tracking-tight">{heading}</h2>
-    <p class="mt-3 max-w-lg leading-relaxed text-muted">{body}</p>
-
-    <div class="mt-7 flex flex-wrap items-center gap-3">
-      {
-        booking ? (
-          <>
-            <Button
-              variant="primary"
-              href={BOOKING_URL}
-              target="_blank"
-              rel="noopener"
-              data-track="book-call"
-            >
-              <Icon name="calendar" class="size-4" />
-              Book a {BOOKING_LENGTH} call
-            </Button>
-            <Button href="/contact">Send details instead</Button>
-          </>
-        ) : (
-          <>
-            <Button variant="primary" href="/contact">
-              Start a project
-              <Icon name="arrow-right" class="size-4" />
-            </Button>
-            <Button href="/services">What I build</Button>
-          </>
-        )
-      }
+<!--
+  The closing band. Accent rule on top instead of a bordered box: it reads as
+  the end of the page rather than one more card stacked on the others.
+-->
+<section class:list={["reveal border-t-2 border-accent bg-surface", className]}>
+  <div class="shell grid gap-x-12 gap-y-8 py-16 md:py-20 lg:grid-cols-12">
+    <div class="lg:col-span-7">
+      <h2 class="text-title text-balance">{heading}</h2>
+      <p class="measure mt-5 leading-relaxed text-muted">{body}</p>
     </div>
 
-    <p class="mt-6 border-t border-border/60 pt-5 font-mono text-xs text-faint">
-      {AVAILABILITY} · Replies within 24 hours
-    </p>
+    <div class="lg:col-span-5 lg:pt-2">
+      <div class="flex flex-wrap items-center gap-3">
+        {
+          booking ? (
+            <>
+              <Button
+                variant="primary"
+                href={BOOKING_URL}
+                target="_blank"
+                rel="noopener"
+                data-track="book-call"
+              >
+                <Icon name="calendar" class="size-4" />
+                Book a {BOOKING_LENGTH} call
+              </Button>
+              <Button href="/contact">Send details instead</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="primary" href="/contact">
+                Start a project
+                <Icon name="arrow-right" class="size-4" />
+              </Button>
+              <Button href="/services">What I build</Button>
+            </>
+          )
+        }
+      </div>
+
+      <dl class="mt-8 space-y-3 border-t border-line pt-6">
+        <div class="flex gap-4">
+          <dt class="label w-24 shrink-0 pt-0.5">Status</dt>
+          <dd class="text-sm text-fg">{AVAILABILITY}</dd>
+        </div>
+        <div class="flex gap-4">
+          <dt class="label w-24 shrink-0 pt-0.5">Reply</dt>
+          <dd class="text-sm text-fg">Within 24 hours</dd>
+        </div>
+      </dl>
+    </div>
   </div>
 </section>
