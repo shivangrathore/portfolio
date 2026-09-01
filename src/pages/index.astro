@@ -8,6 +8,7 @@ import Button from "@/components/Button.astro";
 import HeroVisual from "@/components/HeroVisual.astro";
 import Cta from "@/components/Cta.astro";
 import Icon from "@/components/icons/Icon.astro";
+import Price from "@/components/Price.astro";
 import { NAV_ITEMS } from "@/lib/constants";
 import { proof } from "@/lib/proof";
 import { abs } from "@/lib/schema";
@@ -16,8 +17,8 @@ import { abs } from "@/lib/schema";
 import {
   services,
   process as steps,
-  usd,
   WEEKLY_RATE,
+  PROJECT_FROM,
 } from "@/lib/services";
 import { landings } from "@/lib/landings";
 
@@ -48,14 +49,25 @@ const writing = [
   .slice(0, 3);
 
 // Everything a buyer checks before writing the first email, answered in the
-// hero rather than three pages deep.
-const facts = [
-  { term: "Core stack", detail: "Go · PostgreSQL · Next.js" },
-  // The location is going to come out anyway, so it leads with the answer to
-  // the objection it raises rather than making a US buyer go looking.
-  { term: "Works from", detail: "India · 4 hrs US overlap" },
-  { term: "Projects from", detail: `${usd(1500)} USD` },
-  { term: "Weekly rate", detail: `${usd(WEEKLY_RATE)} USD` },
+// hero rather than three pages deep. Two of the five read differently
+// depending on where the visitor is: being in India is an objection to a US
+// client and the reason to call for an Indian one, and the rate card is not
+// the same list.
+const facts: {
+  term: string;
+  detail?: string;
+  intlDetail?: string;
+  inDetail?: string;
+  price?: { usd: number; inr: number };
+}[] = [
+  { term: "Core stack", detail: "Go · PostgreSQL · LLM pipelines" },
+  {
+    term: "Works from",
+    intlDetail: "India · 4 hrs US overlap",
+    inDetail: "India · full IST hours",
+  },
+  { term: "Projects from", price: PROJECT_FROM },
+  { term: "Weekly rate", price: WEEKLY_RATE },
   { term: "Available", detail: "Now · one project at a time" },
 ];
 ---
@@ -96,15 +108,15 @@ const facts = [
         <!-- No text-balance: it evens the line lengths, which pulls the
              headline in to about 60% of the column and leaves a hole. -->
         <h1 class="mt-6 text-display">
-          I build MVPs with backends
-          <span class="text-accent">that don't buckle later</span>
+          I build AI systems and the backends
+          <span class="text-accent">that keep them fast</span>
         </h1>
 
         <p class="measure mt-7 text-lg leading-relaxed text-pretty text-muted">
-          Freelance full-stack engineer. I take founders from an idea to
-          something running in production, then keep it standing as it grows.
-          Go and PostgreSQL for the parts that have to be correct, Next.js for
-          the parts people touch.
+          Freelance engineer working with founders in India, the US and the UK.
+          LLM features that survive real documents and real users, on Go and
+          PostgreSQL backends tuned at the query rather than patched with
+          another cache. Next.js for the parts people touch.
         </p>
 
         <div class="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -150,7 +162,16 @@ const facts = [
             ]}
           >
             <dt class="label">{fact.term}</dt>
-            <dd class="mt-2.5 text-sm text-fg">{fact.detail}</dd>
+            <dd class="mt-2.5 text-sm text-fg">
+              {fact.price && <Price price={fact.price} />}
+              {fact.detail}
+              {fact.intlDetail && (
+                <>
+                  <span class="r-intl">{fact.intlDetail}</span>
+                  <span class="r-in">{fact.inDetail}</span>
+                </>
+              )}
+            </dd>
           </div>
         ))
       }
@@ -249,7 +270,7 @@ const facts = [
   <Section
     index="02"
     title="What I can build"
-    lede="Scoped engagements with fixed milestones. You own the code at the end of every one."
+    lede="Scoped engagements with fixed milestones, priced for wherever you are buying from. You own the code at the end of every one."
     href="/services"
     linkLabel="Scope and pricing"
   >
@@ -276,7 +297,9 @@ const facts = [
             {/* A price and a duration on the card answer the two questions the
                 tagline raises, without a click. */}
             <span class="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pl-9 font-mono text-xs">
-              <span class="text-fg">From {usd(service.startingAt)}</span>
+              <span class="text-fg">
+                From <Price price={service.startingAt} />
+              </span>
               <span aria-hidden="true" class="text-line">
                 |
               </span>

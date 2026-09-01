@@ -2,7 +2,13 @@
 import Icon from "@/components/icons/Icon.astro";
 
 interface Props {
-  items: { q: string; a: string }[];
+  /**
+   * `region` marks an answer that only makes sense to one audience: a US
+   * buyer needs the timezone answer and does not care about INR invoicing,
+   * and the reverse. Both sets ship and CSS shows the matching one, so the
+   * page stays static and a crawler still sees every answer.
+   */
+  items: { q: string; a: string; region?: "in" | "intl" }[];
 }
 
 const { items } = Astro.props;
@@ -11,7 +17,13 @@ const { items } = Astro.props;
 <div class="border-t border-line">
   {
     items.map((faq) => (
-      <details class="group border-b border-line [&_summary::-webkit-details-marker]:hidden">
+      <details
+        class:list={[
+          "group border-b border-line [&_summary::-webkit-details-marker]:hidden",
+          faq.region === "in" && "r-in-b",
+          faq.region === "intl" && "r-intl-b",
+        ]}
+      >
         <summary class="flex cursor-pointer items-start justify-between gap-6 py-5 text-sm font-medium text-fg transition-colors hover:text-accent">
           {faq.q}
           <Icon

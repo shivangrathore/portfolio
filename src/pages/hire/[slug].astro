@@ -32,8 +32,13 @@ const schema = [
     description: landing.metaDescription,
     serviceType: landing.eyebrow,
     provider: { "@id": `${abs("/")}#person` },
-    areaServed: "Worldwide",
-    availableLanguage: "English",
+    areaServed: [
+      { "@type": "Country", name: "India" },
+      { "@type": "Country", name: "United States" },
+      { "@type": "Country", name: "United Kingdom" },
+      "Worldwide",
+    ],
+    availableLanguage: ["English", "Hindi"],
   },
   {
     "@type": "FAQPage",

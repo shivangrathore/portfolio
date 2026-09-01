@@ -11,6 +11,7 @@ import Github from "@/components/icons/Github.astro";
 import Linkedin from "@/components/icons/Linkedin.astro";
 import X from "@/components/icons/X.astro";
 import Icon from "@/components/icons/Icon.astro";
+import RegionToggle from "@/components/RegionToggle.astro";
 
 const year = new Date().getFullYear();
 
@@ -63,8 +64,9 @@ const elsewhere = [
           Shivang Rathore<span class="text-accent">.</span>
         </p>
         <p class="measure mt-3 text-sm leading-relaxed text-muted">
-          Freelance full-stack engineer. Go and PostgreSQL for the parts that
-          have to be correct, Next.js for the parts people touch.
+          Freelance AI and backend engineer, working with founders in India,
+          the US and the UK. Go and PostgreSQL for the parts that have to be
+          correct, Next.js for the parts people touch.
         </p>
         <a
           href={`mailto:${MAIL_ADDRESS}`}
@@ -129,10 +131,18 @@ const elsewhere = [
       class="mt-16 flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between"
     >
       <p class="label">© {year} Shivang Rathore</p>
-      <p class="label inline-flex items-center gap-2">
-        <span class="size-1.5 rounded-full bg-accent" aria-hidden="true"></span>
-        {AVAILABILITY}
-      </p>
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+        {/* Sitewide, because the guess is a guess and someone reading a case
+            study should not have to go back to /services to correct it. */}
+        <div class="flex items-center gap-2.5">
+          <span class="label">Pricing</span>
+          <RegionToggle />
+        </div>
+        <p class="label inline-flex items-center gap-2">
+          <span class="size-1.5 rounded-full bg-accent" aria-hidden="true"></span>
+          {AVAILABILITY}
+        </p>
+      </div>
     </div>
   </div>
 </footer>

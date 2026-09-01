@@ -37,13 +37,31 @@ const methods = [
 ];
 
 const lookingFor = [
-  "Idea to MVP builds for early startups",
+  "AI features: document extraction, retrieval, LLM pipelines",
+  "Backend performance and PostgreSQL optimization",
   "Go backend and API work",
+  "Idea to MVP builds for early startups",
   "Full-stack product builds",
   "Node to Go migrations",
   "Real-time and event-driven systems",
   "Architecture reviews",
 ];
+
+// The two practical questions a client asks before the first call, and the
+// answers are not the same on both sides of the world. Both ship and CSS
+// picks, the same way the rate card does.
+const logistics = {
+  intl: [
+    { term: "Hours", detail: "IST, with 4 hrs of US Eastern overlap daily and most of the UK working day" },
+    { term: "Invoicing", detail: "USD, by bank transfer or Wise" },
+    { term: "Contract", detail: "Written scope, milestones, and code you own on final payment" },
+  ],
+  in: [
+    { term: "Hours", detail: "Full IST working hours, so questions get answered the same day" },
+    { term: "Invoicing", detail: "INR, by NEFT, IMPS or UPI" },
+    { term: "Contract", detail: "Written scope, milestones, and code you own on final payment" },
+  ],
+};
 ---
 
 <Base
@@ -62,7 +80,7 @@ const lookingFor = [
   <PageHeader
     label="Taking new projects"
     title="Start a project"
-    lede="Tell me what you are building, when you need it, and roughly what the budget looks like. I reply within 24 hours, and if I am not the right person I will say so and point you somewhere better."
+    lede="Tell me what you are building, when you need it, and roughly what the budget looks like. I work with founders in India, the US and the UK, and quote on whichever rate card applies. I reply within 24 hours, and if I am not the right person I will say so and point you somewhere better."
   />
 
   <div class="shell grid gap-x-12 gap-y-14 py-14 md:py-16 lg:grid-cols-12">
@@ -127,6 +145,22 @@ const lookingFor = [
               </span>
               <span class="text-fg group-hover:text-accent">{m.value}</span>
             </a>
+          ))
+        }
+      </div>
+
+      <h2 class="label mt-10">Working with me</h2>
+      <div class="mt-4">
+        {
+          (["intl", "in"] as const).map((region) => (
+            <dl class:list={[region === "in" ? "r-in-b" : "r-intl-b", "border-t border-line"]}>
+              {logistics[region].map((row) => (
+                <div class="grid grid-cols-[5rem_1fr] gap-4 border-b border-line py-3.5">
+                  <dt class="label pt-1">{row.term}</dt>
+                  <dd class="text-sm leading-relaxed text-muted">{row.detail}</dd>
+                </div>
+              ))}
+            </dl>
           ))
         }
       </div>

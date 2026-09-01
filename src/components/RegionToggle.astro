@@ -1,0 +1,71 @@
+---
+/**
+ * Switches the rate card between the Indian and international price lists.
+ *
+ * Detection is a timezone guess and a guess is wrong for anyone on a VPN, an
+ * NRI buying from abroad, or an Indian company with a US entity. Rather than
+ * pretend otherwise, the guess is visible and reversible, and the choice is
+ * stored so it holds for the rest of the visit and the next one.
+ */
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<div
+  class:list={[
+    "inline-flex items-center gap-0.5 rounded-md border border-border p-0.5",
+    className,
+  ]}
+  role="group"
+  aria-label="Pricing region"
+>
+  <button type="button" class="region-btn" data-region-set="intl">
+    $ International
+  </button>
+  <button type="button" class="region-btn" data-region-set="in">
+    ₹ India
+  </button>
+</div>
+
+<script>
+  import { REGION_KEY } from "@/lib/region";
+
+  const root = document.documentElement;
+
+  const paint = () => {
+    const current = root.dataset.region === "in" ? "in" : "intl";
+    document.querySelectorAll<HTMLButtonElement>("[data-region-set]").forEach(
+      (button) => {
+        button.setAttribute(
+          "aria-pressed",
+          String(button.dataset.regionSet === current),
+        );
+      },
+    );
+  };
+
+  // Every instance binds: the toggle renders on the services page and in the
+  // footer, and an id would have left one of them dead.
+  document.querySelectorAll<HTMLButtonElement>("[data-region-set]").forEach(
+    (button) => {
+      button.addEventListener("click", () => {
+        const next = button.dataset.regionSet === "in" ? "in" : "intl";
+        // The attribute is only present for India: absent is the default the
+        // CSS and the pre-paint script already agree on.
+        if (next === "in") root.dataset.region = "in";
+        else delete root.dataset.region;
+        try {
+          localStorage.setItem(REGION_KEY, next);
+        } catch {
+          /* private mode: the choice lasts this page only */
+        }
+        paint();
+      });
+    },
+  );
+
+  paint();
+</script>

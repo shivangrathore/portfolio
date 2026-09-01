@@ -365,3 +365,53 @@
 .copy-button svg {
   @apply size-4;
 }
+
+/*
+  Region-aware pricing.
+
+  Both rate cards ship in every page and CSS shows one, keyed off the
+  data-region attribute the inline head script sets before first paint. The
+  international card is the default: no attribute, no JS and every crawler get
+  USD, which is what the site is indexed on.
+
+  Inline and block variants exist because a swapped price is usually a <span>
+  inside a sentence and a swapped FAQ is a whole element. Setting `display:
+  inline` on a block would collapse it.
+*/
+.r-in {
+  display: none;
+}
+
+:root[data-region="in"] .r-intl {
+  display: none;
+}
+
+:root[data-region="in"] .r-in {
+  display: inline;
+}
+
+.r-in-b {
+  display: none;
+}
+
+:root[data-region="in"] .r-intl-b {
+  display: none;
+}
+
+:root[data-region="in"] .r-in-b {
+  display: revert;
+}
+
+/* Region toggle. The active side is filled, so which card you are reading is
+   readable at a glance rather than inferred from the currency symbol. */
+.region-btn {
+  @apply rounded px-2.5 py-1 font-mono text-xs text-faint transition-colors hover:text-fg;
+}
+
+/* Driven off the root attribute alone, never off aria-pressed: the attribute
+   is set before first paint, while aria-pressed is written by the component
+   script and would leave both sides looking inactive until it runs. */
+:root:not([data-region="in"]) .region-btn[data-region-set="intl"],
+:root[data-region="in"] .region-btn[data-region-set="in"] {
+  @apply bg-fg text-bg;
+}

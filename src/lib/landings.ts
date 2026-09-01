@@ -34,6 +34,195 @@ export type Landing = {
 
 export const landings: Landing[] = [
   {
+    slug: "ai-engineer",
+    eyebrow: "AI engineering",
+    heading: "Hire a freelance AI engineer who ships to production",
+    metaTitle: "Hire a Freelance AI Engineer",
+    metaDescription:
+      "Freelance AI engineer for document extraction, RAG over your own data and LLM features that hold up under real load. Go, Python and PostgreSQL. Rates in USD or INR.",
+    intro:
+      "Most LLM demos work on the happy path and fall apart on the third real document. I build the unglamorous half: the extraction that survives a bad scan, the retrieval that returns the right chunk, the confidence threshold that sends an uncertain answer to a person, and the cost ceiling that stops a feature quietly becoming your largest bill.",
+    offer: [
+      {
+        name: "Document and invoice extraction",
+        detail:
+          "OCR tiered into LLM parsing so the cheap path handles the clean scans and the expensive one only runs when it has to. Structured output you can write straight to a table, not prose you have to re-parse.",
+      },
+      {
+        name: "Retrieval over your own data",
+        detail:
+          "pgvector in the database you already run rather than a second system to operate. The work that decides whether answers are right is the chunking, the metadata filters and the ranking, and that is where the time goes.",
+      },
+      {
+        name: "Wrong answers caught before a user sees them",
+        detail:
+          "Confidence thresholds, validation against what is already in your database, and a review queue for anything below the line. A model that flags is worth more than a model that guesses well.",
+      },
+      {
+        name: "Cost and latency you can predict",
+        detail:
+          "Model tiering, prompt caching, batching, and per-feature token accounting so the finance question has an answer before it is asked.",
+      },
+      {
+        name: "Evaluation that catches regressions",
+        detail:
+          "A labelled set from your real data and a check that runs on change, so swapping a model or editing a prompt does not silently undo last month's accuracy.",
+      },
+    ],
+    proof: [
+      {
+        name: "AI invoice ingestion, running in production",
+        detail:
+          "Parts and labour invoices for a UK fleet platform: tiered OCR into LLM extraction, supplier and part alias resolution against existing records, and anti-fraud checks that flag a suspect line for review rather than blocking the invoice. Live with paying operators, not a pilot.",
+        href: "/about",
+      },
+      {
+        name: "Retrieval over a production Postgres",
+        detail:
+          "Vector search built on pgvector inside the same database the application already uses, so retrieval respects the tenancy and permission rules rather than sitting outside them in a separate index nobody audits.",
+      },
+      {
+        name: "The infrastructure an AI feature actually needs",
+        detail:
+          "Queues, retries, dead-letter handling, object storage and a WebSocket hub, because an extraction pipeline is a background job system with a model in the middle. That part is the same work it has always been.",
+        href: "/hire/go-developer",
+      },
+    ],
+    fit: {
+      good: [
+        "You have a manual process over documents, tickets or messages and want a model doing the first pass with a person reviewing the uncertain ones",
+        "You have a working prototype and need it to hold up on real data, real volume and a real budget",
+        "You want retrieval over your own data without standing up a second database to keep in sync",
+      ],
+      bad: [
+        "You want a model fine-tuned or trained from scratch, which is a different job and not mine",
+        "You want a chatbot bolted to a marketing site with no data behind it",
+        "The success criterion is that it uses AI, rather than that a specific process gets faster or cheaper",
+      ],
+    },
+    faqs: [
+      {
+        q: "Which models do you build on?",
+        a: "Whichever fits the task and the budget, usually a tiered setup where a small fast model handles most calls and a larger one is reserved for the cases that need it. The application is written so the model is a swappable dependency, because the one that is best today will not be in six months.",
+      },
+      {
+        q: "How do you stop it making things up?",
+        a: "Constrain the output shape, ground it in retrieved or existing records, validate the result against your database, and score confidence. Anything below the threshold goes to a review queue instead of being written. The goal is not a model that is never wrong, it is a system where being wrong is visible.",
+      },
+      {
+        q: "What does it cost to run?",
+        a: "That is a design input, not an afterthought. I size it during scoping with real volumes and build the tiering, caching and batching around the number. You get per-feature token accounting so you can see where spend actually goes.",
+      },
+      {
+        q: "Do you work with Indian startups on this?",
+        a: "Yes, on an INR rate card rather than a converted dollar one. Same engineer and the same process, priced against the market you are buying in, with full IST overlap instead of a shifted schedule.",
+      },
+    ],
+    related: [
+      { label: "Full service list and pricing", href: "/services" },
+      { label: "Backend performance work", href: "/hire/backend-optimization" },
+      { label: "Hire me for Go backend work", href: "/hire/go-developer" },
+    ],
+    stack: "Go · Python · pgvector · PostgreSQL",
+  },
+  {
+    slug: "backend-optimization",
+    eyebrow: "Backend performance",
+    heading: "Backend performance engineer for slow APIs and databases",
+    metaTitle: "Hire a Backend Performance Engineer",
+    metaDescription:
+      "Freelance backend performance engineer. Slow PostgreSQL queries, N+1s and hot endpoints fixed at the query and the schema, with before and after numbers per endpoint.",
+    intro:
+      "Slow backends are rarely slow because the language is slow. They are slow because a query has no index it can use, because one endpoint makes forty round trips, or because work that belongs in a job queue is happening while a user waits. I find which one it is with a profiler and a query plan, then fix it there rather than putting a cache in front of the symptom.",
+    offer: [
+      {
+        name: "Measurement before anything changes",
+        detail:
+          "Profiling against production-shaped data, with the slow endpoints ranked by total time rather than worst case. Optimising the wrong thing is the most common way this work gets wasted.",
+      },
+      {
+        name: "Query plans, read one by one",
+        detail:
+          "EXPLAIN ANALYZE on the queries that matter, indexes chosen from what the planner actually does, and the sequential scans that only showed up once the table passed a million rows.",
+      },
+      {
+        name: "N+1s and round trips removed",
+        detail:
+          "The loop issuing a query per row, the serialiser lazily loading a relation, the endpoint calling three services in sequence that could have gone in parallel.",
+      },
+      {
+        name: "Schema and migration work where the query cannot be saved",
+        detail:
+          "Sometimes the query is fine and the table is wrong. Denormalisation with a clear owner, partitioning, or a computed column, migrated in order on a live database.",
+      },
+      {
+        name: "Work moved off the request path",
+        detail:
+          "PDF generation, email, third-party calls and anything else a user should not be waiting on, moved into queues with retries and dead-letter handling.",
+      },
+      {
+        name: "Before and after, written down",
+        detail:
+          "Per endpoint, p50 and p95, measured the same way both times. You get numbers you can check rather than an assurance that it feels faster.",
+      },
+    ],
+    proof: [
+      {
+        name: "570 endpoints on one Postgres, in production",
+        detail:
+          "A multi-tenant fleet platform serving three front-ends and a mobile API from one database, with a schema per domain and around 120 migrations. Keeping that fast is the daily job, not a one-off engagement.",
+        href: "/about",
+      },
+      {
+        name: "Rebuilt rather than cached over",
+        detail:
+          "Both generations of that backend: the original Go service, then the rewrite into domain-separated Go with sqlc-generated queries, which is what made the tenancy enforceable in the data layer instead of remembered in every query.",
+      },
+      {
+        name: "Written up in public",
+        detail:
+          "Schema design, computed status, tenant isolation and the timezone bug that skipped a month of invoices, documented with the reasoning intact so you can judge how I work before hiring me.",
+        href: "/blog",
+      },
+    ],
+    fit: {
+      good: [
+        "Pages hang, the database is pinned, and adding instances has stopped helping",
+        "You have an endpoint or a report that everyone has quietly agreed to stop using because it takes 30 seconds",
+        "You are about to add a caching layer and want someone to check whether the query can just be made fast",
+      ],
+      bad: [
+        "You want a rewrite in a faster language before anyone has measured where the time goes",
+        "You need Kubernetes tuning, SRE on-call or cluster capacity planning, which is not what I do",
+        "Nobody can give me access to production-shaped data or a realistic staging environment",
+      ],
+    },
+    faqs: [
+      {
+        q: "How long does this take?",
+        a: "One to four weeks for most. The first few days are measurement, and by the end of that I can tell you what is fixable, what it will cost and roughly what it buys. If the answer is that your backend is already fine, you get that in writing and we stop.",
+      },
+      {
+        q: "Do you need production access?",
+        a: "Not necessarily production itself, but I need production-shaped data. Query plans on a 500-row development database are fiction. A restored anonymised dump is usually enough.",
+      },
+      {
+        q: "Is this only for Go backends?",
+        a: "No. The Postgres half is the same work whatever calls it, and I have done it against Node and Python services. If the answer turns out to be a staged move to Go I will say so, with a reason, rather than assuming it.",
+      },
+      {
+        q: "What if the fix is bigger than the budget?",
+        a: "You get the findings ranked by cost against benefit and you decide what to do with them. Plenty of engagements end with two indexes shipped and a written plan for the rest, which is a fine outcome.",
+      },
+    ],
+    related: [
+      { label: "Full service list and pricing", href: "/services" },
+      { label: "Hire me for Go backend work", href: "/hire/go-developer" },
+      { label: "AI engineering", href: "/hire/ai-engineer" },
+    ],
+    stack: "Go · PostgreSQL · Redis",
+  },
+  {
     slug: "go-developer",
     eyebrow: "Go backend development",
     heading: "Hire a freelance Go developer",
@@ -120,8 +309,8 @@ export const landings: Landing[] = [
     ],
     related: [
       { label: "Full service list and pricing", href: "/services" },
-      { label: "Projects I have built", href: "/work" },
-      { label: "Case studies", href: "/case-studies" },
+      { label: "Backend performance work", href: "/hire/backend-optimization" },
+      { label: "AI engineering", href: "/hire/ai-engineer" },
     ],
     stack: "Go · Gin · sqlc · PostgreSQL",
   },
@@ -214,7 +403,7 @@ export const landings: Landing[] = [
     related: [
       { label: "Full service list and pricing", href: "/services" },
       { label: "Products I have shipped", href: "/work" },
-      { label: "How I work", href: "/services" },
+      { label: "AI engineering", href: "/hire/ai-engineer" },
     ],
     stack: "Next.js · Go · PostgreSQL",
   },

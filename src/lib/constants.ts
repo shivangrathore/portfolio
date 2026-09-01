@@ -1,6 +1,6 @@
 export const SITE_TITLE = "Shivang Rathore";
 export const SITE_DESCRIPTION =
-  "Freelance full-stack engineer. I take founders from idea to MVP and build the Go and PostgreSQL backends that keep it standing as it grows.";
+  "Freelance AI and backend engineer. LLM features that hold up on real data, and the Go and PostgreSQL backends that keep them fast. Working with founders in India, the US and the UK.";
 export const BASE_URL = "https://shivangrathore.com";
 
 export const GITHUB_URL = "https://github.com/shivangrathore";

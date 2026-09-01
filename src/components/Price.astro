@@ -1,0 +1,27 @@
+---
+/**
+ * One price, both currencies, hidden by CSS rather than chosen by JS.
+ *
+ * Both numbers ship in the HTML and `[data-region]` on <html> decides which
+ * one is displayed, so the correct price is in the first paint. Picking in JS
+ * after hydration would paint a US price to an Indian visitor and then swap
+ * it, which on the one line of the page that matters most is worse than being
+ * slightly wrong. With JS off, the international card shows, which is also
+ * what search engines index.
+ */
+import type { Price } from "@/lib/region";
+import { usd, inr } from "@/lib/region";
+
+interface Props {
+  price: Price;
+  class?: string;
+}
+
+const { price, class: className } = Astro.props;
+---
+
+<span class:list={["whitespace-nowrap", className]}
+  ><span class="r-intl">{usd(price.usd)}</span><span class="r-in"
+    >{inr(price.inr)}</span
+  ></span
+>

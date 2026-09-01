@@ -1,31 +1,66 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Send } from "lucide-react";
 import { CONTACT_FORM_URL, CONTACT_FORM_FIELDS } from "@/lib/constants";
 import { buttonClass } from "@/lib/button";
 import { track } from "@/lib/analytics";
 
 const PROJECT_TYPES = [
-  "Idea to MVP",
+  "AI engineering",
+  "Backend performance and optimization",
   "Go backend development",
-  "Node to Go migration",
+  "Idea to MVP",
   "Full-stack product build",
+  "Node to Go migration",
   "Real-time or event systems",
   "Architecture review",
   "Something else",
 ] as const;
 
 // Bands start where the published service floors start, so the form does not
-// invite a budget the services page has already ruled out.
-const BUDGETS = [
-  "Under $5k",
-  "$5k to $10k",
-  "$10k to $20k",
-  "$20k+",
-  "Not sure yet",
-] as const;
+// invite a budget the services page has already ruled out. Two sets, matching
+// the two rate cards: offering a US visitor lakh bands, or an Indian one a
+// $20k+ option, wastes the question.
+const BUDGETS = {
+  intl: [
+    "Under $2k",
+    "$2k to $5k",
+    "$5k to $10k",
+    "$10k+",
+    "Not sure yet",
+  ],
+  in: [
+    "Under ₹50,000",
+    "₹50,000 to ₹1,00,000",
+    "₹1,00,000 to ₹2,50,000",
+    "₹2,50,000+",
+    "Not sure yet",
+  ],
+} as const;
+
+/**
+ * The rate card the visitor is on, read from the attribute the head script
+ * already set. It starts at "intl" because that is what the server rendered
+ * and a mismatch on first paint is a hydration error; the effect corrects it
+ * immediately after. The observer keeps it honest when someone flips the
+ * footer toggle with the form already on screen.
+ */
+function useRegion(): "in" | "intl" {
+  const [region, setRegion] = useState<"in" | "intl">("intl");
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const read = () => setRegion(root.dataset.region === "in" ? "in" : "intl");
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(root, { attributes: true, attributeFilter: ["data-region"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return region;
+}
 
 const TIMELINES = [
   "Ready to start now",
@@ -55,6 +90,7 @@ const errorCls = "mt-1.5 text-xs text-danger";
 
 export default function ContactForm() {
   const [status, setStatus] = useState<"idle" | "ok" | "error">("idle");
+  const region = useRegion();
   const {
     register,
     handleSubmit,
@@ -99,6 +135,10 @@ export default function ContactForm() {
         project_type: data.projectType || "unanswered",
         budget: data.budget || "unanswered",
         timeline: data.timeline || "unanswered",
+        // Overrides the sitewide value in `track`, which reads the same
+        // attribute: kept explicit here so a lead is never attributed to the
+        // wrong rate card if the toggle is flipped between submit and send.
+        region,
       });
       reset();
     } catch {
@@ -165,7 +205,7 @@ export default function ContactForm() {
           </label>
           <select id="budget" className={field} {...register("budget")}>
             <option value="">No answer</option>
-            {BUDGETS.map((b) => (
+            {BUDGETS[region].map((b) => (
               <option key={b} value={b}>
                 {b}
               </option>

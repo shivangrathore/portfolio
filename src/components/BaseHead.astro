@@ -62,6 +62,61 @@ const jsonLd = graph(schema);
     document.documentElement.dataset.theme = theme;
   })();
 </script>
+<!--
+  Pricing region, resolved before the first paint for the same reason the
+  theme is: the alternative is painting a US price to an Indian visitor and
+  swapping it a frame later, on the one line of the page that decides whether
+  they email.
+
+  The signal is the machine's own timezone. No network call, no third-party
+  geo API, no round trip, and nothing about the visitor leaves the browser.
+  It is wrong for someone on a VPN and for an NRI, which is what the toggle is
+  for, and an explicit choice outranks detection from then on.
+
+  Only "in" is ever written. Absent is the international card, so no JS, no
+  storage and every crawler land on the same default the CSS assumes.
+-->
+<script is:inline>
+  (function () {
+    var choice;
+    // ?region=in or ?region=intl forces a card and stores it, so either
+    // version can be opened on demand: useful for checking the site the way a
+    // foreign client sees it, and for sending a client a link to their own
+    // rate card without asking them to find the toggle.
+    try {
+      var forced = new URLSearchParams(location.search).get("region");
+      if (forced === "in" || forced === "intl") {
+        choice = forced;
+        localStorage.setItem("region", forced);
+      }
+    } catch (e) {
+      /* no URLSearchParams, or storage blocked: fall through to detection */
+    }
+    try {
+      if (!choice) choice = localStorage.getItem("region");
+    } catch (e) {
+      /* storage blocked */
+    }
+    if (choice !== "in" && choice !== "intl") {
+      var tz = "";
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      } catch (e) {
+        /* no Intl timezone: fall through to the language check */
+      }
+      // Asia/Calcutta is the older ICU spelling and still ships on plenty of
+      // Android builds. The language test only runs when there is no usable
+      // timezone, because en-IN is common among people who do not live here.
+      choice =
+        tz === "Asia/Kolkata" ||
+        tz === "Asia/Calcutta" ||
+        (tz === "" && /-IN\b/i.test(navigator.language || ""))
+          ? "in"
+          : "intl";
+    }
+    if (choice === "in") document.documentElement.dataset.region = "in";
+  })();
+</script>
 <meta
   name="theme-color"
   content="#faf9f6"
@@ -194,6 +249,10 @@ const jsonLd = graph(schema);
     if (typeof window.gtag !== "function") return;
     window.gtag("event", name, {
       page_path: window.location.pathname,
+      // Which rate card the visitor was looking at when they acted. Without
+      // it there is no way to tell whether the Indian pricing is producing
+      // leads or just producing traffic.
+      region: document.documentElement.dataset.region === "in" ? "in" : "intl",
       ...params,
     });
   };
