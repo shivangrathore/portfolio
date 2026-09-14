@@ -1,192 +1,582 @@
 ---
-import Head from "@/components/Head.astro";
-import Layout from "@/layouts/Layout.astro";
-import { cn } from "@/lib/utils";
-import { MAX_WIDTH_CLASSES } from "@/lib/constants";
-
-// Icons
-import Github from "@/assets/icons/github.svg";
-import LinkedIn from "@/assets/icons/linkedin.svg";
-import Mail from "@/assets/icons/mail.svg";
-import Youtube from "@/assets/icons/youtube.svg";
-import HeroArticleCard from "@/components/HeroArticleCard.astro";
-
-import ProjectCard from "@/components/ProjectCard.astro";
-import { MoveRightIcon } from "lucide-react";
 import { getCollection } from "astro:content";
+import Base from "@/layouts/Base.astro";
+import Section from "@/components/Section.astro";
+import ProjectRow from "@/components/ProjectRow.astro";
+import PostRow from "@/components/PostRow.astro";
+import Button from "@/components/Button.astro";
+import Cta from "@/components/Cta.astro";
+import Faq from "@/components/Faq.astro";
+import Icon from "@/components/icons/Icon.astro";
+import Price from "@/components/Price.astro";
+import { NAV_ITEMS, BOOKING_URL, BOOKING_LENGTH } from "@/lib/constants";
+import {
+  problems,
+  alternatives,
+  differences,
+  evidence,
+  quotes,
+  callPromises,
+  callIsNot,
+} from "@/lib/pitch";
+import { abs, faqPage } from "@/lib/schema";
+// `process` is aliased: an unaliased import shadows Node's global process in
+// this module, and the dev runtime reads process.env on every request.
+import {
+  services,
+  process as steps,
+  faqs,
+  WEEKLY_RATE,
+  PROJECT_FROM,
+} from "@/lib/services";
+import { landings } from "@/lib/landings";
 
-const LINKS = [
-  {
-    name: "Github",
-    Icon: Github,
-    href: "https://github.com/shivangrathore",
-  },
-  {
-    name: "LinkedIn",
-    Icon: LinkedIn,
-    href: "https://www.linkedin.com/in/shivangrathore",
-  },
-  {
-    name: "Mail",
-    Icon: Mail,
-    href: "mailto:shivang.rath@gmail.com",
-  },
-  {
-    name: "Youtube",
-    Icon: Youtube,
-    href: "https://www.youtube.com/@seekhcode",
-  },
-];
+const isDev = import.meta.env.DEV;
+const visible = <T extends { data: { draft: boolean } }>(items: T[]) =>
+  isDev ? items : items.filter((i) => !i.data.draft);
 
-const projects = (await getCollection("projects"))
-  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime())
+const projects = (await getCollection("projects")).sort(
+  (a, b) => b.data.order - a.data.order,
+);
+const featured = projects.filter((p) => p.data.featured).slice(0, 3);
+// The top project carries the section on its own. The rest are rows under it,
+// because three equal-weight entries make a visitor choose where to look.
+const [lead, ...rest] = featured;
+
+const posts = visible(await getCollection("blog")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+const studies = visible(await getCollection("caseStudies")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const writing = [
+  ...studies.map((s) => ({ kind: "Case study", entry: s, base: "/case-studies/" })),
+  ...posts.map((p) => ({ kind: "Blog", entry: p, base: "/blog/" })),
+]
+  .sort((a, b) => b.entry.data.pubDate.valueOf() - a.entry.data.pubDate.valueOf())
   .slice(0, 3);
-const articles = (await getCollection("blog"))
-  .filter((a) => a.data.published)
-  .sort((a, b) => {
-    return (
-      new Date(b.data.pubDate).getTime() - new Date(a.data.pubDate).getTime()
-    );
-  })
-  .slice(0, 4);
+
+// The homepage answers the money questions itself rather than sending a
+// hesitant visitor to /services to find them. Region-specific ones are dropped:
+// a US buyer scrolling the homepage does not need the INR invoicing answer.
+const homeFaqs = faqs.filter((f) => !f.region).slice(0, 6);
+
 ---
 
-<Head title="Shivang Rathore | Developer & Tech Enthusiast" />
-<Layout>
-  <div class={cn("relative overflow-hidden")}>
-    <div class={cn(MAX_WIDTH_CLASSES)}>
-      <div class="mt-20">
-        <span class="text-green-400 text-2xl md:text-3xl"> Hi, I am </span>
-        <h1 class="text-7xl md:text-8xl font-black">Shivang Rathore.</h1>
-        <p class="mt-10 font-medium max-w-2xl md:text-xl text-lg">
-          Software Engineer,<span class="text-gray-400">
-            A developer with interest in Computer Science.</span
-          >
-          <span class="block text-gray-400 mt-4 md:text-xl text-lg">
-            I hold a degree in computer science, but the majority of my
-            expertise comes from self-directed learning and real-world projects.
-          </span>
+<Base
+  schema={[
+    {
+      "@type": "WebPage",
+      "@id": `${abs("/")}#webpage`,
+      url: abs("/"),
+      name: "Shivang Rathore",
+      about: { "@id": `${abs("/")}#person` },
+      isPartOf: { "@id": `${abs("/")}#website` },
+    },
+    ...NAV_ITEMS.map((item) => ({
+      "@type": "SiteNavigationElement",
+      name: item.name,
+      url: abs(item.href),
+    })),
+    faqPage(homeFaqs),
+  ]}
+>
+  <!--
+    Hero.
+
+    The headline is a problem, not a job description. v4 opened with "I build AI
+    systems and the backends that keep them fast", which tells a visitor what I
+    am and leaves them to work out whether they need one. This opens on the
+    thing that made them search, and the first person singular arrives in the
+    paragraph under it, where it belongs.
+  -->
+  <section class="border-b border-line">
+    <div class="shell grid gap-x-14 gap-y-12 pb-20 pt-14 md:pb-24 md:pt-20 lg:grid-cols-12">
+      <div class="lg:col-span-8">
+        <p class="standfirst">Freelance product engineering, from India</p>
+
+        <!-- No text-balance: it evens the line lengths, which pulls the
+             headline in to about 60% of the column and leaves a hole. -->
+        <!-- Seven words. The previous version ran to fifteen, which at display
+             size wrapped to five lines and pushed the buttons under the fold on
+             a laptop. The second half of the thought moved into the lede, where
+             it reads fine at reading size and still lands immediately. -->
+        <h1 class="expanded mt-6 text-display">
+          Plenty of people can build your <span class="text-accent">demo</span>.
+        </h1>
+
+        <!-- The proof that used to be here (a million players, UK operators)
+             is in the band immediately below, at display size. Saying it twice
+             cost four lines and bought nothing. -->
+        <p class="measure mt-8 text-lede text-pretty text-muted">
+          Fewer can build the version that survives real users. I am Shivang, a
+          freelance engineer in India: AI features, web apps and the backends
+          under them, in Python, TypeScript and Go. Priced for founders still
+          counting every rupee.
+        </p>
+
+        <div class="mt-10 flex flex-col items-start gap-x-9 gap-y-2 sm:flex-row sm:items-center">
+          {
+            BOOKING_URL ? (
+              <Button
+                variant="primary"
+                href={BOOKING_URL}
+                target="_blank"
+                rel="noopener"
+                data-track="book-call"
+              >
+                <Icon name="calendar" class="size-4" />
+                Book a {BOOKING_LENGTH} call
+              </Button>
+            ) : (
+              <Button variant="primary" href="/contact/">
+                Start a project
+                <Icon name="arrow-right" class="size-4" />
+              </Button>
+            )
+          }
+          <Button href="/contact/">Send project details instead</Button>
+        </div>
+
+        <!-- Sits directly under the buttons, where the hesitation happens. -->
+        <p class="mt-5 text-sm text-faint">
+          No charge and no pitch. If I am not the right person I will say so on
+          the call and point you somewhere better.
         </p>
       </div>
-      <ul class="grid mt-6 text-base text-gray-400 md:text-lg">
-        <li>
-          <span class="text-xl"> ⚡ </span><span
-            >Currently specilizing in Full Stack Development</span
-          >
-        </li>
-        <li>
-          <span class="text-xl"> ✍️ </span><span
-            >Sharing knowledge on Youtube and Blogs</span
-          >
-        </li>
-      </ul>
-      <ul class="flex gap-4 mt-10 flex-wrap">
+
+      <!--
+        The colophon rail. This replaces the abstract architecture diagram that
+        sat here in v4: a drawing of a generic backend proves nothing, and every
+        generated portfolio has one. Four facts a buyer is actually checking
+        prove more and take less room.
+      -->
+      <aside class="lg:col-span-3 lg:col-start-10">
+        <dl class="border-t-[3px] border-fg">
+          <!--
+            Ordered by what a buyer checks, not by what is interesting to me.
+            Availability first, because "can he even start" gates everything
+            else. Price second. The stack last and quietest: it was previously
+            at the top, at the same weight as the prices, wrapping to two lines,
+            which flattened the hierarchy and gave the least decision-relevant
+            line the most emphasis.
+          -->
+          <div class="border-b border-line py-4">
+            <dt class="spec">Available</dt>
+            <dd class="mt-1.5 text-lg font-bold tracking-tight text-accent">
+              Now, starting within a week
+            </dd>
+          </div>
+
+          {/* The two numbers that decide whether the next click happens, set
+              larger than anything else in the rail and side by side so they
+              read as one price, not two facts. */}
+          <div class="grid grid-cols-2 gap-x-4 border-b border-line py-4">
+            <div>
+              <dt class="spec">Projects from</dt>
+              <dd class="expanded mt-1.5 text-2xl font-bold tracking-tight text-fg">
+                <Price price={PROJECT_FROM} />
+              </dd>
+            </div>
+            <div>
+              <dt class="spec">Per week</dt>
+              <dd class="expanded mt-1.5 text-2xl font-bold tracking-tight text-fg">
+                <Price price={WEEKLY_RATE} />
+              </dd>
+            </div>
+          </div>
+
+          <div class="border-b border-line py-4">
+            <dt class="spec">First reply</dt>
+            <dd class="mt-1.5 text-lg font-bold tracking-tight text-fg">
+              Within 24 hours
+            </dd>
+          </div>
+
+          <div class="py-4">
+            <dt class="spec">Works in</dt>
+            <dd class="mt-1.5 text-sm leading-relaxed text-muted">
+              Python · TypeScript · Next.js · Go
+            </dd>
+          </div>
+        </dl>
+      </aside>
+    </div>
+  </section>
+
+  <!--
+    Evidence, on the blue.
+
+    Directly under the hero, because the headline makes a claim and this is the
+    first thing that substantiates one. Full bleed accent: this is the band that
+    stops the page looking like a theme with an accent variable and makes it
+    look like something with a colour.
+  -->
+  <section class="band-accent">
+    <div class="shell py-16 md:py-20">
+      <p
+        class="condensed text-xs font-bold uppercase tracking-[0.1em] opacity-80"
+      >
+        Running in production, with paying users behind it
+      </p>
+      <dl class="mt-10 grid gap-x-12 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
         {
-          LINKS.map(({ Icon, ...link }) => (
-            <li>
-              <a
-                href={link.href}
-                class="p-4 py-2 bg-zinc-900 rounded flex gap-2 items-center hover:bg-zinc-800"
-              >
-                <span class="text-green-400">
-                  <Icon class={"size-5"} />
+          evidence.map((point) => (
+            <div>
+              <dt class="expanded text-6xl font-bold leading-none tracking-tight tabular-nums">
+                {point.value}
+              </dt>
+              <dd class="mt-5 text-sm leading-relaxed opacity-90">
+                {point.label}
+                <span class="mt-3 block font-mono text-xs tracking-tight opacity-75">
+                  {point.href ? (
+                    <a href={point.href} class="underline underline-offset-4">
+                      {point.source}
+                    </a>
+                  ) : (
+                    point.source
+                  )}
                 </span>
-                <span>{link.name}</span>
-              </a>
-            </li>
+              </dd>
+            </div>
           ))
         }
-      </ul>
+      </dl>
     </div>
-  </div>
-  <!-- TODO: Add sources and hover effects in about section -->
-  <div class={cn(MAX_WIDTH_CLASSES, "mt-20 md:mt-52")}>
-    <h2 class="text-2xl font-bold">⚡About Me</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 mt-5 md:mt-10 gap-10">
-      <ul class="gap-2 grid text-gray-300">
-        <li>
-          Hey! I'm Shivang Rathore. My interest in programming started in
-          school, where I was introduced to HTML in 6th grade by a teacher who
-          was also a software engineer.
-        </li>
-        <li>
-          In 2019, I discovered a Discord bot written in Python and backed by
-          SQLite. With no prior experience, I taught myself Python through
-          online resources and forums. That journey kickstarted my passion for
-          coding.
-        </li>
-        <li>
-          I have strong expertise in Python, JavaScript, React, Node.js, and
-          Golang.
-        </li>
-        <li>
-          Previously, I worked as a Lead Developer with the Pokémon Bot team for
-          two years, scaling the app to support 100k servers.
-        </li>
-      </ul>
-      <div>
-        <div
-          class="size-full aspect-square bg-gray-400 ml-auto max-w-[320px] mx-auto md:mx-[none]"
-        >
+  </section>
+
+  <!--
+    The call, as an offer.
+
+    This is the most important band on the page and it sits as high as it can
+    without displacing the proof. The conversion that matters here is the
+    booking, not the sale: the sale happens on the call. So the call is given a
+    name, a deliverable and a price of zero, and the four things that stop
+    people booking are answered in the margin rather than left to be guessed.
+  -->
+  <Section
+    standfirst="The next 20 minutes"
+    title="What you actually get for the call"
+    lede="It is free, it is 20 minutes, and you leave with something whether or not you ever hire me."
+    tinted
+  >
+    <ol class="border-t-[3px] border-fg">
+      {
+        callPromises.map((promise, i) => (
+          <li class="grid gap-x-8 gap-y-2 border-b border-line py-7 sm:grid-cols-[auto_1fr]">
+            <span class="spec tabular-nums sm:pt-2.5">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <div>
+              <h3 class="text-xl leading-snug text-balance">{promise.gets}</h3>
+              <p class="mt-2.5 leading-relaxed text-muted">{promise.worth}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="mt-9 flex flex-col items-start gap-x-9 gap-y-3 sm:flex-row sm:items-center">
+      {
+        BOOKING_URL ? (
+          <Button
+            variant="primary"
+            href={BOOKING_URL}
+            target="_blank"
+            rel="noopener"
+            data-track="book-call"
+          >
+            <Icon name="calendar" class="size-4" />
+            Pick a slot
+          </Button>
+        ) : (
+          <Button variant="primary" href="/contact/">
+            Start a project
+            <Icon name="arrow-right" class="size-4" />
+          </Button>
+        )
+      }
+      <Button href="/contact/">Rather write it down? Send the details</Button>
+    </div>
+
+    <ul class="mt-9 grid gap-x-8 gap-y-2.5 border-t border-line pt-6 sm:grid-cols-2">
+      {
+        callIsNot.map((item) => (
+          <li class="flex items-start gap-2.5 text-sm leading-relaxed text-faint">
+            <Icon name="check" class="mt-0.5 size-4 shrink-0 text-accent" />
+            <span>{item}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </Section>
+
+  <!--
+    Real client quotes, when there are any. Renders nothing while `quotes` is
+    empty rather than showing a placeholder, so the page is never caught with a
+    testimonial that has no person behind it.
+  -->
+  {
+    quotes.length > 0 && (
+      <Section standfirst="In their words" title="What clients say">
+        <div class="border-t-[3px] border-fg">
+          {quotes.map((quote) => (
+            <figure class="border-b border-line py-9">
+              <blockquote class="text-2xl font-semibold leading-snug tracking-tight text-fg">
+                {quote.body}
+              </blockquote>
+              <figcaption class="mt-5 text-sm text-muted">
+                <span class="font-semibold text-fg">{quote.name}</span>,{" "}
+                {quote.role}, {quote.company}
+              </figcaption>
+            </figure>
+          ))}
         </div>
-      </div>
-    </div>
-  </div>
-  <div
-    class={cn(
-      MAX_WIDTH_CLASSES,
-      "mt-20 md:mt-36 grid grid-cols-1 md:grid-cols-2 gap-14",
-    )}
+      </Section>
+    )
+  }
+
+  <!--
+    The problem.
+
+    New in v5, and the section the old homepage was missing entirely. A buyer
+    who recognises their own situation in one of these three has already decided
+    they need someone before they reach the price list.
+  -->
+  <Section
+    standfirst="Why you are here"
+    title="Three ways this usually goes wrong"
+    lede="If one of these is uncomfortably familiar, it is the thing I get called about most."
   >
-    <div class="flex flex-col gap-2">
-      <h2 class="text-2xl font-bold">💼 My Work</h2>
-      <p class="text-gray-400">
-        Here's some of my projects that I have worked on.
-      </p>
-      <a href="/projects" class="flex gap-2 text-green-400 text-lg items-center"
-        >Explore More <MoveRightIcon /></a
-      >
-      <div class="mt-20 w-px h-px"></div>
-      <ProjectCard {...projects[0]} />
+    <div class="border-t-[3px] border-fg">
+      {
+        problems.map((problem) => (
+          <div class="border-b border-line py-9">
+            <p class="text-2xl font-semibold leading-snug tracking-tight text-fg text-pretty">
+              {problem.symptom}
+            </p>
+            <p class="mt-4 leading-relaxed text-muted">{problem.cause}</p>
+          </div>
+        ))
+      }
     </div>
-    <div class="grid gap-14">
-      <ProjectCard {...projects[1]} />
-      <ProjectCard {...projects[2]} />
-    </div>
-  </div>
-  <div class={cn(MAX_WIDTH_CLASSES, "mt-36")}>
-    <div
-      class="flex justify-between flex-col md:flex-row md:items-center gap-4"
-    >
-      <h3 class="font-bold text-3xl">🌟 Recent Articles</h3>
-      <a href="/blog" class="text-green-400 text-lg flex gap-2 items-center"
-        >Explore More <MoveRightIcon /></a
-      >
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 mt-10 gap-6">
-      {articles.map((article) => <HeroArticleCard article={article} />)}
-    </div>
-  </div>
-  <div
-    class={cn(
-      MAX_WIDTH_CLASSES,
-      "mt-36 flex flex-col items-center text-center",
-    )}
+  </Section>
+
+  <!--
+    The alternatives, named. A buyer is comparing me against an agency and a
+    marketplace bid whether or not the page admits it, and the page that admits
+    it is the one that sounds like it has been in the room.
+  -->
+  <Section
+    standfirst="What else you could do"
+    title="The honest comparison"
+    lede="Four ways to get this built. Three of them are sometimes the right answer, and I will tell you which on the call."
+    tinted
   >
-    <h2 class="text-2xl font-bold">📬 Get in touch</h2>
-    <p class="text-gray-400 mt-4 max-w-4xl mx-auto">
-      I'm currently looking for new opportunities, my inbox is always open.
-      Whether you have a question or just want to say hi, I'll try my best to
-      get back to you!
+    <div class="border-t-[3px] border-fg">
+      {
+        alternatives.map((alt) => (
+          <div class="grid gap-x-8 gap-y-2 border-b border-line py-7 sm:grid-cols-[1fr_auto]">
+            <h3 class="text-2xl">{alt.option}</h3>
+            <p class="spec sm:pt-3 sm:text-right">{alt.cost}</p>
+            <p class="mt-1 leading-relaxed text-muted sm:col-span-2">
+              {alt.catch}
+            </p>
+          </div>
+        ))
+      }
+    </div>
+  </Section>
+
+  <!-- What makes the difference, as checkable claims -->
+  <Section
+    standfirst="If you pick me"
+    title="Four things you can hold me to"
+    lede="Written as claims you can check rather than adjectives you have to take on faith."
+  >
+    <div class="border-t-[3px] border-fg">
+      {
+        differences.map((difference) => (
+          <div class="grid gap-x-10 gap-y-2 border-b border-line py-7 lg:grid-cols-[1fr_1.4fr]">
+            <h3 class="text-xl leading-snug text-balance">{difference.claim}</h3>
+            <p class="leading-relaxed text-muted">{difference.detail}</p>
+          </div>
+        ))
+      }
+    </div>
+  </Section>
+
+  <!-- Services, with the numbers attached -->
+  <Section
+    standfirst="What I can build"
+    title="Scoped engagements, with the price on them"
+    lede="Fixed milestones, priced for wherever you are buying from. You own the code at the end of every one."
+    href="/services/"
+    linkLabel="Full scope and pricing"
+  >
+    <div class="border-t-[3px] border-fg">
+      {
+        services.slice(0, 4).map((service) => (
+          <a
+            href="/services/"
+            class="group grid gap-x-8 gap-y-2 border-b border-line py-7 transition-colors hover:bg-surface sm:grid-cols-[1fr_auto]"
+          >
+            <h3 class="text-2xl group-hover:text-accent">{service.name}</h3>
+            {/* A price and a duration answer the two questions the tagline
+                raises, without a click. */}
+            <p class="spec sm:pt-3 sm:text-right">
+              from <Price price={service.startingAt} /> / {service.timeline}
+            </p>
+            <p class="mt-1 leading-relaxed text-muted sm:col-span-2">
+              {service.tagline}
+            </p>
+          </a>
+        ))
+      }
+    </div>
+
+    <p class="mt-7 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-faint">
+      <span>Hiring for something specific?</span>
+      {
+        landings.map((landing) => (
+          <a
+            href={`/hire/${landing.slug}/`}
+            class="text-muted underline decoration-rule underline-offset-4 hover:text-accent hover:decoration-accent"
+          >
+            {landing.eyebrow}
+          </a>
+        ))
+      }
     </p>
-    <a
-      href="mailto:shivang.rath@gmail.com"
-      class="mt-10 p-4 py-2 bg-zinc-900 rounded flex gap-2 items-center hover:bg-zinc-800"
-    >
-      <span class="text-green-400">
-        <Mail class={"size-5"} />
-      </span>
-      <span>Email me</span>
-    </a>
-  </div>
-</Layout>
+  </Section>
+
+  <!-- Selected work: one lead project, then the rest as rows -->
+  <Section
+    standfirst="Things that shipped"
+    title="Selected work"
+    lede="Products with users behind them, and what each one had to survive."
+    href="/work/"
+    linkLabel="All projects"
+  >
+    {
+      lead && (
+        <article class="border-t-[3px] border-fg pt-7">
+          <div class="flex flex-wrap items-baseline gap-x-4 gap-y-2">
+            <span class="standfirst">Current build</span>
+            <span class="spec">{lead.data.date}</span>
+          </div>
+
+          <h3 class="mt-4 text-title text-balance">
+            {lead.data.demo ? (
+              <a
+                href={lead.data.demo}
+                target="_blank"
+                rel="noopener"
+                class="hover:text-accent"
+              >
+                {lead.data.title}
+              </a>
+            ) : (
+              lead.data.title
+            )}
+          </h3>
+
+          <p class="measure mt-6 text-lede text-pretty text-muted">
+            {lead.data.description}
+          </p>
+
+          <ul class="mt-7 grid gap-3 sm:grid-cols-2">
+            {lead.data.features.slice(0, 4).map((feature) => (
+              <li class="flex items-start gap-2.5 text-sm leading-relaxed text-muted">
+                <Icon name="check" class="mt-0.5 size-4 shrink-0 text-accent" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div class="spec mt-7 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-line pt-4">
+            {lead.data.technologies.slice(0, 6).map((tech) => (
+              <span>{tech}</span>
+            ))}
+            {lead.data.technologies.length > 6 && (
+              <span>+{lead.data.technologies.length - 6}</span>
+            )}
+          </div>
+        </article>
+      )
+    }
+
+    <div class="mt-12 border-b border-line">
+      {rest.map((project, i) => <ProjectRow project={project} index={i + 2} />)}
+    </div>
+  </Section>
+
+  <!--
+    What happens after someone sends the email. The unknown on the other side of
+    a CTA is a reason people do not press it.
+  -->
+  <Section
+    standfirst="After you press the button"
+    title="How it runs"
+    lede="No long discovery phase, no surprise invoice at the end."
+    tinted
+  >
+    <ol class="border-t-[3px] border-fg">
+      {
+        steps.map((item, i) => (
+          <li class="grid gap-x-8 gap-y-2 border-b border-line py-6 sm:grid-cols-[auto_1fr]">
+            <span class="spec tabular-nums sm:pt-3">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <div>
+              <h3 class="text-xl">{item.step}</h3>
+              <p class="mt-2 leading-relaxed text-muted">{item.detail}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </Section>
+
+  <!--
+    The objections, answered on the page the visitor is already on. In v4 these
+    lived only on /services, which meant the homepage asked for a booking while
+    the reasons not to book sat one click away.
+  -->
+  <Section
+    standfirst="Before you ask"
+    title="The questions that come up every time"
+    href="/services/#faq"
+    linkLabel="The rest of the answers"
+  >
+    <Faq items={homeFaqs} />
+  </Section>
+
+  <!-- Writing -->
+  <Section
+    standfirst="Thinking out loud"
+    title="Writing"
+    lede="Decisions from things that shipped, written up while they were still fresh."
+    href="/blog/"
+    linkLabel="All posts"
+  >
+    <div class="border-t-[3px] border-fg">
+      {
+        writing.map(({ kind, entry, base }) => (
+          <PostRow
+            href={`${base}${entry.id}/`}
+            kind={kind}
+            title={entry.data.title}
+            description={entry.data.description}
+            pubDate={entry.data.pubDate}
+            tags={entry.data.tags}
+          />
+        ))
+      }
+    </div>
+  </Section>
+
+  <!-- Contact CTA -->
+  <Cta />
+</Base>

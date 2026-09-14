@@ -1,48 +1,55 @@
-# Astro Starter Kit: Basics
+# shivangrathore.com
 
-```sh
-pnpm create astro@latest -- --template basics
+Personal portfolio built with [Astro](https://astro.build). Minimalist
+dark design, single green accent. Content-driven: projects, case studies,
+and a blog.
+
+## Develop
+
+```bash
+pnpm install
+pnpm dev          # http://localhost:4321
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/basics)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/basics/devcontainer.json)
+| Command         | Action                                |
+| --------------- | ------------------------------------- |
+| `pnpm dev`      | Start the dev server                  |
+| `pnpm build`    | Build the static site to `dist/`      |
+| `pnpm preview`  | Preview the production build locally  |
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Content
 
-![just-the-basics](https://github.com/withastro/astro/assets/2244813/a0a5533c-a856-4198-8470-2d67b1d7c554)
+All content lives in `src/content/`:
 
-## 🚀 Project Structure
+- **`projects/*.yml`** — short project cards shown under `/work`. Set
+  `caseStudy: "<slug>"` to link a project to its full write-up.
+- **`case-studies/*.mdx`** — long-form write-ups under `/case-studies`.
+  Supports `role`, `timeline`, `stack`, `github`, `demo`, `tags`.
+- **`blog/*.mdx`** — articles under `/blog`.
 
-Inside of your Astro project, you'll see the following folders and files:
+MDX/Markdown gets a generated reading time, a table of contents (from `h2`/`h3`),
+and Shiki code highlighting (`tokyo-night`). Set `draft: true` to hide an entry
+from production (drafts are still visible in `pnpm dev`).
 
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src/
-│   ├── layouts/
-│   │   └── Layout.astro
-│   └── pages/
-│       └── index.astro
-└── package.json
+Schemas are defined in `src/content.config.ts`.
+
+## Architecture
+
+- **Layouts** — `src/layouts/Base.astro` (shell), `Post.astro` (blog +
+  case-study article template with TOC).
+- **Components** — `src/components/` (Nav, Footer, ProjectCard, icons). The
+  contact form is the only React island (`ContactForm.tsx`, posts to Google
+  Forms).
+- **Styling** — Tailwind v4 via `@tailwindcss/vite`; design tokens and prose
+  styles in `src/styles/global.css`.
+- **SEO** — sitemap (`@astrojs/sitemap`), `rss.xml`, `robots.txt`, OpenGraph
+  tags in `BaseHead.astro`.
+
+## Deploy
+
+Static output. The `Dockerfile` builds the site and serves `dist/` with nginx
+on port `3000` (wired to Traefik in `compose.yml`).
+
+```bash
+docker compose up --build
 ```
-
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).

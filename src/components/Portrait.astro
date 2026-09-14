@@ -1,0 +1,49 @@
+---
+import { Image } from "astro:assets";
+import { portrait, PORTRAIT_ALT } from "@/lib/portrait";
+
+interface Props {
+  /** Wrapper classes. Set the aspect ratio and width here. */
+  class?: string;
+  /**
+   * The hairline around the image. Off for the accent band, where `line` is a
+   * dark grey that disappears against the blue and the caller supplies a ring
+   * in the foreground colour instead.
+   */
+  frame?: boolean;
+  /** Widest the image is ever displayed, in CSS pixels. Drives the srcset. */
+  width?: number;
+  sizes?: string;
+  loading?: "eager" | "lazy";
+}
+
+const {
+  class: className,
+  frame = true,
+  width = 640,
+  sizes = "(min-width: 1024px) 24rem, 60vw",
+  loading = "lazy",
+} = Astro.props;
+---
+
+{
+  portrait && (
+    <figure
+      class:list={[
+        "relative overflow-hidden bg-surface",
+        frame && "border border-line",
+        className,
+      ]}
+    >
+      <Image
+        src={portrait}
+        alt={PORTRAIT_ALT}
+        widths={[width / 2, width, width * 2]}
+        sizes={sizes}
+        loading={loading}
+        decoding="async"
+        class="size-full object-cover"
+      />
+    </figure>
+  )
+}

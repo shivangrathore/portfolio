@@ -1,0 +1,67 @@
+---
+title: "Five Ways an MVP Build Goes Wrong"
+description: "The failures I see repeatedly are not technical. Scope that never closed, a demo mistaken for a product, silence, and the handover nobody agreed on."
+pubDate: "2026-09-21"
+tags: ["MVP", "Startups", "Founders", "Freelance"]
+draft: true
+---
+
+Most MVP builds that go badly do not go badly because the work was too hard. They go badly for reasons you could have seen in week one, and usually for one of five.
+
+I have been on both sides of these: as the person building, and as the person called in afterwards to work out what is salvageable. The second conversation is the one I want you to avoid.
+
+## 1. The scope never closed
+
+The brief was a paragraph. Everyone agreed it was clear. Nobody wrote down what was *not* included.
+
+Then in week three you mention that users will obviously need to invite their team, and the developer hears a new feature while you hear a clarification. Neither of you is lying. The document was simply not specific enough to disagree with, and unwritten scope always expands, because the person paying keeps discovering things that feel implied.
+
+The symptom is a project that is perpetually eighty percent done. The fix is a page, written before anyone quotes, with an explicit out-of-scope list. If your developer will not write one, that is information.
+
+## 2. A demo was mistaken for a product
+
+It works when you click through it in the order you designed it. That is a demo. A product is the same thing after someone has used it wrong.
+
+The distance between the two is almost entirely invisible to a non-technical founder, because both look identical in a screen recording. It is: what happens when two people edit at once, when the payment webhook arrives twice, when someone uploads a 40MB photo, when a session expires mid-form, when the third-party API is down.
+
+That work has no visible output, which is exactly why it gets skipped under deadline pressure and why it is the most common thing missing when I am asked to look at a codebase someone else built.
+
+The question that surfaces it: **"what happens if two people do this at the same time?"** You do not need to understand the answer. You need to see whether they have one.
+
+## 3. Nobody defined done
+
+"An MVP for a booking platform" is not a definition. It is a category.
+
+Without a definition, done becomes whenever the money runs out, and what you have at that point is whatever happened to be finished. That is how people end up with a beautiful settings page and no working checkout.
+
+Define done as a sentence about behaviour, not a feature list. "A customer can find a slot, pay for it, and get a confirmation email, and I can see the booking in an admin view." Everything else is negotiable against the deadline. Feature lists cannot be traded off against anything, which is precisely why they are the wrong instrument.
+
+## 4. It went quiet
+
+This is the one that actually kills projects, and it is the most predictable.
+
+Three weeks pass. Updates get shorter and vaguer. You do not chase, because you do not want to be the client who micromanages, and because you would not know what to ask. By the time you do ask, the honest answer is that the last fortnight went badly and nobody wanted to say.
+
+Silence is never neutral in a software project. It almost always means something is going wrong, because good weeks are easy to report.
+
+The structural fix is not more meetings. It is that **every milestone ends with something you can click**, deployed somewhere you can reach without the developer present. Not a screenshot, not a demo call: a URL. If you can open it yourself on a Sunday, silence becomes impossible, because progress is either visible or it is not there.
+
+## 5. The handover was never agreed
+
+The build finishes. You have an app. You do not have the AWS account, the domain registrar login, the database credentials, the deployment process, or any documentation, and the person who has all of it has moved on to their next client.
+
+This one is entirely preventable and it is mostly a contract failure rather than a technical one. Agree upfront: the code lives in *your* repository from the first commit, it deploys to *your* accounts, and the final payment is contingent on a handover that includes written setup instructions and a walkthrough with whoever picks it up next.
+
+If a developer resists any part of that, you have learned something important for a very low price.
+
+## The pattern underneath
+
+Four of the five are communication failures wearing technical clothes. Scope, definition of done, silence and handover are all the same problem: something important was left implicit because making it explicit felt awkward at the time.
+
+The awkward conversation in week one is always cheaper than the awkward conversation in week nine. If you take one thing from this: before any money changes hands, agree in writing what is out of scope, what done means as a behaviour, what you will be able to click at the end of each milestone, and who holds the keys.
+
+That is maybe an hour of work. It removes most of the ways this goes wrong.
+
+---
+
+If a build has already gone sideways and you want an honest read on what is salvageable, [send me the details](/contact/). I will tell you straight, including when the answer is that the existing developer should finish it.

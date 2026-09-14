@@ -1,33 +1,68 @@
 ---
-import Layout from "@/layouts/Layout.astro";
-import { MAX_WIDTH_CLASSES } from "@/lib/constants";
-import BlogSearchInput from "@/components/BlogSearchInput";
-import { cn } from "@/lib/utils";
-import ArticleCard from "@/components/ArticleCard.astro";
 import { getCollection } from "astro:content";
-import Head from "@/components/Head.astro";
-const collection = await getCollection("blog");
-const blog = collection
-  .filter((a) => a.data.published)
-  .sort((a, b) => {
-    return (
-      new Date(b.data.pubDate).getTime() - new Date(a.data.pubDate).getTime()
-    );
-  });
+import Base from "@/layouts/Base.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import PostRow from "@/components/PostRow.astro";
+import Cta from "@/components/Cta.astro";
+import { abs, breadcrumbs } from "@/lib/schema";
+
+const isDev = import.meta.env.DEV;
+let posts = (await getCollection("blog")).sort(
+  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+if (!isDev) posts = posts.filter((p) => !p.data.draft);
+
+const schema = [
+  breadcrumbs([{ name: "Blog", path: "/blog" }]),
+  {
+    "@type": "Blog",
+    "@id": `${abs("/blog/")}#blog`,
+    name: "Blog",
+    description:
+      "Thoughts on web development, system programming, Linux, Go, and Rust.",
+    url: abs("/blog/"),
+    blogPost: posts.map((post) => ({
+      "@type": "BlogPosting",
+      "@id": `${abs(`/blog/${post.id}/`)}#article`,
+      headline: post.data.title,
+      description: post.data.description,
+      url: abs(`/blog/${post.id}/`),
+      datePublished: post.data.pubDate.toISOString(),
+    })),
+  },
+];
 ---
 
-<Head title="Blog" />
-<Layout>
-  <div class={cn(MAX_WIDTH_CLASSES, "mt-5")}>
-    <h1 class="text-6xl font-extrabold my-8">Blog</h1>
-    <p class="text-gray-400">
-      This is where I share my writings on programming, tutorials, and my
-      experiences.
-    </p>
-    <BlogSearchInput client:load />
-    <hr class="my-10 border-gray-500/25" />
-    <div class="grid gap-4">
-      {blog.map((blog) => <ArticleCard {...blog} />)}
-    </div>
+<Base
+  title="Blog"
+  description="Write-ups from things that actually shipped: multi-tenancy, billing, Postgres data modelling and LLM pipelines, with the decisions and the reversals."
+  schema={schema}
+>
+  <PageHeader
+    label="Blog"
+    title="Notes on backends that have to hold up"
+    lede="Auth, permissions, multi-tenancy and systems work, written from things that shipped rather than things I read about."
+  />
+
+  <div class="shell py-14 md:py-16">
+    {
+      posts.length === 0 ? (
+        <p class="text-muted">No posts yet. Check back soon.</p>
+      ) : (
+        <div class="border-b border-line">
+          {posts.map((post) => (
+            <PostRow
+              href={`/blog/${post.id}/`}
+              title={post.data.title}
+              description={post.data.description}
+              pubDate={post.data.pubDate}
+              tags={post.data.tags}
+            />
+          ))}
+        </div>
+      )
+    }
   </div>
-</Layout>
+
+  <Cta />
+</Base>

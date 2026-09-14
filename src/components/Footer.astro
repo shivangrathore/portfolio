@@ -1,13 +1,145 @@
 ---
-import { cn } from "../lib/utils";
-import { MAX_WIDTH_CLASSES } from "../lib/constants";
+import {
+  GITHUB_URL,
+  LINKEDIN_URL,
+  X_URL,
+  MAIL_ADDRESS,
+  AVAILABILITY,
+} from "@/lib/constants";
+import { landings } from "@/lib/landings";
+import Github from "@/components/icons/Github.astro";
+import Linkedin from "@/components/icons/Linkedin.astro";
+import X from "@/components/icons/X.astro";
+import Icon from "@/components/icons/Icon.astro";
+import RegionToggle from "@/components/RegionToggle.astro";
+
+const year = new Date().getFullYear();
+
+// The top nav carries six items and cannot grow. Everything worth reaching
+// lives here instead, which also puts the /hire pages one click from every
+// page rather than only from the homepage and /services.
+const columns = [
+  {
+    title: "Hire me",
+    links: [
+      // The hub is otherwise orphaned: the homepage and /services link the
+      // three landing pages directly and nothing points at /hire itself.
+      { label: "Ways to work together", href: "/hire/" },
+      ...landings.map((l) => ({ label: l.eyebrow, href: `/hire/${l.slug}/` })),
+      { label: "All services", href: "/services/" },
+    ],
+  },
+  {
+    title: "Work",
+    links: [
+      { label: "Projects", href: "/work/" },
+      { label: "Case studies", href: "/case-studies/" },
+      { label: "Blog", href: "/blog/" },
+    ],
+  },
+  {
+    title: "Site",
+    links: [
+      { label: "About", href: "/about/" },
+      { label: "Start a project", href: "/contact/" },
+      { label: "RSS", href: "/rss.xml" },
+    ],
+  },
+];
+
+const elsewhere = [
+  { label: "GitHub", href: GITHUB_URL, icon: "github" },
+  { label: "LinkedIn", href: LINKEDIN_URL, icon: "linkedin" },
+  { label: "X", href: X_URL, icon: "x" },
+  { label: "Email", href: `mailto:${MAIL_ADDRESS}`, icon: "mail" },
+] as const;
 ---
 
-<footer class="bg-black border-t border-gray-500/25 mt-20 text-sm">
-  <div class={cn(MAX_WIDTH_CLASSES, "p-4 text-center")}>
-    Made by <span class="text-green-400 mx-1 font-medium">Shivang Rathore</span>
-    • Powered by <span class="text-green-400 mx-1 font-medium">Astro</span>
-    <br />
-    Hosted on <span class="text-green-400 mx-1 font-medium">Github Pages</span>
+<footer class="border-t border-line">
+  <div class="shell py-16">
+    <div class="grid gap-x-12 gap-y-12 lg:grid-cols-12">
+      <!-- Sign-off, at display size. The site ends on the name. -->
+      <div class="lg:col-span-4">
+        <p class="expanded text-heading font-bold tracking-tight text-fg">
+          Shivang Rathore
+        </p>
+        <p class="measure mt-4 text-sm leading-relaxed text-muted">
+          Freelance engineer in India. AI features, web apps and the backends
+          under them, in Python, TypeScript and Go. Working mostly with Indian
+          founders, and with teams in the US and UK.
+        </p>
+        <a
+          href={`mailto:${MAIL_ADDRESS}`}
+          class="mt-5 inline-block text-sm text-fg underline decoration-rule underline-offset-4 hover:text-accent hover:decoration-accent"
+        >
+          {MAIL_ADDRESS}
+        </a>
+      </div>
+
+      <div class="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4 lg:col-span-8">
+        {
+          columns.map((column) => (
+            <div>
+              <h2 class="label">{column.title}</h2>
+              <ul class="mt-4 space-y-2.5">
+                {column.links.map((link) => (
+                  <li>
+                    <a href={link.href} class="text-sm text-muted hover:text-accent">
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+
+        <div>
+          <h2 class="label">Elsewhere</h2>
+          <ul class="mt-4 space-y-2.5">
+            {
+              elsewhere.map((link) => (
+                <li>
+                  <a
+                    href={link.href}
+                    target={link.icon === "mail" ? undefined : "_blank"}
+                    rel={link.icon === "mail" ? undefined : "noopener"}
+                    class="group inline-flex items-center gap-2 text-sm text-muted hover:text-accent"
+                  >
+                    <span class="text-faint group-hover:text-accent">
+                      {link.icon === "github" ? (
+                        <Github class="size-3.5" />
+                      ) : link.icon === "linkedin" ? (
+                        <Linkedin class="size-3.5" />
+                      ) : link.icon === "x" ? (
+                        <X class="size-3.5" />
+                      ) : (
+                        <Icon name="mail" class="size-3.5" />
+                      )}
+                    </span>
+                    {link.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="mt-16 flex flex-col gap-3 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p class="label">© {year} Shivang Rathore</p>
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
+        {/* Sitewide, because the guess is a guess and someone reading a case
+            study should not have to go back to /services to correct it. */}
+        <div class="flex items-center gap-2.5">
+          <span class="label">Pricing</span>
+          <RegionToggle />
+        </div>
+        <p class="label text-accent">{AVAILABILITY}</p>
+      </div>
+    </div>
   </div>
 </footer>

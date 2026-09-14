@@ -1,0 +1,78 @@
+---
+import Base from "@/layouts/Base.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import Icon from "@/components/icons/Icon.astro";
+import Cta from "@/components/Cta.astro";
+import { landings } from "@/lib/landings";
+import { abs, breadcrumbs } from "@/lib/schema";
+
+const description =
+  "Hire a freelance developer for AI features, startup MVPs, web apps and backend work. Python, TypeScript and Go, scoped as fixed milestones with code you own.";
+---
+
+<Base
+  title="Hire Me"
+  description={description}
+  schema={[
+    breadcrumbs([{ name: "Hire", path: "/hire" }]),
+    {
+      "@type": "CollectionPage",
+      "@id": `${abs("/hire/")}#page`,
+      url: abs("/hire/"),
+      name: "Hire Shivang Rathore",
+      description,
+      hasPart: landings.map((l) => ({
+        "@type": "Service",
+        "@id": `${abs(`/hire/${l.slug}/`)}#service`,
+        name: l.heading,
+        url: abs(`/hire/${l.slug}/`),
+      })),
+    },
+  ]}
+>
+  <PageHeader
+    label="Hire me"
+    title="Five ways people bring me in"
+    lede="Each page covers what the work includes, where I have done it before, and when I am the wrong person for it. If none of them match, the full service list probably does."
+  />
+
+  <div class="shell py-14 md:py-16">
+    <div class="border-t border-line">
+      {
+        landings.map((landing, i) => (
+          <a
+            href={`/hire/${landing.slug}/`}
+            class="group relative grid grid-cols-[2.5rem_1fr] gap-x-4 border-b border-line py-7 transition-colors hover:bg-surface sm:gap-x-6 lg:px-4"
+          >
+            <span class="label pt-1.5 group-hover:text-accent">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span class="min-w-0">
+              <span class="label block text-accent">{landing.eyebrow}</span>
+              <span class="mt-2.5 block text-heading text-fg group-hover:text-accent">
+                {landing.heading}
+              </span>
+              <span class="measure mt-2.5 block text-sm leading-relaxed text-muted">
+                {landing.intro}
+              </span>
+              <span class="mt-4 inline-flex items-center gap-1.5 text-sm text-muted group-hover:text-accent">
+                What this includes
+                <Icon
+                  name="arrow-right"
+                  class="size-3.5 transition-transform group-hover:translate-x-0.5"
+                />
+              </span>
+            </span>
+          </a>
+        ))
+      }
+    </div>
+
+    <p class="mt-6 text-sm text-faint">
+      Not one of these? The <a href="/services/" class="link">full service list</a>
+      covers everything else I take on.
+    </p>
+  </div>
+
+  <Cta />
+</Base>

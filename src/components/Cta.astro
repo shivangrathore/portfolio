@@ -1,0 +1,144 @@
+---
+import Button from "@/components/Button.astro";
+import Icon from "@/components/icons/Icon.astro";
+import Portrait from "@/components/Portrait.astro";
+import { hasPortrait } from "@/lib/portrait";
+import { BOOKING_URL, BOOKING_LENGTH, AVAILABILITY } from "@/lib/constants";
+
+interface Props {
+  /** Overrides for pages that need a more specific ask. */
+  heading?: string;
+  body?: string;
+  class?: string;
+}
+
+// The booking link only renders once it exists, so the primary CTA is never
+// dead and the heading never promises a call the buttons cannot deliver.
+const booking = BOOKING_URL.length > 0;
+
+const {
+  heading = booking
+    ? `Most projects start with a ${BOOKING_LENGTH} call`
+    : "Tell me what you are building",
+  body = "Send the problem, the deadline and roughly what the budget looks like. You get an honest read on whether I am the right person, a rough timeline and a price range. If I am not a fit I will say so and point you somewhere better.",
+  class: className,
+} = Astro.props;
+---
+
+<!--
+  The closing band, on the blue.
+
+  It is the same ground as the evidence band near the top, which brackets the
+  page: the first blue makes the claim, the last one asks for the meeting. In
+  between everything is on paper. Two accent bands is a structure. Six would be
+  a stripe pattern.
+
+  The buttons invert here rather than using the shared Button variants: a
+  vermilion-on-blue primary would be unreadable, so on this ground the filled
+  button is white and the secondary is white underline.
+-->
+<section class:list={["reveal band-accent", className]}>
+  <div class="shell grid gap-x-14 gap-y-10 py-20 md:py-24 lg:grid-cols-12">
+    <div class="lg:col-span-7">
+      <h2 class="expanded text-title text-balance">{heading}</h2>
+      <p class="measure mt-7 text-lede leading-relaxed opacity-90">{body}</p>
+
+      <!--
+        The face, next to the ask.
+
+        A photo on an about page is a biography. A photo beside the booking
+        button is evidence for the claim the whole site rests on, which is that
+        you deal with the person who writes the code rather than an account
+        manager. It renders only when src/assets/portrait.* exists, so the band
+        closes up cleanly until there is one.
+
+        Round here, square on /about. The site is built from right angles and
+        this is the one deliberate exception: a circle reads instantly as "a
+        person", while a square reads as "an image", and the whole point of
+        putting it next to the button is that someone registers a face.
+
+        80px, not 56px. At the smaller size it was a detail rather than a
+        person, which defeats the purpose. The edge is a ring in the band's
+        foreground colour: the usual hairline is a dark grey and is invisible
+        against the blue.
+      -->
+      {
+        hasPortrait && (
+          <div class="mt-9 flex items-center gap-4 border-t border-accent-fg/25 pt-6">
+            <Portrait
+              class="size-20 shrink-0 rounded-full ring-2 ring-accent-fg/35"
+              width={160}
+              sizes="80px"
+              frame={false}
+            />
+            <p class="text-sm leading-relaxed opacity-90">
+              You will be talking to me, not a salesperson.
+              <br class="hidden sm:block" />
+              Shivang Rathore, the person who writes the code.
+            </p>
+          </div>
+        )
+      }
+    </div>
+
+    <div class="lg:col-span-4 lg:col-start-9">
+      <div class="flex flex-col items-start gap-4">
+        {
+          booking ? (
+            <>
+              <a
+                href={BOOKING_URL}
+                target="_blank"
+                rel="noopener"
+                data-track="book-call"
+                data-plain
+                class="group/btn inline-flex w-full items-center justify-center gap-2 bg-bg px-6 py-4 text-sm font-semibold tracking-tight text-fg transition-opacity hover:opacity-90"
+              >
+                <Icon name="calendar" class="size-4" />
+                Book a {BOOKING_LENGTH} call
+              </a>
+              <a
+                href="/contact/"
+                class="text-sm font-medium underline decoration-1 underline-offset-[6px] opacity-90 hover:opacity-100"
+              >
+                Or send the details in writing
+              </a>
+            </>
+          ) : (
+            <>
+              <a
+                href="/contact/"
+                data-plain
+                class="inline-flex w-full items-center justify-center gap-2 bg-bg px-6 py-4 text-sm font-semibold tracking-tight text-fg transition-opacity hover:opacity-90"
+              >
+                Start a project
+                <Icon name="arrow-right" class="size-4" />
+              </a>
+              <a
+                href="/services/"
+                class="text-sm font-medium underline decoration-1 underline-offset-[6px] opacity-90 hover:opacity-100"
+              >
+                See what I build first
+              </a>
+            </>
+          )
+        }
+      </div>
+
+      <dl class="mt-9 border-t border-accent-fg/25 pt-6 text-sm">
+        <div class="flex gap-5 py-1.5">
+          <dt class="w-20 shrink-0 font-mono text-xs tracking-tight opacity-70">
+            Status
+          </dt>
+          <dd>{AVAILABILITY}</dd>
+        </div>
+        <div class="flex gap-5 py-1.5">
+          <dt class="w-20 shrink-0 font-mono text-xs tracking-tight opacity-70">
+            Reply
+          </dt>
+          <dd>Within 24 hours</dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</section>

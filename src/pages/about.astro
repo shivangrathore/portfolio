@@ -1,0 +1,162 @@
+---
+import Base from "@/layouts/Base.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import Section from "@/components/Section.astro";
+import Portrait from "@/components/Portrait.astro";
+import Timeline from "@/components/Timeline.astro";
+import Button from "@/components/Button.astro";
+import Cta from "@/components/Cta.astro";
+import Icon from "@/components/icons/Icon.astro";
+import { experience } from "@/lib/experience";
+import { MAIL_ADDRESS } from "@/lib/constants";
+import { abs, breadcrumbs } from "@/lib/schema";
+
+const skills: { group: string; items: string[] }[] = [
+  { group: "Languages", items: ["Go", "TypeScript", "JavaScript", "Python", "SQL"] },
+  { group: "Frontend", items: ["React", "Next.js", "Tailwind CSS", "TanStack Query", "Zustand", "Jotai"] },
+  { group: "Backend", items: ["Gin", "Node.js", "NestJS", "Express", "WebSockets"] },
+  { group: "Data", items: ["PostgreSQL", "Redis", "RabbitMQ", "MongoDB"] },
+  { group: "Infra", items: ["Docker", "AWS S3", "GitHub Actions", "Turborepo", "Vercel", "Linux"] },
+  {
+    group: "Integrations",
+    items: [
+      "Stripe",
+      "Google OAuth",
+      "Gmail / Drive / Sheets",
+      "Twilio",
+      "OpenAI",
+    ],
+  },
+  { group: "Tools", items: ["sqlc", "pgx", "Prisma", "Drizzle", "Zod"] },
+];
+
+const education = {
+  school: "LNCT University, Bhopal",
+  degree: "Bachelor of Computer Applications (BCA)",
+  period: "2021 - 2024",
+  location: "Bhopal, Madhya Pradesh, India",
+};
+---
+
+<Base
+  title="About"
+  description="Freelance full-stack engineer working in Go, PostgreSQL and Next.js, currently rebuilding a fleet-compliance SaaS from Node to Go."
+  schema={[
+    breadcrumbs([{ name: "About", path: "/about" }]),
+    {
+      "@type": "ProfilePage",
+      "@id": `${abs("/about/")}#profile`,
+      url: abs("/about/"),
+      name: "About Shivang Rathore",
+      mainEntity: { "@id": `${abs("/")}#person` },
+    },
+  ]}
+>
+  <PageHeader
+    label="About"
+    title="Backend engineer who ships the front end too"
+    lede="Production SaaS is the day job: RBAC, real-time infrastructure, compliance workflows, third-party integrations, and the distributed services that hold them together."
+  >
+    <!-- Reads from src/assets/portrait.*; the header closes up if it is removed. -->
+    <Portrait
+      slot="aside"
+      class="aspect-3/4 w-full max-w-sm lg:mt-2 lg:max-w-none"
+      sizes="(min-width: 1024px) 22rem, 24rem"
+    />
+  </PageHeader>
+
+  <Section standfirst="Who you would work with" title="Background" seamless>
+    <div class="prose">
+      <p>
+        I'm a full-stack engineer who builds scalable <strong>Go</strong>
+        backends and modern <strong>React/Next.js</strong> applications, with
+        <strong>Node.js</strong>, <strong>TypeScript</strong> and
+        <strong>Python</strong> for the work that suits them better. My
+        day-to-day is production SaaS: RBAC, real-time infrastructure,
+        compliance workflows, third-party integrations, and the distributed
+        services that hold them together.
+      </p>
+      <p>
+        I started out on Linux and never left. I'm still pulled toward how
+        systems actually work under the hood. What I care about most is backend
+        architecture, developer tooling, and writing code that stays clean as
+        it grows.
+      </p>
+      <p>
+        Right now I'm on contract at <strong>Hauldrive</strong>, leading a Go
+        and Next.js platform rewrite where one backend carries a fleet product, a
+        workshop product and the admin tooling behind both, and writing about
+        the backend and systems work I pick up along the way.
+      </p>
+    </div>
+  </Section>
+
+  <Section
+    standfirst="Where this was learned"
+    title="Experience"
+    lede="Three engagements, and what each one actually required. The Hauldrive entry is the current one and the deepest."
+  >
+    <Timeline items={experience} class="border-b border-line" />
+  </Section>
+
+  <Section
+    standfirst="What I reach for"
+    title="Tools and technologies"
+    lede="What I reach for, grouped by where it sits in a system."
+  >
+    <dl class="border-t border-line">
+      {
+        skills.map((s) => (
+          <div class="grid gap-x-6 gap-y-2 border-b border-line py-4 sm:grid-cols-[9.5rem_1fr]">
+            <dt class="label pt-1">{s.group}</dt>
+            <dd class="flex flex-wrap gap-x-3 gap-y-1.5 font-mono text-xs text-muted">
+              {s.items.map((item) => (
+                <span>{item}</span>
+              ))}
+            </dd>
+          </div>
+        ))
+      }
+    </dl>
+  </Section>
+
+  <Section standfirst="For completeness" title="Education">
+    <div class="border-y border-line py-6">
+      <p class="font-mono text-xs text-faint">
+        {education.period} · {education.location}
+      </p>
+      <h3 class="mt-2.5 font-semibold tracking-tight text-fg">
+        {education.degree}
+      </h3>
+      <p class="mt-1 text-sm text-muted">{education.school}</p>
+    </div>
+
+    <!--
+      The primary action here is the call, not the CV.
+
+      This used to lead with "Download resume", which is the vocabulary of
+      someone looking for a job. A founder reading an about page is deciding
+      whether to talk to a supplier, and handing them a CV answers a question
+      they did not ask while quietly repositioning the whole page as a job
+      application. The PDF stays for the recruiters who do want it, one step
+      down and named for what it is.
+    -->
+    <div class="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
+      <Button variant="primary" href="/contact/">
+        <Icon name="mail" class="size-4" />
+        Start a project
+      </Button>
+      <Button href={`mailto:${MAIL_ADDRESS}`}>Email me directly</Button>
+      <a
+        href="/resume.pdf"
+        target="_blank"
+        rel="noopener"
+        class="text-sm text-faint underline decoration-rule underline-offset-4 hover:text-accent hover:decoration-accent"
+      >
+        CV, for recruiters
+      </a>
+    </div>
+  </Section>
+
+  <Cta />
+</Base>

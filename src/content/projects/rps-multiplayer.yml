@@ -1,0 +1,18 @@
+title: "RPS Multiplayer"
+description: "A real-time Rock-Paper-Scissors multiplayer game with WebSocket communication and matchmaking."
+date: "2023"
+featured: false
+technologies:
+  - TypeScript
+  - Node.js
+  - WebSocket
+  - Express
+  - Tailwind CSS
+  - React
+features:
+  - "Real-time gameplay using WebSockets"
+  - "Matchmaking between online players"
+  - "Score tracking and game history"
+  - "Clean and responsive UI"
+  - "Fast and lightweight backend"
+github: "https://github.com/shivangrathore/rps-multiplayer"

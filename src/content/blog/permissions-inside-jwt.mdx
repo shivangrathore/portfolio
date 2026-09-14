@@ -1,0 +1,110 @@
+---
+title: "I Put Permissions in the JWT, Then Took Them Out"
+description: "Permission claims bought me zero-I/O authorization for a year. Splitting one backend into five services is what finally made them indefensible."
+pubDate: "2026-05-26"
+updatedDate: "2026-09-14"
+tags: ["Backend", "Authentication", "Authorization", "JWT", "Security"]
+---
+
+Decision 14 in our log says permissions live in the access token. Decision 38, written about ten months later, says they do not, and that decision 14 was wrong once there was more than one service reading the token.
+
+Both were the right call at the time they were made. This is the post about why, because I think the reversal is more useful than either decision on its own.
+
+## What I built
+
+Every app with roles hits the same fork. A request arrives, and before the handler runs you have to answer one question: is this person allowed to do this?
+
+You can ask the database. Load the membership, load the roles, load the permissions on those roles, check. Always correct, and also two or three joins in front of every endpoint you own, forever, on the hottest path you have.
+
+Or you can put the answer in the token. Bake the permission list in at login, have middleware read a field, done. No I/O at all.
+
+I took the second one. In a single Go service with one database behind it, it is a good trade, and I would take it again in that situation.
+
+The claims looked like this:
+
+```ts
+type AccessClaims = {
+  uid: number;
+  tid?: number;       // tenant
+  scope?: string;     // which product, once there was more than one
+  perms?: string[];   // ["projects:view", "invoices:manage", ...]
+};
+```
+
+Permissions are flat strings shaped `resource:action`. Roles are how you grant them, but only the flattened list reaches the token, because putting role names in instead means every check becomes "which roles imply this permission?", and that mapping lives on your server, so you are straight back to a lookup.
+
+Checking one costs a signature verification and an array scan:
+
+```ts
+export const requirePermission = (needed: string) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    if (!hasPermission(req.auth, needed)) {
+      return res.status(403).json({ code: "insufficient_permissions" });
+    }
+    next();
+  };
+```
+
+Wildcards keep it from turning into a novel. An owner carries `*:*` rather than the entire catalogue, which matters because the token rides in a header on every single request, and a hundred permission strings gets you closer to nginx's 8 KB buffer than you would guess.
+
+## The rule that made it safe
+
+A signed token cannot be edited. Take away someone's admin role and their token keeps saying admin. That is the obvious objection and it is a real one, but it is bounded, and the bound is the access token lifetime, which you control.
+
+Keeping that bound tight comes down to one rule: rebuild the permission list on every refresh.
+
+When a refresh request arrives, the old token is sitting right there, parsed, with the permission list in it. Copying it into the new token saves a query and passes every test you will write. Do that and the permissions captured at login get reprinted forever, so revoking a role changes nothing until the user fully logs out, which for an app people leave open might be never. You have built a 15-minute token that behaves like a 7-day one.
+
+Load them fresh instead:
+
+```ts
+// inside the refresh handler, after the session row checks out
+membership.roles = await memberships.roles(membership.id);
+return issue(user, membership); // perms recomputed from those roles
+```
+
+Two queries every 15 minutes per session. Nothing. And it buys a sentence you can defend in a security review: a permission change takes effect within one access token lifetime, with no logout, no client cooperation and no cache to invalidate.
+
+That held up. For about a year it was genuinely fine.
+
+## What broke it
+
+The backend became five services.
+
+Identity, platform, fleet, workshop and tacho, behind one gateway, each with its own database. Identity owns the account and issues every token. And the moment identity was the only thing minting tokens, the permission claim stopped being a cache of something identity knew, and became a claim identity was making about a domain it does not own.
+
+Fleet knows what a fleet manager may do. Workshop knows what a workshop foreman may do. Identity knows neither, and should not, because the second it does you have put every product's authorization model inside the one service that everything logs in through. Every permission change in any product becomes a deploy of identity.
+
+There is a worse version of the problem, and it is the one that actually decided it. With one service, the staleness window was bounded by the refresh cycle because refresh and authorization were the same code path. With five, they are not. A token minted by identity gets presented to fleet, which has no idea whether the grants inside it still exist in fleet's own tables. The claim outlives its own revocation, and now nothing in the system is positioned to notice.
+
+I tried to keep the pattern first. The obvious patch is a permissions version: put a `pv` counter in the token, bump it in Redis when roles change, have each service compare. It works. I had it running. But it means every service now depends on a shared Redis for authorization correctness, which is precisely the coupling the split was meant to remove, and you have two sources of truth that can drift. I deleted it after about a week.
+
+## Where it landed
+
+The token carries identity and nothing else. Who you are, which org, which product this session is in, whether you are the owner. No `perms` array.
+
+Each service resolves permissions from its own tables, at request time, against a catalogue it owns. Fleet's is 133 keys defined in Go rather than stored in a table, so a missing grant fails the build instead of failing a seed script at three in the morning. `role_permissions` stores the key.
+
+That is a database read in front of every endpoint. Exactly the thing the original design existed to avoid, and it turns out to cost very little, because it is one indexed read against the service's own database rather than the three-join traversal I was imagining when I wrote decision 14. I had been comparing against the wrong number for a year.
+
+The one piece I kept is ownership. That is not a role and never was, so it stays as a claim (`org_admin`, minted from `organization_members.is_owner`, which identity genuinely does own). An owner passes fleet's permission checks without holding any role at all. It is the exception that survived because it is the one fact about authorization that actually belongs to identity.
+
+## What I would still do
+
+If you have one service and one database, put the permissions in the token. Flatten at login, rebuild on every refresh, and never copy the old claim forward. The trade is good and the staleness window is one sentence long.
+
+Do not do it if you can see services coming. The pattern does not degrade gracefully across a split: it works, and then it quietly stops being true, and the thing that makes it stop is a boundary you drew for unrelated reasons six months earlier.
+
+And whatever you choose, the claim only ever answers *what*, never *which*. `projects:view` means this user may view projects. It does not mean this user may view *this* project. The tenant id in the token is an input to your query, not a box you tick:
+
+```sql
+SELECT * FROM projects WHERE id = $1 AND tenant_id = $2;
+```
+
+Every data access function takes an explicit tenant id and filters on it. All of them, including the internal helpers and the admin tooling you are sure only staff can reach. A valid permission claim on top of an unscoped `WHERE id = $1` is how one customer reads another customer's data, and the permission check passes cleanly the whole time. Nothing looks wrong in the logs.
+
+That part did not change when the architecture did, and I do not expect it ever will.
+
+---
+
+Part of a series on the same auth stack. Before this: [Refresh Tokens With JWT](/blog/refresh-tokens-with-jwt/), which builds the session model assumed throughout. After it: [One Backend, Multiple Products](/blog/one-backend-multiple-products/), which is the architecture this post eventually outgrew.

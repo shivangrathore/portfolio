@@ -1,0 +1,56 @@
+---
+import { getCollection } from "astro:content";
+import Base from "@/layouts/Base.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import Section from "@/components/Section.astro";
+import ProjectRow from "@/components/ProjectRow.astro";
+import Cta from "@/components/Cta.astro";
+import { breadcrumbs } from "@/lib/schema";
+
+const projects = (await getCollection("projects")).sort(
+  (a, b) => b.data.order - a.data.order,
+);
+const featured = projects.filter((p) => p.data.featured);
+const others = projects.filter((p) => !p.data.featured);
+---
+
+<Base
+  title="Work"
+  description="Production Go, PostgreSQL and Next.js projects built end to end, including a live esports tournament platform and an e-commerce build."
+  schema={[breadcrumbs([{ name: "Work", path: "/work" }])]}
+>
+  <PageHeader
+    label="Work"
+    title="Products and systems, built end to end"
+    lede="The ones with a write-up go into the problem, the approach and the trade-offs in case studies."
+  />
+
+  <Section
+    standfirst="Live, with users on them"
+    title="Products in use"
+    lede="Live systems with real users behind them."
+    seamless
+  >
+    <div class="border-b border-line">
+      {featured.map((project, i) => <ProjectRow project={project} index={i + 1} />)}
+    </div>
+  </Section>
+
+  {
+    others.length > 0 && (
+      <Section
+        standfirst="The rest of it"
+        title="Smaller builds and experiments"
+        lede="Language work, tooling and the things I built to find out how something works."
+      >
+        <div class="border-b border-line">
+          {others.map((project, i) => (
+            <ProjectRow project={project} index={featured.length + i + 1} />
+          ))}
+        </div>
+      </Section>
+    )
+  }
+
+  <Cta />
+</Base>

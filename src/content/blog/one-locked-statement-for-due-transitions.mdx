@@ -1,0 +1,175 @@
+---
+title: "One Statement, One Lock, N Replicas"
+description: "Time-driven status changes look like a cron job until two replicas send every announcement twice. How an advisory lock and one set-based UPDATE replace it."
+pubDate: "2026-11-03"
+tags: ["Backend", "Postgres", "Go", "Concurrency", "Architecture"]
+draft: true
+---
+
+Some state changes have no user behind them. Registration opens at 6pm. It closes at 8. The tournament starts at 8:30 and completes when its last stage ends. Nobody clicks anything, the clock just passes a number in a column and the row is supposed to mean something different afterwards.
+
+The first implementation is always the same, and it is not wrong yet:
+
+```go
+func (w *Lifecycle) tick(ctx context.Context) {
+	due, _ := w.repo.EventsDueToOpen(ctx)
+	for _, e := range due {
+		w.repo.SetStatus(ctx, e.ID, StatusRegistrationOpen)
+		w.notify.Announce(ctx, e.ID, "registration_open")
+	}
+	// ... and again for closed, started, completed
+}
+```
+
+A goroutine in the API process, a ticker, four loops. It works, it is easy to read, and it survives right up until the moment you run a second replica. Then registration opens twice, the Discord announcement goes out twice, and someone asks why the server got pinged twice for the same scrim.
+
+The fix I ended up with is one SQL statement with a lock inside it, and no scheduler at all.
+
+## What breaks with two replicas
+
+It is worth being precise about the failure, because the obvious defence does not fix it.
+
+The status update itself is not the problem. `UPDATE events SET status = 'registration_open' WHERE id = $1 AND status = 'published'` is idempotent under concurrency: two replicas race, one wins, the loser updates zero rows. Postgres serialises the write and the status guard means the second one is a no-op.
+
+The problem is everything the application does around the update. Read the due rows, update, then announce. Both replicas read the same due rows, so both announce, and the announcement does not care that the second update touched nothing. The duplicate side effect comes from the gap between the read and the write, which is where all of these bugs live.
+
+You can close that gap with `RETURNING` and only announcing what you actually changed. That is genuinely most of the fix, and if you take one thing from this post, take that. But you are still running the whole scan on every replica on every tick, doing N times the work to throw away N-1 of it, and you have to remember the discipline at every call site forever.
+
+## The options, briefly
+
+**A separate cron container.** Correct, and heavier than the problem. Now there is another deploy target, another image, another thing that can be down without anyone noticing, and a second place where domain logic lives. For a two person team about to run live events, every additional moving part is a thing to check at 11pm.
+
+**Kubernetes CronJob.** Same, plus it ties a domain behaviour to an orchestrator. I want this to work identically in `docker compose up` on a laptop.
+
+Leader election. etcd, Consul, a lease table, or a Redis lock. The real cost is not the dependency, it is that leader election has failure modes (split brain, lease expiry during a long tick, clock skew) that are harder than the problem I started with.
+
+`FOR UPDATE SKIP LOCKED`. The right answer when each item needs real per-row work and you want several workers pulling in parallel. Here each item needs one status change that Postgres can do set-based, so a queue would be a lot of ceremony to distribute work that is faster than distributing it.
+
+A transaction-scoped advisory lock around one set-based statement. No new infrastructure, no new process, and the exclusion happens in the same database that holds the truth. That is what I run.
+
+## The whole thing is one statement
+
+```sql
+-- name: RunDueEventTransitions :one
+WITH lock AS (
+  SELECT pg_try_advisory_xact_lock(4823002) AS ok
+),
+opened AS (
+  UPDATE events SET status = 'registration_open', updated_at = NOW()
+  WHERE (SELECT ok FROM lock)
+    AND status = 'published' AND registration_open_at <= NOW()
+  RETURNING id
+),
+closed AS (
+  UPDATE events SET status = 'registration_closed', updated_at = NOW()
+  WHERE (SELECT ok FROM lock)
+    AND status = 'registration_open' AND registration_close_at <= NOW()
+  RETURNING id
+),
+started AS (
+  UPDATE events SET status = 'ongoing', updated_at = NOW()
+  WHERE (SELECT ok FROM lock)
+    AND status IN ('registration_closed', 'check_in') AND starts_at <= NOW()
+  RETURNING id
+),
+completed AS (
+  UPDATE events SET status = 'completed', updated_at = NOW()
+  WHERE (SELECT ok FROM lock)
+    AND status = 'ongoing' AND ends_at <= NOW()
+  RETURNING id
+)
+SELECT
+  (SELECT COALESCE(array_agg(id), '{}') FROM opened)::bigint[]    AS opened_ids,
+  (SELECT COALESCE(array_agg(id), '{}') FROM closed)::bigint[]    AS closed_ids,
+  (SELECT COALESCE(array_agg(id), '{}') FROM started)::bigint[]   AS started_ids,
+  (SELECT COALESCE(array_agg(id), '{}') FROM completed)::bigint[] AS completed_ids;
+```
+
+Four transitions, one round trip, one lock, and the ids of everything that moved. With three API replicas ticking at the same second, one does the work and the other two get four empty arrays and go back to sleep having spent a single cheap query.
+
+The `(SELECT ok FROM lock)` in every `WHERE` is the mechanism, and it is worth saying why it is repeated rather than hoisted somewhere tidier. There is no `IF` in SQL, so the gate has to be part of each predicate. If the lock was not acquired, `ok` is false, every branch matches zero rows, and the statement is a no-op that still returns a well formed row of empty arrays. The caller needs no special case for "somebody else is doing it", which is the difference between this being a pattern and being a special case with a comment.
+
+The cost is O(due rows), not O(events), as long as the status and timestamp columns are indexed for the predicates. On a quiet tick every branch is an index scan finding nothing.
+
+## Why a transaction-scoped try lock
+
+Three separate decisions hide in `pg_try_advisory_xact_lock`, and each one has a wrong version.
+
+`try`, not the blocking variant. `pg_advisory_xact_lock` would make the losing replicas wait, and waiting is exactly what you do not want. This work is on a timer, so if another replica is doing it, there is nothing to wait for. Blocking would mean a slow tick on one replica turns into held connections on all the others, which is how a small delay becomes pool exhaustion.
+
+`xact`, not session-scoped. A session-level advisory lock has to be released explicitly by the same session. Which means a code path that returns early, panics, or dies mid-tick leaves the lock held, and pgx handing that connection back to the pool with the lock still on it is a very unpleasant afternoon. The transaction-scoped variant is released when the transaction ends, including when it ends because the connection dropped. Nothing to remember, nothing to leak.
+
+Note that this works precisely because the statement is a single statement. Sent on its own it runs in an implicit transaction, so the lock is taken and released within that statement. No `BEGIN`, no `defer unlock`, no way to get it wrong.
+
+A constant key, tracked deliberately. Advisory locks are one flat 64-bit namespace per database, shared by everything that uses them. Nothing stops two unrelated features from picking the same number and mysteriously excluding each other, once a week, in production. My keys are sequential constants (`4823002` for event lifecycle, `4823003` for match transitions) written next to each other so a collision requires actively ignoring the neighbours. If a codebase grows a dozen of these, they belong in one file with a comment above them, treated exactly like a port allocation.
+
+## What the single snapshot buys and costs
+
+All the branches of a data-modifying CTE see the same snapshot: the state of the table as of the start of the statement. Changes made by one branch are not visible to the others.
+
+That is the useful guarantee, because it means the transitions cannot cascade inside one statement. An event that `opened` sets to `registration_open` will not then be picked up by `closed` in the same pass, even if its close time has also passed. Each event advances at most one step per tick. If a service was down for an hour and an event is now three transitions behind, it catches up over three ticks rather than shooting to `completed` in one and skipping every announcement in between. For a system whose whole job is telling people what is happening, arriving at the right state with no notifications is worse than arriving a minute later with all of them.
+
+The cost is that you have to keep the branch predicates mutually exclusive, and this is a genuine footgun. If two branches could match the same row in the same snapshot, they would both try to update it, and Postgres explicitly says the result of that is unpredictable. Here it cannot happen because every branch is guarded by a different `status`, and a row has one status in a given snapshot. That safety comes from the state machine, not from the SQL, so it is exactly the kind of thing that quietly breaks when somebody adds a fifth branch. The comment above the query says so.
+
+The other consequence: `NOW()` is the transaction timestamp, identical in every branch. One consistent notion of "now" across four transitions is what you want, and it is free here, whereas the Go loop version had four different clock reads and a subtle ordering dependency nobody had noticed.
+
+## Returning the ids is the point
+
+Without `RETURNING`, this is a clever way to save some queries. With it, it is the thing that makes side effects safe.
+
+```go
+res, err := q.RunDueEventTransitions(ctx)
+if err != nil {
+	return err
+}
+for _, id := range res.OpenedIds {
+	w.announce(ctx, id, "registration_open")
+}
+```
+
+The replica that lost the lock gets empty arrays and announces nothing. The replica that won announces exactly the rows it changed, once, because the update and the identification of what changed are the same operation. There is no read-then-write gap left to race in.
+
+This also gives the pattern its honest limit: the announcement is a side effect outside the transaction, so a crash between commit and announce loses that announcement. In my case the announcement is itself a row written to a transactional outbox, which closes the loop. If yours is an HTTP call to a third party, you have the same at-least-once problem everyone has, and the answer is the same: make the effect idempotent, or write it down first and deliver it separately.
+
+## The ticker still matters
+
+The lock removes duplicate work. It does not decide when work happens. There is still a goroutine per replica doing this:
+
+```go
+// Run blocks until ctx is cancelled, ticking once immediately then on the
+// configured cadence. Errors are logged, never surfaced: a bad row shouldn't
+// take the worker down.
+func (s *Lifecycle) Run(ctx context.Context) {
+	s.tick(ctx)
+	ticker := time.NewTicker(s.interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.tick(ctx)
+		}
+	}
+}
+```
+
+Two things about it.
+
+The immediate tick before the loop. A deploy restarts every replica. Without that first call, everything due during the restart waits a full interval, so your worst case lateness is deploy time plus the interval rather than just the interval. It is one line and it is the difference between a smooth deploy during an event and a confused organizer.
+
+The interval is the lateness bound, and it is a product decision. Registration opening 90 seconds late is invisible. A match starting 90 seconds late is not. The interval is short enough that the largest tolerable lateness is smaller than what a person would notice, and no shorter, because every tick is a query on every replica forever.
+
+Errors are logged and swallowed on purpose. This worker must not be able to take the API process down, and a transient failure resolves itself on the next tick by construction, because the predicates are time-based and still true.
+
+## Where this stops working
+
+I would move off this pattern at three specific signals, and not before.
+
+When the per-item work stops being a status change. The moment a transition needs to call out to something slow, or do meaningful per-row computation, holding a single lock while one replica does all of it serialises work that should be parallel. That is `SKIP LOCKED` territory: claim a batch, work it, and let N workers run genuinely concurrently.
+
+When one statement no longer fits the state machine. Four branches is readable. Twelve is a stored procedure pretending to be a query, and at that point the transitions want to be a real state machine in application code with its own tests, coordinated by a claim on the work rather than a lock over all of it.
+
+When lateness needs to be smaller than a sensible interval. Polling has a floor. If something must happen within a second of its timestamp, you want a timer wheel or a scheduled job with a wakeup, not a ticker running faster and faster against a growing table.
+
+None of those are where I am. Four time-driven transitions, ticking every minute, on a table that is small and will stay small, running on however many replicas I feel like. The whole scheduler is a constant, a `WITH` clause, and a `RETURNING` I do not skip.

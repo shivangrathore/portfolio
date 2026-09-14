@@ -1,0 +1,229 @@
+---
+title: "Hauldrive: one backend into five services"
+description: "Splitting a fleet compliance platform into services without breaking a single client, and reversing an authorization decision that had been right for a year."
+pubDate: "2026-09-14"
+tags: ["Go", "gRPC", "PostgreSQL", "Architecture", "Multi-tenancy"]
+role: "Backend lead, contract"
+timeline: "Jul 2025, present"
+stack:
+  [
+    "Go",
+    "gRPC",
+    "Protocol Buffers",
+    "PostgreSQL",
+    "RabbitMQ",
+    "Traefik",
+    "Redis",
+    "Next.js",
+    "Stripe",
+  ]
+demo: "https://hauldrive.com"
+project: "hauldrive"
+draft: false
+---
+
+Decision 14 in the log says permissions live in the access token. Decision 38,
+written about ten months later, says they do not. Both were right when they were
+made, and the distance between them is most of this write-up.
+
+## What the thing actually does
+
+UK transport operators are legally obliged to prove their vehicles are
+roadworthy. Not to believe it: to prove it, with dated records, on demand. Every
+vehicle has a preventive maintenance inspection on a cycle measured in weeks.
+Brake tests have their own schedule. Drivers must complete a walkaround check
+before each shift, and any defect they find starts a clock. Miss enough of this
+and an operator loses the licence the business runs on.
+
+Hauldrive is the system that runs that. It holds vehicles, drivers, operating
+centres, walkaround checks, defects, work orders, maintenance templates,
+incidents, insurance, driver training, toolbox talks and holidays, and it has to
+be able to answer "prove it" for any of them, for any date, months later.
+
+I joined to build the backend and have built every generation of it: the
+original Go service, the domain-separated rewrite, and the current split into
+five services. It is live with four operators running 80+ vehicles and 60+
+drivers.
+
+## The shape now
+
+Five services behind one gateway, plus one that users never reach:
+
+- **identity** owns the account and nothing else. Organisations, users, members,
+  sessions, staff accounts, product entitlement, terms acceptance. It issues
+  every token and publishes JWKS. No roles, no billing: everything logs in
+  through it, so it stays small.
+- **platform** owns the commercial plane. Pricing, trials, billing, invoices,
+  Stripe, audit.
+- **fleet** is the original product, relocated wholesale.
+- **workshop** is the second product, sold to the garages those fleets already
+  book into.
+- **tacho** handles tachograph data.
+- **documents** is an internal file service with no gateway route at all,
+  reachable only from inside the platform.
+
+That is 600+ endpoints and 192 migrations across the service databases, in a Go
+workspace with one shared module for the pieces everything needs.
+
+## Not breaking the clients
+
+The hard part of a split is never the split. It is that three front-ends and a
+driver mobile app are calling the old URLs, the mobile app updates on its users'
+schedule rather than yours, and none of that can stop.
+
+The obvious approach is to have each service answer both its new path and the
+old one it inherited. It works, and it means every service carries a second
+contract for however long it takes the last client to update, which is forever,
+because nothing forces the last client to update.
+
+Instead the gateway rewrites. Traefik routes by path prefix to the service that
+owns it, and the legacy prefixes are rewritten there:
+
+| Prefix | Goes to |
+|---|---|
+| `/api/v1/identity/*` | identity |
+| `/api/v1/fleet/org/*` | fleet, manager surface |
+| `/api/v1/fleet/driver/*` | fleet, driver surface |
+| `/api/v1/account/*` | **legacy**, rewritten to identity |
+| `/api/v1/org/*`, `/api/v1/driver/*` | **legacy**, rewritten to fleet |
+
+The services only ever know their own contract. The compatibility lives in one
+routing file, the same file production reads, and it can be deleted the day
+telemetry shows nothing hitting those prefixes. One awkward case earns its
+complexity: `PUT`/`PATCH /api/v1/org` goes to identity because the company
+record is identity's row, while `GET /api/v1/org` stays with fleet. That one is
+matched on method.
+
+No client changed. That was the requirement, and it is the part I would defend
+hardest in a review.
+
+## The decision I reversed
+
+In a single service with one database, putting the permission list in the access
+token is a good trade. Authorization costs a signature check and an array scan
+instead of three joins on every request, and the staleness window is bounded by
+the token lifetime, which you control. Rebuild the claim on every refresh and a
+permission change takes effect within fifteen minutes with no logout and no
+cache to invalidate. That is defensible, and I would do it again in that
+situation.
+
+It stopped being defensible the moment identity was the only thing minting
+tokens.
+
+Once authorization lives in a claim, identity is asserting something about a
+domain it does not own. Fleet knows what a fleet manager may do. Workshop knows
+what a workshop foreman may do. Identity knows neither, and should not, because
+the second it does, every permission change in any product becomes a deploy of
+the one service everything logs in through.
+
+There is a worse version. With one service, the staleness window was bounded
+because refresh and authorization were the same code path. With five they are
+not. A token minted by identity gets presented to fleet, which has no idea
+whether the grants inside it still exist in fleet's own tables. The claim
+outlives its own revocation and nothing is positioned to notice.
+
+I tried to save the pattern first. Put a permissions version in the token, bump
+a counter in Redis when roles change, have each service compare. It works. I had
+it running for about a week. Then I deleted it, because it makes every service
+depend on a shared Redis for authorization correctness, which is exactly the
+coupling the split existed to remove, and it leaves two sources of truth that can
+drift.
+
+So the token carries identity and nothing else. Each service resolves
+permissions from its own tables at request time, against a catalogue it owns:
+133 permission keys defined in Go rather than stored in a table, so a missing
+grant fails the build instead of a seed script at three in the morning.
+
+The cost is a database read in front of every endpoint. Exactly the thing the
+original design existed to avoid, and it turns out to be cheap, because it is one
+indexed read against the service's own database rather than the three-join
+traversal I was picturing when I wrote decision 14. I had been comparing against
+the wrong number for a year.
+
+One claim survived. Ownership is `organization_members.is_owner`, identity's
+column, minted as an `org_admin` claim. An owner passes fleet's permission checks
+without holding any role. It is the exception because it is the one fact about
+authorization that genuinely belongs to identity.
+
+## Consistency without foreign keys
+
+Separate databases mean the database stops enforcing referential integrity for
+you, and the usual answer is to pretend that is fine until it is not.
+
+Three pieces replace it. A transactional outbox on publish, so an event and the
+row that caused it commit together or not at all. An idempotent inbox on
+consume, so a redelivery is a no-op rather than a duplicate. And a nightly
+reconcile that repairs whatever neither caught, because something always gets
+through and the alternative is discovering it from a customer.
+
+Events go over RabbitMQ. Direct service-to-service calls go over gRPC on
+Protocol Buffers contracts rather than services calling each other's REST APIs:
+identity provisioning and terms, platform billing, documents, with generated
+clients in the shared module. Clients still get REST through the gateway, so the
+public contract never had to change to suit an internal one.
+
+Those internal calls authenticate with a per-call Ed25519 JWT against pinned
+keys. That is what lets the documents service refuse every user token that
+exists and be reachable only from inside the platform.
+
+## Billing, and why not Stripe Subscriptions
+
+Hauldrive charges per vehicle, per month. An operator adds nine vehicles on
+onboarding day and three more the following week. One goes off the road in March
+and comes back in April. The quantity is a consequence of the customer using the
+product, not a number anyone typed at checkout.
+
+Subscription APIs model a thing the customer bought. This needed to model a
+thing the customer is doing, so the engine is ours and Stripe is a payment
+gateway and invoice renderer: an activity ledger rather than a counter,
+immutable cycles, base fee in advance with usage in arrears, mid-cycle proration
+through the ledger, BACS mandates, versioned trial policies and dunning.
+
+The test for whether this was the right call is simple. When support asks why an
+account was charged for 41 vehicles in March, it is one query against one
+database, not two systems and a webhook log.
+
+## The AI part, which mostly does not decide anything
+
+Parts and labour invoices arrive as PDFs and photographs. Extracting them by
+hand is the kind of work that quietly consumes a person.
+
+The pipeline tiers OCR into LLM extraction, so the cheap path handles clean
+scans and the expensive one runs only when it has to. Supplier and part names
+are resolved against records already in the database rather than trusted as
+typed. Anti-fraud checks flag a suspect line for review.
+
+Flag, not block. The model annotates and a person decides, because this is money
+and an extraction that is confidently wrong is worse than one that admits doubt.
+
+## Trade-offs
+
+**The split cost more than it saves, today.** Four operators do not need five
+services. It was done for the second product and the third, and on a four-operator
+load a monolith would be cheaper to run and easier to debug. That is a bet on
+where the product goes, and it is worth saying out loud rather than pretending
+the architecture is free.
+
+Identity and fleet still share one database. That is a deliberate step in the
+plan, not an oversight, and it is documented as such. Separating them is its own
+piece of work with its own risks, and doing it before there was a reason would
+have been motion rather than progress.
+
+The nightly reconcile is a confession. In a single database those rows could not
+have drifted. Now they can, and the reconcile is the price.
+
+Go 1.26.2 is pinned hard, because the race detector rebuilds the standard
+library and will not mix two toolchains. Anything older builds fine and then
+fails in CI, which is a bad way to find out.
+
+## Where it is now
+
+In production with four operators. Fleet, identity and documents run; platform
+is scaffolding; workshop and tacho are modules with the shape visible and the
+code still coming.
+
+There is a decision log, 59 entries deep, including the ones that were reversed
+and the reasoning that reversed them. It is the artefact I would point at first
+if someone asked what working with me is like, because the useful thing is
+rarely the decision. It is knowing why, and being able to tell when it stops
+being true.

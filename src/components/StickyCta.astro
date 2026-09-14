@@ -1,0 +1,73 @@
+---
+import Icon from "@/components/icons/Icon.astro";
+import { BOOKING_URL, BOOKING_LENGTH } from "@/lib/constants";
+
+/**
+ * The mobile booking bar.
+ *
+ * Most of the traffic to this site is on a phone, where the nav CTA scrolls
+ * away in the first swipe and the next one is eight screens down. That is the
+ * whole funnel on mobile: a button visible for two seconds, then nothing.
+ *
+ * So the ask is pinned. It appears once the hero is behind you, because
+ * covering the headline with a button to book a call before anyone knows what
+ * is being offered is how you get a dismissal instead of a booking, and it
+ * hides again at the footer where the full CTA already is.
+ *
+ * Desktop does not get it: the sticky masthead already carries the button
+ * there, and a second fixed bar would be covering content for no reason.
+ */
+const href = BOOKING_URL || "/contact";
+const external = Boolean(BOOKING_URL);
+---
+
+<div
+  id="sticky-cta"
+  class="pointer-events-none fixed inset-x-0 bottom-0 z-40 translate-y-full border-t border-line bg-bg/95 p-3 backdrop-blur transition-transform duration-300 md:hidden"
+>
+  <a
+    href={href}
+    target={external ? "_blank" : undefined}
+    rel={external ? "noopener" : undefined}
+    data-track={external ? "book-call" : undefined}
+    class="flex w-full items-center justify-center gap-2 bg-accent px-5 py-3.5 text-sm font-semibold text-accent-fg"
+  >
+    <Icon name="calendar" class="size-4" />
+    {external ? `Book a free ${BOOKING_LENGTH} call` : "Start a project"}
+  </a>
+  <p class="mt-2 text-center text-xs text-faint">
+    Free, no pitch, and you keep the notes
+  </p>
+</div>
+
+<script>
+  const bar = document.getElementById("sticky-cta");
+  const footer = document.querySelector("footer");
+  // The hero is roughly the first viewport. Using a sentinel element would be
+  // tidier, but every page has a different first band and a scroll threshold
+  // needs no markup from any of them.
+  const SHOW_AFTER = 600;
+
+  if (bar) {
+    let footerVisible = false;
+
+    if (footer && "IntersectionObserver" in window) {
+      new IntersectionObserver(
+        ([entry]) => {
+          footerVisible = entry.isIntersecting;
+          update();
+        },
+        { rootMargin: "0px 0px -40% 0px" },
+      ).observe(footer);
+    }
+
+    const update = () => {
+      const show = window.scrollY > SHOW_AFTER && !footerVisible;
+      bar.classList.toggle("translate-y-full", !show);
+      bar.classList.toggle("pointer-events-none", !show);
+    };
+
+    addEventListener("scroll", update, { passive: true });
+    update();
+  }
+</script>

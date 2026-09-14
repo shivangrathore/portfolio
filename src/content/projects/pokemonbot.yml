@@ -1,0 +1,19 @@
+title: "Pokémon Discord Bot"
+description: "A Pokémon collection game on Discord that players moved to after Pokécord was shut down. Reached 132,000 servers and over a million registered players, with a full player economy behind it."
+date: "2020 - 2022"
+featured: true
+order: 105
+technologies:
+  - Python
+  - discord.py
+  - MongoDB
+  - Redis
+  - Rust
+  - Docker
+features:
+  - "Sole developer: the game, the economy and the infrastructure behind both"
+  - "PvP duels, player-to-player trading, a market and an auction house"
+  - "Microservice backend on MongoDB and Redis, containerised with Docker"
+  - "Rust image processing for character cards, kept off the Python hot path"
+  - "Scaled to 132,000 Discord servers and over a million registered players"
+demo: "https://pokemonbot.com"

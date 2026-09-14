@@ -1,0 +1,49 @@
+---
+// Both icons ship and CSS picks one off the data-theme attribute the inline
+// head script has already set: deciding in JS after hydration would paint the
+// wrong icon first on every load. The show/hide rules live in global.css
+// rather than a scoped <style> here, because these SVGs are rendered by the
+// Icon component and never receive this component's scoping attribute, so a
+// scoped selector matched neither and both icons showed at once.
+import Icon from "@/components/icons/Icon.astro";
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<button
+  type="button"
+  data-theme-toggle
+  class:list={[
+    "inline-flex size-9 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface hover:text-fg",
+    className,
+  ]}
+  aria-label="Switch theme"
+  title="Switch theme"
+>
+  <Icon name="moon" class="theme-icon-dark size-[18px]" />
+  <Icon name="sun" class="theme-icon-light size-[18px]" />
+</button>
+
+<script>
+  const root = document.documentElement;
+
+  // The nav renders one of these for desktop and one for mobile, so this binds
+  // every instance. An id would have matched only the first, leaving the
+  // visible toggle dead on phones.
+  document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const next = root.dataset.theme === "dark" ? "light" : "dark";
+      root.dataset.theme = next;
+      try {
+        // Explicit choice, so it now outranks the OS on every later visit.
+        localStorage.setItem("theme", next);
+      } catch {
+        /* private mode, storage disabled: the choice lasts this page only */
+      }
+    });
+  });
+</script>

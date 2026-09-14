@@ -1,0 +1,303 @@
+---
+import "@/styles/fonts.css";
+import "@/styles/global.css";
+import interLatin from "@/assets/fonts/inter-latin-wght.woff2?url";
+import archivoLatin from "@/assets/fonts/archivo-latin-wdth-wght.woff2?url";
+import {
+  SITE_TITLE,
+  GA_ID,
+  X_HANDLE,
+  GOOGLE_SITE_VERIFICATION,
+  BING_SITE_VERIFICATION,
+} from "@/lib/constants";
+import { graph } from "@/lib/schema";
+
+interface Props {
+  title: string;
+  description: string;
+  image?: string;
+  imageAlt?: string;
+  type?: "website" | "article";
+  schema?: object[];
+}
+
+const {
+  title,
+  description,
+  image,
+  imageAlt,
+  type = "website",
+  schema = [],
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+// Every page gets a card. Without a default, shared links render as bare text
+// on LinkedIn, WhatsApp and Slack, which is where most client links get pasted.
+const ogImage = new URL(image ?? "/og.png", Astro.site);
+const ogImageAlt = imageAlt ?? title;
+const jsonLd = graph(schema);
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--
+  Icons. The SVG is what every current browser uses; the PNG is the fallback for
+  the handful that still will not take an SVG favicon, and apple-touch-icon is
+  what iOS uses when someone saves the site to a home screen.
+-->
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+
+<!--
+  Theme, resolved before the first paint. Anything later than this runs after
+  the browser has already painted one frame of the wrong palette. A stored
+  choice wins over the OS; with neither, the OS decides. The attribute is
+  always written, so the CSS and the toggle icon only ever read one source.
+-->
+<script is:inline>
+  (function () {
+    var theme;
+    try {
+      theme = localStorage.getItem("theme");
+    } catch (e) {
+      /* storage blocked */
+    }
+    if (theme !== "light" && theme !== "dark") {
+      theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    }
+    document.documentElement.dataset.theme = theme;
+  })();
+</script>
+<!--
+  Pricing region, resolved before the first paint for the same reason the
+  theme is: the alternative is painting a US price to an Indian visitor and
+  swapping it a frame later, on the one line of the page that decides whether
+  they email.
+
+  The signal is the machine's own timezone. No network call, no third-party
+  geo API, no round trip, and nothing about the visitor leaves the browser. It
+  is wrong for someone on a VPN and for an NRI, which is what the toggle is
+  for, and an explicit choice outranks detection from then on.
+
+  Only "intl" is ever written. Absent is the India card, so no JS, no storage
+  and every crawler land on the same default the CSS assumes, which is the
+  market being sold to first.
+-->
+<script is:inline>
+  (function () {
+    var choice;
+    // ?region=in or ?region=intl forces a card and stores it, so either
+    // version can be opened on demand: useful for checking the site the way a
+    // foreign client sees it, and for sending a client a link to their own
+    // rate card without asking them to find the toggle.
+    try {
+      var forced = new URLSearchParams(location.search).get("region");
+      if (forced === "in" || forced === "intl") {
+        choice = forced;
+        localStorage.setItem("region", forced);
+      }
+    } catch (e) {
+      /* no URLSearchParams, or storage blocked: fall through to detection */
+    }
+    try {
+      if (!choice) choice = localStorage.getItem("region");
+    } catch (e) {
+      /* storage blocked */
+    }
+    if (choice !== "in" && choice !== "intl") {
+      var tz = "";
+      try {
+        tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      } catch (e) {
+        /* no Intl timezone: fall through to the language check */
+      }
+      // Asia/Calcutta is the older ICU spelling and still ships on plenty of
+      // Android builds. The language test only runs when there is no usable
+      // timezone, because en-IN is common among people who do not live here.
+      choice =
+        tz === "Asia/Kolkata" ||
+        tz === "Asia/Calcutta" ||
+        (tz === "" && /-IN\b/i.test(navigator.language || ""))
+          ? "in"
+          : "intl";
+    }
+    if (choice === "intl") document.documentElement.dataset.region = "intl";
+  })();
+</script>
+<!--
+  Tints the browser chrome on Android and iOS Safari to match the page, so the
+  bar above the site is not still wearing the v4 palette. Both values are the
+  --color-bg oklch from global.css converted to sRGB; re-derive them if the
+  palette moves.
+-->
+<meta
+  name="theme-color"
+  content="#f8f9fa"
+  media="(prefers-color-scheme: light)"
+/>
+<meta
+  name="theme-color"
+  content="#0b0c10"
+  media="(prefers-color-scheme: dark)"
+/>
+<!--
+  Every headline on the site is set in this file. Without the preload the
+  browser cannot even discover it until the stylesheet has downloaded and
+  parsed, which on a slow connection is two round trips of the largest text
+  on the page rendered in a fallback face. crossorigin is required even
+  same-origin: fonts are fetched in CORS mode, and a preload without it
+  fetches a second copy.
+-->
+<link
+  rel="preload"
+  as="font"
+  type="font/woff2"
+  href={interLatin}
+  crossorigin
+/>
+<link
+  rel="preload"
+  as="font"
+  type="font/woff2"
+  href={archivoLatin}
+  crossorigin
+/>
+<link rel="sitemap" href="/sitemap-index.xml" />
+<link
+  rel="alternate"
+  type="application/rss+xml"
+  title={SITE_TITLE}
+  href={new URL("rss.xml", Astro.site)}
+/>
+<link rel="canonical" href={canonical} />
+<meta name="generator" content={Astro.generator} />
+
+{
+  GOOGLE_SITE_VERIFICATION && (
+    <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
+  )
+}
+{
+  BING_SITE_VERIFICATION && (
+    <meta name="msvalidate.01" content={BING_SITE_VERIFICATION} />
+  )
+}
+
+<title>{title}</title>
+<meta name="title" content={title} />
+<meta name="description" content={description} />
+
+<meta property="og:type" content={type} />
+<meta property="og:url" content={canonical} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={ogImage} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={ogImageAlt} />
+<meta property="og:site_name" content={SITE_TITLE} />
+<meta property="og:locale" content="en_US" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:site" content={X_HANDLE} />
+<meta name="twitter:creator" content={X_HANDLE} />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogImage} />
+<meta name="twitter:image:alt" content={ogImageAlt} />
+
+<script
+  type="application/ld+json"
+  is:inline
+  set:html={JSON.stringify(jsonLd)}
+/>
+
+<!--
+  Google Analytics.
+
+  Deferred, but only just. This used to wait for requestIdleCallback with a
+  1200ms fallback, which sounds harmless and was not: nothing is sent until the
+  tag actually arrives, so every visitor who left inside the first second and a
+  half was invisible. Comparing this property against Cloudflare showed 7
+  against 191, and while most of that gap is bots, the delay was making a bad
+  number worse on the one metric being used to decide whether the site works.
+
+  300ms still keeps the tag out of the way of the stylesheet and the font on a
+  slow connection, and it is short enough that a real bounce is recorded.
+
+  gtag is defined immediately and events queue in dataLayer, so anything fired
+  before the tag arrives is sent the moment it does. A pointerdown or keypress
+  loads it early, so an engaged visitor is never waiting on the timer.
+-->
+<script is:inline define:vars={{ GA_ID }}>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  window.gtag = gtag;
+  gtag("js", new Date());
+  gtag("config", GA_ID);
+
+  function loadGa() {
+    if (window.__gaRequested) return;
+    window.__gaRequested = true;
+    var tag = document.createElement("script");
+    tag.async = true;
+    tag.src = "https://www.googletagmanager.com/gtag/js?id=" + GA_ID;
+    document.head.appendChild(tag);
+  }
+
+  // A short fixed delay rather than requestIdleCallback: idle callbacks can be
+  // deferred for seconds on a busy or backgrounded tab, and a pageview that
+  // arrives after the visitor has gone is a pageview that was never counted.
+  var schedule = function (fn) {
+    setTimeout(fn, 300);
+  };
+
+  if (document.readyState === "complete") schedule(loadGa);
+  else window.addEventListener("load", function () { schedule(loadGa); });
+
+  ["pointerdown", "keydown"].forEach(function (event) {
+    window.addEventListener(event, loadGa, { once: true, passive: true });
+  });
+</script>
+
+<!--
+  Conversion tracking. Pageviews alone cannot answer "which page produces
+  leads", so every intent signal fires a named event carrying the page it
+  happened on. One delegated listener covers the whole site, including links
+  rendered later by an island.
+
+  Events: generate_lead (form sent, fired from ContactForm), contact_click
+  (email or booking link), resume_download, form_error.
+-->
+<script is:inline>
+  window.track = function (name, params) {
+    if (typeof window.gtag !== "function") return;
+    window.gtag("event", name, {
+      page_path: window.location.pathname,
+      // Which rate card the visitor was looking at when they acted. Without
+      // it there is no way to tell whether the Indian pricing is producing
+      // leads or just producing traffic.
+      region: document.documentElement.dataset.region === "in" ? "in" : "intl",
+      ...params,
+    });
+  };
+
+  document.addEventListener("click", function (event) {
+    const link = event.target.closest("a[href]");
+    if (!link) return;
+    const href = link.getAttribute("href") || "";
+
+    if (href.startsWith("mailto:")) {
+      window.track("contact_click", { method: "email", link_url: href });
+    } else if (link.dataset.track === "book-call") {
+      window.track("contact_click", { method: "booking", link_url: href });
+    } else if (href.endsWith("/resume.pdf")) {
+      window.track("resume_download", { link_url: href });
+    }
+  });
+</script>

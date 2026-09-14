@@ -1,0 +1,218 @@
+---
+import type { MarkdownHeading } from "astro";
+import Base from "@/layouts/Base.astro";
+import Icon from "@/components/icons/Icon.astro";
+import Cta from "@/components/Cta.astro";
+import { formatDate } from "@/lib/utils";
+import { article, breadcrumbs } from "@/lib/schema";
+
+interface Props {
+  title: string;
+  description: string;
+  pubDate: Date;
+  updatedDate?: Date;
+  minutesRead?: string;
+  tags?: string[];
+  headings?: MarkdownHeading[];
+  backHref: string;
+  backLabel: string;
+  sectionName: string;
+  articleType: "BlogPosting" | "Article";
+  image?: string;
+}
+
+const {
+  title,
+  description,
+  pubDate,
+  updatedDate,
+  minutesRead,
+  tags = [],
+  headings = [],
+  backHref,
+  backLabel,
+  sectionName,
+  articleType,
+  image,
+} = Astro.props;
+
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const hasToc = toc.length > 0;
+
+const path = Astro.url.pathname;
+const schema = [
+  article({
+    type: articleType,
+    path,
+    title,
+    description,
+    pubDate,
+    updatedDate,
+    tags,
+    image,
+  }),
+  breadcrumbs([
+    { name: sectionName, path: backHref },
+    { name: title, path },
+  ]),
+];
+---
+
+<Base
+  title={title}
+  description={description}
+  image={image}
+  type="article"
+  schema={schema}
+>
+  <!-- Masthead -->
+  <header class="border-b border-line">
+    <div class="shell pb-12 pt-10 md:pt-14">
+      <a
+        href={backHref}
+        class="group inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent"
+      >
+        <Icon
+          name="arrow-left"
+          class="size-4 transition-transform group-hover:-translate-x-0.5"
+        />
+        {backLabel}
+      </a>
+
+      <div class="mt-8 lg:grid lg:grid-cols-12 lg:gap-x-12">
+        <div class="lg:col-span-9">
+          <p class="label text-accent">{sectionName}</p>
+          <h1 class="mt-5 text-title text-balance">{title}</h1>
+          <p class="measure mt-5 text-lg leading-relaxed text-pretty text-muted">
+            {description}
+          </p>
+          <slot name="eyebrow" />
+        </div>
+
+        <div class="mt-8 lg:col-span-3 lg:mt-0">
+          <dl class="border-t border-line font-mono text-xs">
+            <div class="flex justify-between gap-4 border-b border-line py-2.5">
+              <dt class="text-faint uppercase tracking-[0.14em]">Published</dt>
+              <dd class="text-fg">
+                <time datetime={pubDate.toISOString()}>{formatDate(pubDate)}</time>
+              </dd>
+            </div>
+            {
+              minutesRead && (
+                <div class="flex justify-between gap-4 border-b border-line py-2.5">
+                  <dt class="text-faint uppercase tracking-[0.14em]">Read</dt>
+                  <dd class="text-fg">{minutesRead}</dd>
+                </div>
+              )
+            }
+            {
+              updatedDate && (
+                <div class="flex justify-between gap-4 border-b border-line py-2.5">
+                  <dt class="text-faint uppercase tracking-[0.14em]">Updated</dt>
+                  <dd class="text-fg">{formatDate(updatedDate)}</dd>
+                </div>
+              )
+            }
+          </dl>
+
+          {
+            tags.length > 0 && (
+              <div class="mt-4 flex flex-wrap gap-x-3 gap-y-1.5 font-mono text-xs text-faint">
+                {tags.map((tag) => (
+                  <span>{tag}</span>
+                ))}
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+      <slot name="meta" />
+    </div>
+  </header>
+
+  <div class="shell py-12 md:py-16">
+    <div class:list={["lg:grid lg:gap-x-12", hasToc && "lg:grid-cols-12"]}>
+      <!-- Without a contents rail there is nothing holding the measure in, so
+           the article caps its own width instead of running the full shell. -->
+      <article
+        class:list={["prose min-w-0", hasToc ? "lg:col-span-8" : "max-w-[68ch]"]}
+      >
+        <slot />
+      </article>
+
+      {
+        hasToc && (
+          <aside class="hidden lg:col-span-4 lg:block">
+            <nav class="sticky top-24">
+              <p class="label">On this page</p>
+              <ul class="mt-4 space-y-2 border-l border-line text-sm">
+                {toc.map((h) => (
+                  <li>
+                    <a
+                      href={`#${h.slug}`}
+                      class:list={[
+                        "-ml-px block border-l border-transparent py-0.5 text-muted hover:border-accent hover:text-accent",
+                        h.depth === 3 ? "pl-6" : "pl-4",
+                      ]}
+                    >
+                      {h.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+        )
+      }
+    </div>
+  </div>
+
+  <Cta />
+
+  <script>
+    // Clickable anchor beside every heading that has an id, so any section
+    // can be linked to directly.
+    document
+      .querySelectorAll<HTMLHeadingElement>(".prose h2[id], .prose h3[id]")
+      .forEach((heading) => {
+        const link = document.createElement("a");
+        link.href = `#${heading.id}`;
+        link.className = "heading-anchor";
+        link.setAttribute("aria-label", `Link to section: ${heading.textContent}`);
+        link.textContent = "#";
+        heading.appendChild(link);
+      });
+
+    const COPY = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
+    const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    document.querySelectorAll<HTMLPreElement>(".prose pre").forEach((pre) => {
+      if (pre.parentElement?.classList.contains("code-block")) return;
+      const wrapper = document.createElement("div");
+      wrapper.className = "code-block";
+      pre.parentNode?.insertBefore(wrapper, pre);
+      wrapper.appendChild(pre);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "copy-button";
+      btn.setAttribute("aria-label", "Copy code");
+      btn.innerHTML = COPY;
+      btn.addEventListener("click", async () => {
+        const code = pre.querySelector("code")?.innerText ?? pre.innerText;
+        try {
+          await navigator.clipboard.writeText(code);
+          btn.innerHTML = CHECK;
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.innerHTML = COPY;
+            btn.classList.remove("copied");
+          }, 1500);
+        } catch {
+          /* clipboard unavailable */
+        }
+      });
+      wrapper.appendChild(btn);
+    });
+  </script>
+</Base>
