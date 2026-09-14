@@ -1,6 +1,6 @@
 ---
 interface Props {
-  /** Mono micro-label above the title, e.g. "Services". */
+  /** Condensed standfirst above the title, e.g. "Services". */
   label?: string;
   title: string;
   /** Standfirst. One paragraph, kept to a reading measure. */
@@ -17,15 +17,15 @@ const { label, title, lede, class: className } = Astro.props;
   who came through the front door.
 -->
 <header class:list={["border-b border-line", className]}>
-  <div class="shell grid gap-x-12 gap-y-10 pb-14 pt-14 md:pt-20 lg:grid-cols-12">
+  <div class="shell grid gap-x-14 gap-y-10 pb-16 pt-14 md:pt-20 lg:grid-cols-12">
     <div class="lg:col-span-8">
-      {label && <p class="label text-accent">{label}</p>}
-      <h1 class:list={["text-title text-balance", label && "mt-5"]}>{title}</h1>
+      {label && <p class="standfirst">{label}</p>}
+      <h1 class:list={["expanded text-title text-balance", label && "mt-5"]}>
+        {title}
+      </h1>
       {
         lede && (
-          <p class="measure mt-5 text-lg leading-relaxed text-pretty text-muted">
-            {lede}
-          </p>
+          <p class="measure mt-6 text-lede text-pretty text-muted">{lede}</p>
         )
       }
       <slot />

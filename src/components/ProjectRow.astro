@@ -26,7 +26,7 @@ const caseStudy =
 
 // Whatever the row as a whole should open. A write-up beats a demo, a demo
 // beats source, and a project with none of the three stays plain text.
-const primary = caseStudy ? `/case-studies/${caseStudy}` : (p.demo ?? p.github);
+const primary = caseStudy ? `/case-studies/${caseStudy}/` : (p.demo ?? p.github);
 const external = !caseStudy && Boolean(primary);
 
 const TECH_LIMIT = 5;
@@ -38,13 +38,13 @@ const hiddenTech = p.technologies.length - shownTech.length;
   class="group relative border-t border-line transition-colors first:border-t-0 hover:bg-surface"
 >
   <div class="grid grid-cols-[2.5rem_1fr] gap-x-4 py-7 sm:gap-x-6 lg:px-4">
-    <span class="label pt-1.5 group-hover:text-accent">
+    <span class="spec pt-2 tabular-nums group-hover:text-accent">
       {String(index).padStart(2, "0")}
     </span>
 
     <div class="min-w-0">
       <div class="flex items-start justify-between gap-4">
-        <h3 class="text-lg font-semibold tracking-tight text-fg">
+        <h3 class="text-xl text-fg">
           {
             primary ? (
               // Stretched link: the whole row is the target. The icon links
@@ -100,7 +100,7 @@ const hiddenTech = p.technologies.length - shownTech.length;
       <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-xs text-faint">
         {shownTech.map((tech) => <span>{tech}</span>)}
         {hiddenTech > 0 && <span>+{hiddenTech}</span>}
-        <span aria-hidden="true" class="text-line">|</span>
+        <span aria-hidden="true" class="text-rule">/</span>
         <span>{p.date}</span>
         <span>{toTitleCase(p.status)}</span>
         {

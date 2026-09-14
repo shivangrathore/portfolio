@@ -24,24 +24,24 @@ const columns = [
     links: [
       // The hub is otherwise orphaned: the homepage and /services link the
       // three landing pages directly and nothing points at /hire itself.
-      { label: "Ways to work together", href: "/hire" },
-      ...landings.map((l) => ({ label: l.eyebrow, href: `/hire/${l.slug}` })),
-      { label: "All services", href: "/services" },
+      { label: "Ways to work together", href: "/hire/" },
+      ...landings.map((l) => ({ label: l.eyebrow, href: `/hire/${l.slug}/` })),
+      { label: "All services", href: "/services/" },
     ],
   },
   {
     title: "Work",
     links: [
-      { label: "Projects", href: "/work" },
-      { label: "Case studies", href: "/case-studies" },
-      { label: "Blog", href: "/blog" },
+      { label: "Projects", href: "/work/" },
+      { label: "Case studies", href: "/case-studies/" },
+      { label: "Blog", href: "/blog/" },
     ],
   },
   {
     title: "Site",
     links: [
-      { label: "About", href: "/about" },
-      { label: "Start a project", href: "/contact" },
+      { label: "About", href: "/about/" },
+      { label: "Start a project", href: "/contact/" },
       { label: "RSS", href: "/rss.xml" },
     ],
   },
@@ -60,17 +60,17 @@ const elsewhere = [
     <div class="grid gap-x-12 gap-y-12 lg:grid-cols-12">
       <!-- Sign-off, at display size. The site ends on the name. -->
       <div class="lg:col-span-4">
-        <p class="text-heading tracking-tight text-fg">
-          Shivang Rathore<span class="text-accent">.</span>
+        <p class="expanded text-heading font-bold tracking-tight text-fg">
+          Shivang Rathore
         </p>
-        <p class="measure mt-3 text-sm leading-relaxed text-muted">
-          Freelance AI and backend engineer, working with founders in India,
-          the US and the UK. Go and PostgreSQL for the parts that have to be
-          correct, Next.js for the parts people touch.
+        <p class="measure mt-4 text-sm leading-relaxed text-muted">
+          Freelance engineer in India. AI features, web apps and the backends
+          under them, in Python, TypeScript and Go. Working mostly with Indian
+          founders, and with teams in the US and UK.
         </p>
         <a
           href={`mailto:${MAIL_ADDRESS}`}
-          class="mt-5 inline-block text-sm text-fg underline decoration-border underline-offset-4 hover:text-accent hover:decoration-accent"
+          class="mt-5 inline-block text-sm text-fg underline decoration-rule underline-offset-4 hover:text-accent hover:decoration-accent"
         >
           {MAIL_ADDRESS}
         </a>
@@ -138,10 +138,7 @@ const elsewhere = [
           <span class="label">Pricing</span>
           <RegionToggle />
         </div>
-        <p class="label inline-flex items-center gap-2">
-          <span class="size-1.5 rounded-full bg-accent" aria-hidden="true"></span>
-          {AVAILABILITY}
-        </p>
+        <p class="label text-accent">{AVAILABILITY}</p>
       </div>
     </div>
   </div>

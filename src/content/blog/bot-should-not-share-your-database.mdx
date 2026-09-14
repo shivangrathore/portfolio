@@ -1,0 +1,246 @@
+---
+title: "Your Bot Should Not Share Your Database"
+description: "A bot that reads your Postgres is a second backend with none of the rules. Moving delivery to a transactional outbox behind a gateway API, replayed until acked."
+pubDate: "2026-09-07"
+tags: ["Backend", "Postgres", "Go", "Discord", "Architecture"]
+draft: false
+---
+
+The first version of my Discord bot connected straight to Postgres.
+
+It made sense at the time. The bot is written in Python, the API is written in Go, and the one thing they both understand is the database. The bot ran `LISTEN comms_outbox`, woke on a notify, selected the unprocessed rows, posted the messages, stamped `processed_at`. Maybe sixty lines. It worked on the first try, which should have been the warning.
+
+What I had actually built was a second backend with none of the rules. It had no auth boundary, no schema ownership, no migration story, and a permanent claim on my connection pool. Every table it touched became public API, and I found that out the way everyone does: by renaming a column and taking down announcements for a live scrim.
+
+The fix was not to remove the outbox. The outbox is the good part. The fix was to stop letting the consumer reach into the store.
+
+## What the outbox is doing
+
+The product is an esports platform. Organizers run scrims and tournaments in a web app, and their players live in Discord and never leave it. So almost everything that happens in the database has to turn into a message in somebody's server: registration opened, slot list posted, room details revealed, results in review.
+
+The naive version is to call the Discord API from the request handler. That fails in the two ways you would expect. If Discord is slow, your API is slow. If the transaction rolls back after the message goes out, you have announced a scrim that does not exist.
+
+The outbox fixes both by making the message part of the transaction:
+
+```sql
+CREATE TABLE comms_outbox (
+  id           BIGSERIAL PRIMARY KEY,
+  event_type   TEXT NOT NULL,
+  entity_type  comms_entity_type NOT NULL,  -- user | scrim | org
+  entity_id    BIGINT NOT NULL,
+  payload      JSONB NOT NULL DEFAULT '{}',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ
+);
+
+-- The only index that matters: the consumer's sweep, and nothing else.
+CREATE INDEX idx_comms_outbox_unprocessed
+  ON comms_outbox (id)
+  WHERE processed_at IS NULL;
+```
+
+Rows go in inside the same transaction as the thing they describe. Commit and the event exists; roll back and it never happened. There is no window where the two disagree, which is the entire point and the reason this pattern outlives whatever transport you put in front of it.
+
+Some of the writes come from a trigger, because notifications already had a table and I did not want two ways to say the same thing:
+
+```sql
+CREATE FUNCTION comms_enqueue_notification() RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO comms_outbox (event_type, entity_type, entity_id, payload)
+  VALUES (
+    NEW.type, 'user', NEW.user_id,
+    jsonb_build_object(
+      'title', NEW.title,
+      'body',  NEW.body,
+      'scrim_id', NEW.scrim_id,
+      -- denormalized so delivery needs no second read
+      'public_id', (SELECT public_id FROM scrims WHERE id = NEW.scrim_id),
+      'notification_id', NEW.id
+    )
+  );
+  PERFORM pg_notify('comms_outbox', '');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+Two things in there are deliberate.
+
+The payload carries enough to render the message without going back to the database. Not the whole world, just the fields the template needs. A consumer that has to re-query to render is a consumer that has to know your schema, and knowing your schema is exactly the coupling I was trying to delete.
+
+The `pg_notify` payload is empty. It is a doorbell, not a letter. Notify payloads are capped (8000 bytes), notifications can be dropped if a listener is not connected, and a payload here would tempt me into treating the notification as the delivery mechanism. It is not. The table is the delivery mechanism. The notify only means "there is work, look now instead of at the next sweep".
+
+## Why the shared connection was the problem
+
+Everything above is fine. The problem was who reads it.
+
+When the bot holds its own Postgres connection, five things follow, and only the first one is obvious.
+
+**The schema becomes an API with no versioning.** Renaming a column, changing an enum, splitting a table: all of it now breaks a service that lives in a different repo, on a different deploy cadence, in a different language. My migrations had a review process. The bot's expectations had nothing.
+
+**Credentials spread.** The bot needs a database role, so now there is a second place a database password lives, and it is the service most exposed to the outside world because it is holding a websocket open to Discord and executing commands typed by strangers.
+
+The pool is shared with the thing that pays the bills. The bot's sweep competes with API requests for connections. A bot bug that leaks connections is an API outage.
+
+There is no place to put policy. Which targets should this event go to? Which roles get pinged? That logic wants to live where the domain lives. When the consumer reads raw rows, the logic gets reimplemented on the far side, in Python, from the shape of the tables, and it drifts.
+
+You cannot test the boundary, because there isn't one. There is just a schema that two things happen to agree about today.
+
+## Move the consumer behind a gateway
+
+So the bot lost its database connection and got three endpoints instead:
+
+```go
+// Every route here is bot-token only. This is the entire surface the
+// comms-bot has against the backend.
+b.GET("/events", h.Events)         // snapshot of un-acked (catch-up, debug)
+b.GET("/events/stream", h.Stream)  // live push over SSE
+b.POST("/events/ack", h.Ack)
+```
+
+Durability stayed in the backend, where the transaction is. The bot became what it should have been from the start: a renderer with a Discord token.
+
+The push side is server-sent events, not a websocket and not polling. The traffic is one-directional (backend to bot), the messages are small, and SSE over the existing HTTP stack costs nothing extra: no upgrade dance, no ping-pong protocol of my own, no second server. The bot's acks go back as ordinary POSTs, which is exactly the shape of the problem.
+
+Inside the handler, the notify channel is still there, now as an internal detail rather than a contract:
+
+```go
+func (s *Service) Notifications(ctx context.Context) (<-chan struct{}, error) {
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := conn.Exec(ctx, "LISTEN comms_outbox"); err != nil {
+		conn.Release()
+		return nil, err
+	}
+	ch := make(chan struct{}, 1)
+	go func() {
+		defer conn.Release()
+		defer close(ch)
+		for {
+			if _, err := conn.Conn().WaitForNotification(ctx); err != nil {
+				return // ctx cancelled or connection dropped
+			}
+			select {
+			case ch <- struct{}{}:
+			default: // a signal is already pending, coalesce
+			}
+		}
+	}()
+	return ch, nil
+}
+```
+
+The `default` branch is the part worth copying. A burst of 200 inserts should not produce 200 wakeups; it should produce "there is work" once. A buffered channel of size one plus a non-blocking send is the whole coalescing strategy, and it means the consumer's cost is a function of how much work exists, not how excited the producer was.
+
+## Replay until acked
+
+The delivery contract is one sentence: an event is sent on every connect and every wakeup until the bot acknowledges it.
+
+```go
+// Stream pushes events live over SSE. On connect it first replays everything
+// un-acked (offline catch-up), then pushes on every outbox NOTIFY. Events are
+// re-sent until the bot acks them, so nothing is lost across disconnects.
+func (h *Handler) Stream(c *gin.Context) {
+	// SSE is long-lived: clear the server's write deadline for this conn.
+	if rc := http.NewResponseController(c.Writer); rc != nil {
+		_ = rc.SetWriteDeadline(time.Time{})
+	}
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("X-Accel-Buffering", "no")
+	...
+}
+```
+
+Three details in those headers earn their place. Clearing the write deadline, because a sane API sets one and a long-lived stream is the one place it is wrong. `X-Accel-Buffering: no`, because nginx will happily hold your stream in a buffer and hand it over in satisfying chunks minutes later. And no `Content-Length`, obviously, which is the part SSE gets right by construction.
+
+Catch-up is not a special code path. On connect, the handler runs the same query it runs on a notify: "give me the un-acked rows". If the bot was down for an hour, that query returns an hour of work. If the bot has been connected the whole time, it returns nothing. One path, two situations, which is how you avoid the classic bug where the replay logic and the live logic disagree about ordering.
+
+The ack is deliberately narrow:
+
+```sql
+-- name: AckOutbox :exec
+UPDATE comms_outbox
+SET processed_at = NOW()
+WHERE id = ANY (@ids::bigint[]) AND processed_at IS NULL;
+```
+
+`AND processed_at IS NULL` means a duplicate ack is a no-op rather than a rewrite of history. The timestamp then honestly answers "when was this first delivered", which is the question you ask at 11pm when an organizer says the announcement never appeared.
+
+Within a single connection there is a dedupe map, and its bound is the interesting part:
+
+```go
+// sent dedupes events across repeated NOTIFY pushes within a connection.
+// It is bounded to the currently-unacked set: once the bot acks an event it
+// stops appearing in PullEvents, so we prune it below and the map can't grow
+// for the life of a long-lived connection.
+sent := make(map[int64]bool)
+```
+
+A long-lived connection plus a map that only ever grows is a memory leak with a slow fuse. Pruning against the live set on every push makes the map's size proportional to outstanding work, not to uptime.
+
+## At-least-once is a promise you have to keep on both ends
+
+Replay-until-acked gives you at-least-once. It cannot give you exactly-once, because the bot can post to Discord and then die before its ack lands. That window is real and it is not closable by trying harder: the send and the ack are two systems and there is no transaction across them.
+
+The consumer says this out loud rather than hoping:
+
+```python
+try:
+    await self._api.ack_events([event_id])
+except BackendError as e:
+    # Unacked => replayed on reconnect (at-least-once).
+    log.warning("ack failed, will be replayed: %s", e)
+```
+
+Which means the interesting work is on the render side, and it is per event type:
+
+- Posting a fresh announcement is not idempotent, so events that create a message carry a key and the bot upserts against a record of what it has already posted for that key.
+- Editing a message to a known state is naturally idempotent. Applying a channel lock, granting a participant role, and setting a guild profile all fall in this bucket, which is why I moved as much as possible into "make the world look like this" rather than "do this action".
+- A duplicate ping is worse than a duplicate embed, so mentions are resolved once, at pull time, on the backend, and never regenerated by a retry.
+
+The general rule I keep coming back to: design the consumer so that a replay is boring. If a replay is boring, at-least-once is enough, and you never have to have the exactly-once conversation.
+
+## One bad event must not kill the stream
+
+The failure that actually hurt during a live event was not a lost message. It was one malformed payload throwing inside the handler, killing the stream task, and taking every subsequent announcement with it.
+
+```python
+async for event in self._api.stream_events():
+    # One malformed event or a failing handler must never kill the whole
+    # stream: log it and move on. Only genuine stream drops trigger a
+    # reconnect.
+    try:
+        await self._handle(event)
+        ...
+    except Exception:
+        log.exception("skipping bad event: %r", event)
+```
+
+Two nested scopes, two different meanings. The inner `except Exception` is per event: this one is poison, skip it, keep the connection. The outer one catches transport errors only, and reconnects with a backoff. Collapsing them into one handler is the bug: either a single bad row causes a reconnect loop, or a dropped socket silently ends delivery.
+
+A poison event stays unacked forever and will be redelivered on every reconnect, which is a slow leak of exactly one row. Worth a metric, not worth blocking the queue.
+
+## The table grows forever unless you say otherwise
+
+The outbox is written by the busiest path in the product. Nothing deletes from it. The partial index on `processed_at IS NULL` keeps the consumer's query fast no matter how big the heap gets, which is precisely why nobody notices: reads stay quick while the table grows without limit.
+
+```sql
+-- name: PruneProcessedOutbox :execrows
+DELETE FROM comms_outbox
+WHERE processed_at IS NOT NULL AND processed_at < $1;
+```
+
+Delivered rows only. An unacked row is undelivered work no matter how old it is, and a retention job that cannot tell the difference will eventually delete the one message someone is waiting for. The retention window is 30 days: long enough that the row is still there while anyone is asking "did that announcement go out", short enough to bound the table.
+
+## What this is not
+
+This is not a message queue, and reaching for one here would have been a mistake.
+
+The volume is small. The consumer is single and known. The events are already being written inside a transaction that must not lie. Adding a broker would mean the write is no longer transactional with the domain change, so I would need an outbox anyway to get the message into the broker safely. The queue would sit in the middle of a solved problem, with its own delivery semantics to reason about and its own thing to run at 2am.
+
+What I would change if the shape changed: if the consumers became many and independent, the `processed_at` column stops working, because one column cannot represent "delivered to three of five". That is the point where you want per-consumer cursors, and the point where a broker starts paying for itself.
+
+Until then: write the event in the transaction, ring the doorbell, replay until acked, and let the consumer be a program that renders messages and knows nothing at all about your tables.

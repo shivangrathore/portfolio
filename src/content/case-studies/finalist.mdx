@@ -1,10 +1,10 @@
 ---
-title: "Finalist: running Indian esports end to end"
-description: "How I built a scrim and tournament platform for the Indian BR scene: one competition engine behind six formats, a balanced lobby rotation, and a Discord bot fed by a transactional outbox."
+title: "Finalist: Indian esports, end to end"
+description: "A scrim and tournament platform for the Indian BR scene: one competition engine behind six formats, and a Discord bot fed by a transactional outbox."
 pubDate: "2026-08-17"
 tags: ["Go", "PostgreSQL", "Next.js", "Discord", "Esports"]
 role: "Solo / full-stack"
-timeline: "Dec 2025 — present"
+timeline: "Dec 2025, present"
 stack:
   [
     "Go",
@@ -30,8 +30,7 @@ DMs the organizer. The points table is a spreadsheet somebody retypes after
 every match, and the argument about whether row 14 got its kill points is
 settled by whoever shouts longest.
 
-The Western tournament platforms don't fit this. They're built around brackets —
-two teams, one match, a winner — and a BR event is 16 to 25 teams in a lobby
+The Western tournament platforms don't fit this. They're built around brackets: two teams, one match, a winner. A BR event is 16 to 25 teams in a lobby
 scored on placement plus kills, played several times, across groups that rotate
 between lobbies. They also assume the browser is where the community lives. Here
 it's Discord, and a tool that makes an organizer leave Discord to use it doesn't
@@ -63,7 +62,7 @@ domain, and platform staff get their own console. They share a component
 library and a typed SDK generated against the API docs, so a status label reads
 the same in all four.
 
-The backend is layered — `domain` (models, state machines, repository
+The backend is layered, `domain` (models, state machines, repository
 interfaces) → `app` (services) → `infra` (Postgres, workers, S3, FCM) →
 `ports/http`. Queries are sqlc, so the compiler knows the shape of every row,
 and migrations are forward-only and numbered: the schema is in production, so
@@ -76,7 +75,7 @@ could easily mean six code paths through the same service, each with its own
 bugs about advancement and tiebreaks.
 
 Instead the competition rules live behind a single interface, and everything
-above it — entries, matches, standings, prizes — is format-agnostic:
+above it, entries, matches, standings, prizes, is format-agnostic:
 
 ```go
 type Format interface {
@@ -97,8 +96,8 @@ type Format interface {
 ```
 
 BR points tables, round robin, single and double elimination, Swiss and gauntlet
-are each one file plus a registry entry. `Draw` is pure — it plans, it doesn't
-write — which means the draw for a 64-team double-elimination bracket can be
+are each one file plus a registry entry. `Draw` is pure, it plans, it doesn't
+write, which means the draw for a 64-team double-elimination bracket can be
 tested without a database, and the service layer's job is reduced to persisting
 whatever the plan says.
 
@@ -112,13 +111,13 @@ quietly wrong.
 
 Four groups of 16, a 32-slot lobby: each round, two groups share a lobby. If you
 pick those pairings at random, one group can end up facing the strongest group
-twice while another never does — and since placement points are relative to who
+twice while another never does, and since placement points are relative to who
 else is in the lobby, that's not a nuisance, it's the whole result.
 
 The pairing is generated with the circle method, which is a true
 1-factorisation: over `groups-1` rounds, every pair of groups meets exactly
 once, and longer events cycle that set again. Every group appears exactly once
-per round and exactly `matchesPerGroup` times overall — a property the tests
+per round and exactly `matchesPerGroup` times overall, a property the tests
 assert directly rather than a claim in a comment.
 
 ```
@@ -138,15 +137,14 @@ faith without treating anyone as a cheat.
 
 Captains submit their placement and kills with a screenshot; a referee approves,
 edits or rejects, and the queue holds disputes rather than resolving them by
-whoever answered first. The organizer can also enter results directly — a lot of
+whoever answered first. The organizer can also enter results directly, a lot of
 events have a scorer watching the lobby.
 
 Two rules do most of the work:
 
 - **Points are never client-supplied.** The format computes them from the
   recorded result at the moment it's approved.
-- **They're frozen at record time.** If someone edits the point preset mid-event
-  — which happens — matches already played keep the points they earned.
+- **They're frozen at record time.** If someone edits the point preset mid-event, which happens, matches already played keep the points they earned.
 
 Standings then recompute from the stage as it stands, with an explainable
 tiebreak chain (points, then wins, then kills, then head-to-head), so a team can
@@ -161,7 +159,7 @@ with a polling sweep as a backstop.
 
 That's a transactional outbox with no Redis queue, no RabbitMQ, and no second
 source of truth. Nothing is lost between "it happened" and "it was queued",
-because there is no gap — either both rows commit or neither does. If the bot is
+because there is no gap, either both rows commit or neither does. If the bot is
 down for an hour, it catches up on boot.
 
 Reads and writes from the bot go through the same public REST API a browser
@@ -178,7 +176,7 @@ the cheapest way to stay on the right side of it is to not be near it.
 
 Prize pools and payouts are a **ledger**: an organizer records what they owe and
 marks it paid with their own transfer reference. There's no wallet, no stored
-credits, no gateway, and no entry fees — the tournament schema doesn't have an
+credits, no gateway, and no entry fees, the tournament schema doesn't have an
 entry-fee column at all, which is the sort of thing that's much easier to hold
 to when the table simply can't express it. The decision is written down in the
 repo next to the rules it follows, so future-me doesn't quietly re-add it.
@@ -189,8 +187,8 @@ repo next to the rules it follows, so future-me doesn't quietly re-add it.
   mattered more than getting the schema right, so tournaments were built
   alongside scrims rather than through them, with two SQL views unioning both so
   leaderboards and player history saw everything. That bought speed and left a
-  duplication tax — entrants and registrations, matches and matches, two of
-  every invite flow — which is now being paid off by folding a scrim into what
+  duplication tax, entrants and registrations, matches and matches, two of
+  every invite flow, which is now being paid off by folding a scrim into what
   it always was: an event with exactly one stage.
 - **The registry costs a layer of indirection.** Reading "how does Swiss pair
   round 3" means opening one more file than a switch statement would. The payoff
@@ -199,20 +197,19 @@ repo next to the rules it follows, so future-me doesn't quietly re-add it.
   open check-in, auto-forfeit no-shows) run as set-based sweeps guarded by
   `pg_try_advisory_xact_lock`, so every API replica can run the same worker and
   exactly one does the work. Simpler than a job queue, and it self-heals after
-  downtime — but it's tick-resolution, not to-the-second.
+  downtime, but it's tick-resolution, not to-the-second.
 - **Client-side tab filtering.** The organizer list pulls a page of events and
   buckets them in the browser. Fine at an organizer's scale, and the wrong
-  answer the day someone has 400 events — that's a server-side filter I know I'll
+  answer the day someone has 400 events, that's a server-side filter I know I'll
   owe.
 
 ## Where it is now
 
-Live at [finalist.live](https://finalist.live). Scrims run end to end —
-registration, slot lists, room details, results, leaderboards. Tournaments ship
+Live at [finalist.live](https://finalist.live), with 81 organisations on the platform and 95 scrims and tournaments created across them. Scrims run end to end: registration, slot lists, room details, results and leaderboards. Tournaments ship
 all six formats with groups, brackets, standings, staff roles and the payout
 ledger, and the `/tournament` command group puts standings, matches, check-in and
 room details in Discord.
 
 Next: per-lobby Discord channels for tournaments (scrims already have them), and
-richer public event pages — the share link is what an organizer actually posts,
+richer public event pages, the share link is what an organizer actually posts,
 so it deserves to be the best-looking thing on the platform.

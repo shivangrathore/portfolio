@@ -10,6 +10,15 @@ export type Experience = {
   /** "Contract", "Freelance" and so on. Employment reads differently to a
       client than a year-long contract engagement does. */
   engagement?: string;
+  /**
+   * Slug of a case study in src/content/case-studies.
+   *
+   * When one exists the timeline links to it instead of unfolding the rest of
+   * the highlights inline. Nine paragraphs behind a "6 more" toggle is a wall
+   * of text either way; the write-up is where that depth belongs, and it is a
+   * better page to land on than a longer list.
+   */
+  caseStudy?: string;
   stack?: string[];
   current?: boolean;
 };
@@ -22,24 +31,29 @@ export const experience: Experience[] = [
     period: "Jul 2025 - Present",
     location: "Remote",
     engagement: "Contract",
+    caseStudy: "hauldrive",
     summary:
-      "Designed and built both generations of the backend behind a multi-tenant fleet compliance and maintenance platform for UK transport operators: the original Go service, then the current rewrite into domain-separated Go (Gin, sqlc, pgx) with a Next.js monorepo. Around 570 endpoints and 120 migrations today, serving three front-ends (fleet, workshop, platform admin) and the driver mobile API from one codebase, one database and one login. In production with four operators running 80+ vehicles and 60+ drivers.",
+      "Designed and built every generation of the backend behind a multi-tenant fleet compliance and maintenance platform for UK transport operators: the original Go service, the domain-separated rewrite, and the current split into five services behind one gateway. 600+ endpoints and 192 migrations today, serving three front-ends (fleet, workshop, platform admin) and the driver mobile API. In production with four operators running 80+ vehicles and 60+ drivers.",
     highlights: [
       "Owned the first backend end to end, schema upward: vehicles, drivers, operating centres and pools, walkaround checks and defects, work orders, maintenance templates, incidents, insurance, driver training and toolbox talks, holidays and audit logging, behind email OTP login with TOTP 2FA and trusted devices.",
-      "Re-architected it into the current platform: domain, app and ports layering with a schema per domain in Postgres and sqlc-generated queries. That separation is what let a second product share one database without the two fighting over tables.",
-      "Shipped that second product (workshop) on the same backend: per-product personas bound at login, permissions carried in the JWT, and a handshake that links an independent workshop tenant to a fleet without merging their data.",
-      "Built the billing engine on Stripe rather than Stripe Subscriptions: per-vehicle pricing, base fee in advance with usage in arrears, mid-cycle proration through a ledger, BACS mandates, versioned trial policies and dunning.",
+      "Re-architected it into domain, app and ports layering with a schema per domain in Postgres and sqlc-generated queries. That separation is what later made the service split tractable rather than a rewrite.",
+      "Split the result into identity, platform, fleet, workshop and tacho services plus an internal documents service, behind a Traefik gateway on one origin. Existing clients kept working: the old path prefixes are rewritten at the gateway rather than every service serving two contracts for a year.",
+      "Moved authorization out of the token. Identity owns the account and issues every token with JWKS for verification, but the token carries no permission claim, because one baked into a JWT outlives its own revocation. Each product owns its own roles and a 133-key permission catalogue defined in Go, and resolves them from its own tables.",
+      "Put the internal plane on gRPC rather than services calling each other's REST APIs: Protocol Buffers contracts for identity provisioning and terms, platform billing and documents, with generated clients in a shared module. Clients still get REST through the gateway, so the public contract never had to change.",
+      "Built the cross-service consistency layer that stands in for foreign keys once the data is in separate databases: events over RabbitMQ with a transactional outbox on publish, an idempotent inbox on consume, and a nightly reconcile for what neither caught. Every internal call authenticates with a per-call Ed25519 JWT against pinned keys.",
+      "Built the billing engine on Stripe primitives rather than Stripe Subscriptions: per-vehicle pricing, base fee in advance with usage in arrears, mid-cycle proration through a ledger, BACS mandates, versioned trial policies and dunning.",
       "Built and still own the compliance core: PMI and brake-test cycles, schedules that book a workshop over branded email, per-task document policies, driver walkaround defects into fault workflows, and DVLA vehicle enquiry plus MOT history sync.",
-      "Added AI invoice ingestion for parts and labour (tiered OCR into LLM extraction, alias resolution, anti-fraud checks that flag rather than block) on top of the usual infrastructure work: Redis, RabbitMQ, a WebSocket hub for realtime job updates, S3 uploads, Gotenberg PDFs and Twilio SMS.",
+      "Added AI invoice ingestion for parts and labour (tiered OCR into LLM extraction, alias resolution, anti-fraud checks that flag rather than block) on top of the usual infrastructure work: Redis, RabbitMQ, a WebSocket hub for realtime job updates, S3-compatible object storage, Gotenberg PDFs and Twilio SMS.",
+      "Kept a written decision log, 59 entries deep, including the decisions that were reversed and the reasoning that reversed them.",
     ],
     stack: [
       "Go",
-      "Gin",
-      "sqlc",
-      "Next.js",
+      "gRPC",
       "PostgreSQL",
-      "Redis",
       "RabbitMQ",
+      "Traefik",
+      "Redis",
+      "Next.js",
       "Stripe",
     ],
     current: true,

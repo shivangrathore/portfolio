@@ -16,17 +16,17 @@ const { class: className } = Astro.props;
 
 <div
   class:list={[
-    "inline-flex items-center gap-0.5 rounded-md border border-border p-0.5",
+    "inline-flex items-center gap-0.5 border border-border p-0.5",
     className,
   ]}
   role="group"
   aria-label="Pricing region"
 >
-  <button type="button" class="region-btn" data-region-set="intl">
-    $ International
-  </button>
   <button type="button" class="region-btn" data-region-set="in">
     ₹ India
+  </button>
+  <button type="button" class="region-btn" data-region-set="intl">
+    $ International
   </button>
 </div>
 
@@ -36,7 +36,7 @@ const { class: className } = Astro.props;
   const root = document.documentElement;
 
   const paint = () => {
-    const current = root.dataset.region === "in" ? "in" : "intl";
+    const current = root.dataset.region === "intl" ? "intl" : "in";
     document.querySelectorAll<HTMLButtonElement>("[data-region-set]").forEach(
       (button) => {
         button.setAttribute(
@@ -52,10 +52,10 @@ const { class: className } = Astro.props;
   document.querySelectorAll<HTMLButtonElement>("[data-region-set]").forEach(
     (button) => {
       button.addEventListener("click", () => {
-        const next = button.dataset.regionSet === "in" ? "in" : "intl";
-        // The attribute is only present for India: absent is the default the
-        // CSS and the pre-paint script already agree on.
-        if (next === "in") root.dataset.region = "in";
+        const next = button.dataset.regionSet === "intl" ? "intl" : "in";
+        // The attribute is only present for the international card: absent is
+        // the India default the CSS and the pre-paint script already agree on.
+        if (next === "intl") root.dataset.region = "intl";
         else delete root.dataset.region;
         try {
           localStorage.setItem(REGION_KEY, next);

@@ -16,34 +16,38 @@ import { Resvg } from "@resvg/resvg-js";
 import { getCollection } from "astro:content";
 import { landings } from "./landings";
 
-// Hex equivalents of the dark oklch values in global.css. satori has no oklch
+// Hex equivalents of the dark oklch values in global.css, converted rather than
+// eyeballed. These must be re-derived whenever the palette moves: a share card
+// in last season's accent colour is worse than no card, because it is the first
+// thing anyone sees of the site and it says the site is unmaintained.
+// satori has no oklch
 // support, so these are converted once here and must be updated together.
 //
 // The card is always dark, whichever theme the visitor is using: a share card
 // is pasted onto someone else's timeline, not onto this site, and the dark
 // version is the one that holds up as a thumbnail on both.
 const COLOR = {
-  bg: "#1a1a1e",
-  surface: "#212126",
-  border: "#4a4b52",
-  fg: "#f7f7f7",
-  muted: "#a4a5ad",
-  faint: "#87888f",
-  accent: "#4dc074",
+  bg: "#0b0c10",
+  surface: "#15171b",
+  border: "#3d4046",
+  fg: "#f6f7f8",
+  muted: "#a6a9b0",
+  faint: "#81858c",
+  accent: "#2f6eff",
 };
 
 const FONT_DIR = path.join(process.cwd(), "src/assets/fonts");
 const fonts = [
   {
-    name: "Geist",
-    data: fs.readFileSync(path.join(FONT_DIR, "Geist-Regular.ttf")),
+    name: "Archivo",
+    data: fs.readFileSync(path.join(FONT_DIR, "Archivo-Regular.ttf")),
     weight: 400 as const,
     style: "normal" as const,
   },
   {
-    name: "Geist",
-    data: fs.readFileSync(path.join(FONT_DIR, "Geist-SemiBold.ttf")),
-    weight: 600 as const,
+    name: "Archivo",
+    data: fs.readFileSync(path.join(FONT_DIR, "Archivo-Bold.ttf")),
+    weight: 700 as const,
     style: "normal" as const,
   },
 ];
@@ -84,7 +88,7 @@ function card(data: OgCard) {
       height: "100%",
       backgroundColor: COLOR.bg,
       padding: "72px",
-      fontFamily: "Geist",
+      fontFamily: "Archivo",
     },
     [
       // Accent rule along the top, the one piece of brand at thumbnail size.
@@ -108,7 +112,7 @@ function card(data: OgCard) {
           "div",
           {
             fontSize: 24,
-            fontWeight: 600,
+            fontWeight: 700,
             letterSpacing: 3,
             textTransform: "uppercase",
             color: COLOR.accent,
@@ -132,7 +136,7 @@ function card(data: OgCard) {
             "div",
             {
               fontSize: data.title.length > 55 ? 58 : 68,
-              fontWeight: 600,
+              fontWeight: 700,
               letterSpacing: -1.5,
               lineHeight: 1.12,
               color: COLOR.fg,
@@ -164,13 +168,13 @@ function card(data: OgCard) {
         [
           el(
             "div",
-            { fontSize: 26, fontWeight: 600, color: COLOR.fg },
+            { fontSize: 26, fontWeight: 700, color: COLOR.fg },
             "shivangrathore.com",
           ),
           el(
             "div",
             { fontSize: 24, color: COLOR.faint },
-            data.stack ?? "Go · PostgreSQL · Next.js",
+            data.stack ?? "Python · TypeScript · Go",
           ),
         ],
       ),
@@ -196,11 +200,23 @@ export async function renderOgCard(data: OgCard): Promise<Buffer> {
 /** Pages with no collection entry behind them. */
 const STATIC_CARDS: OgCard[] = [
   {
+    // The homepage. It previously fell back to a hand-made /og.png in public/,
+    // which meant every share of the front page carried whatever design was
+    // current the day that file was exported. Generating it from the same
+    // template as every other card is the only way it stays in step.
+    route: "home",
+    // Short enough to survive the eyebrow truncation at this card width.
+    eyebrow: "Freelance engineer, India",
+    title: "Plenty of people can build your demo",
+    subtitle:
+      "Fewer can build the version that survives real users. AI features, web apps and the backends under them, in Python, TypeScript and Go.",
+  },
+  {
     route: "services",
     eyebrow: "Services",
     title: "What I can build for you",
     subtitle:
-      "MVP builds, Go backends, Node to Go migrations and real-time systems. Scoped projects, fixed milestones, code you own at the end.",
+      "AI features, MVP builds, web apps and backend work in Python, TypeScript and Go. Fixed milestones, published rates, code you own at the end.",
   },
   {
     route: "hire",
@@ -235,7 +251,7 @@ const STATIC_CARDS: OgCard[] = [
     eyebrow: "About",
     title: "Shivang Rathore",
     subtitle:
-      "Freelance full-stack engineer. Go and PostgreSQL for the parts that have to be correct, Next.js for the parts people touch.",
+      "Freelance engineer in India. AI features, web apps and the backends under them, in Python, TypeScript and Go.",
   },
   {
     route: "contact",
@@ -285,11 +301,12 @@ export async function ogCards(): Promise<OgCard[]> {
 
 /**
  * The card for a page, or undefined when it has none and should fall back to
- * the static `/og.png` (the homepage and 404).
+ * the static `/og.png` (404 only, now that the homepage has its own).
  */
 export async function ogImageFor(pathname: string): Promise<string | undefined> {
-  const route = pathname.replace(/^\/+|\/+$/g, "");
-  if (!route) return undefined;
+  // "" is the homepage, which is stored under "home" because an empty route
+  // cannot be a filename.
+  const route = pathname.replace(/^\/+|\/+$/g, "") || "home";
   const cards = await ogCards();
   return cards.some((c) => c.route === route) ? `/og/${route}.png` : undefined;
 }

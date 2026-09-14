@@ -28,8 +28,8 @@ const { href, title, description, pubDate, kind, facts = [], tags = [] } =
     </div>
 
     <div class="min-w-0">
-      {kind && <p class="label mb-2 text-accent">{kind}</p>}
-      <h3 class="text-lg font-semibold tracking-tight text-fg">
+      {kind && <p class="standfirst mb-2">{kind}</p>}
+      <h3 class="text-xl text-fg">
         <a href={href} class="after:absolute after:inset-0 group-hover:text-accent">
           {title}
         </a>
@@ -44,8 +44,8 @@ const { href, title, description, pubDate, kind, facts = [], tags = [] } =
               <span>{fact}</span>
             ))}
             {facts.length > 0 && tags.length > 0 && (
-              <span aria-hidden="true" class="text-line">
-                |
+              <span aria-hidden="true" class="text-rule">
+                /
               </span>
             )}
             {tags.slice(0, 4).map((tag) => (

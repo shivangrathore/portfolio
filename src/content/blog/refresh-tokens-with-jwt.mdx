@@ -5,25 +5,11 @@ pubDate: "2026-04-21"
 tags: ["Backend", "Authentication", "JWT", "TypeScript", "Node.js", "Security"]
 ---
 
-If you've built a login with JWTs, you've probably had this argument with yourself: how long should the token last?
+How long should the access token last?
 
-Make it short and people get logged out mid-sentence. Make it long and you've handed out something you can't take back. Neither option feels good, because neither one *is* good. You're asking one token to do two jobs that pull in opposite directions.
+Fifteen minutes and people get logged out mid-sentence. Seven days and you've handed out something you can't take back. Neither option feels good, because neither one *is* good: you're asking one token to do two jobs that pull in opposite directions.
 
 Let's fix that properly: the database table, the server code, the client code, and the handful of mistakes that quietly undo the whole thing.
-
-## Contents
-
-- [A bit of vocabulary first](#a-bit-of-vocabulary-first) (skip if JWTs are old news)
-- [The idea: two tokens, two jobs](#the-idea-two-tokens-two-jobs)
-- [Step 1: the session table](#step-1-the-session-table)
-- [Step 2: issuing the pair](#step-2-issuing-the-pair)
-- [Step 3: the refresh endpoint](#step-3-the-refresh-endpoint) (the heart of it)
-- [Step 4: where the tokens live](#step-4-where-the-tokens-live)
-- [Step 5: the client half](#step-5-the-client-half)
-- [Step 6: logout and housekeeping](#step-6-logout-and-housekeeping)
-- [Picking the two lifetimes](#picking-the-two-lifetimes)
-- [The mistakes worth knowing about](#the-mistakes-worth-knowing-about)
-- [A sane build order](#a-sane-build-order)
 
 ## A bit of vocabulary first
 
@@ -316,7 +302,7 @@ Different tokens, different risks, different homes.
 
 **The access token** goes in a JavaScript variable, or `localStorage` if it needs to survive a page reload. Either way, any JavaScript on your page can read it, which matters, because an **XSS** bug (an attacker getting their script to run on your site) means they can grab it. The 15-minute lifetime is what caps the damage.
 
-**The refresh token** is the valuable one, so on the web it never touches JavaScript at all. It goes in a cookie with flags that keep it out of reach:
+The refresh token is the valuable one, so on the web it never touches JavaScript at all. It goes in a cookie with flags that keep it out of reach:
 
 ```ts
 function setRefreshCookie(
@@ -438,9 +424,9 @@ export class AccessTokenStore {
 
 Two small things in there are doing a lot of work.
 
-**The skew allowance.** `stale()` says yes a minute *before* the real expiry, so the client refreshes early and requests are almost never sent with a dead token. Without it you eat a 401 and a retry at every expiry, and any request whose round trip straddles the boundary just fails. It also soaks up clock differences between the user's device and your server. Real devices are routinely tens of seconds out, occasionally hours.
+The skew allowance. `stale()` says yes a minute *before* the real expiry, so the client refreshes early and requests are almost never sent with a dead token. Without it you eat a 401 and a retry at every expiry, and any request whose round trip straddles the boundary just fails. It also soaks up clock differences between the user's device and your server. Real devices are routinely tens of seconds out, occasionally hours.
 
-**The `before` comparison.** If a refresh fails, only clear the token if it's still the one we started with. Otherwise a slow failing attempt can wipe a perfectly good token that a faster one just saved.
+The `before` comparison. If a refresh fails, only clear the token if it's still the one we started with. Otherwise a slow failing attempt can wipe a perfectly good token that a faster one just saved.
 
 Then your HTTP layer asks for a token before each call, and retries a 401 exactly once:
 
@@ -524,9 +510,9 @@ Nightly is fine. If the table gets big, delete in batches so you're not holding 
 
 15 minutes and 7 days is a solid default. Two questions set them.
 
-**Access token TTL is your revocation delay.** Fifteen minutes means a deactivated account keeps read access for at most fifteen more minutes. Drop to five and you triple your refresh traffic to shave a delay most products don't care about. Stretch to an hour and it gets awkward to explain in a security review.
+Access token TTL is your revocation delay. Fifteen minutes means a deactivated account keeps read access for at most fifteen more minutes. Drop to five and you triple your refresh traffic to shave a delay most products don't care about. Stretch to an hour and it gets awkward to explain in a security review.
 
-**Refresh token TTL is how long an idle user stays logged in.** Seven days means someone who ignores your app for a week logs in again. A consumer app might want 30 days with rotation on; anything touching money might want 12 hours.
+Refresh token TTL is how long an idle user stays logged in. Seven days means someone who ignores your app for a week logs in again. A consumer app might want 30 days with rotation on; anything touching money might want 12 hours.
 
 Put both in config, because you will change your mind:
 

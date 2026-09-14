@@ -1,39 +1,55 @@
 ---
-import { NAV_ITEMS, GITHUB_URL, LINKEDIN_URL } from "@/lib/constants";
+import { NAV_ITEMS, GITHUB_URL, LINKEDIN_URL, BOOKING_URL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Github from "@/components/icons/Github.astro";
 import Linkedin from "@/components/icons/Linkedin.astro";
 import Icon from "@/components/icons/Icon.astro";
 import ThemeToggle from "@/components/ThemeToggle.astro";
 
+// Both sides are normalised without their trailing slash before comparing, so
+// the nav still highlights correctly now that every href carries one.
 const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
-const isActive = (href: string) =>
-  href === "/" ? pathname === "/" : pathname.startsWith(href);
+const isActive = (href: string) => {
+  const target = href.replace(/\/$/, "") || "/";
+  return target === "/" ? pathname === "/" : pathname.startsWith(target);
+};
+
+// The bar CTA goes to the calendar when there is one, because the visitor who
+// clicks a nav CTA is further along than the one who scrolls to the footer.
+const cta = BOOKING_URL || "/contact";
+const external = Boolean(BOOKING_URL);
 ---
 
-<header class="sticky top-0 z-50 border-b border-line bg-bg/85 backdrop-blur-md">
-  <nav class="shell flex h-16 items-center justify-between gap-6">
+<!--
+  The masthead.
+
+  Expanded wordmark, normal-width navigation, one filled CTA. No backdrop blur
+  and no translucency: a frosted bar is app chrome, and this is a masthead. A
+  solid bar with a rule under it is what a masthead is.
+-->
+<header class="sticky top-0 z-50 border-b border-line bg-bg">
+  <nav class="shell flex h-[4.5rem] items-center justify-between gap-8">
     <a
       href="/"
-      class="text-sm font-semibold tracking-tight text-fg hover:text-accent"
+      class="expanded text-lg font-bold tracking-tight text-fg hover:text-accent"
     >
-      Shivang Rathore<span class="text-accent">.</span>
+      Shivang Rathore
     </a>
 
     <!-- Desktop -->
-    <div class="hidden items-center gap-7 md:flex">
+    <div class="hidden items-center gap-8 md:flex">
       {
         NAV_ITEMS.map((item) => (
           <a
             href={item.href}
             aria-current={isActive(item.href) ? "page" : undefined}
             class={cn(
-              // The active marker is a rule under the word, not a filled pill:
-              // same language as every other divider on the page.
-              "relative py-1 text-sm transition-colors after:absolute after:inset-x-0 after:-bottom-px after:h-px after:transition-colors",
+              // The active marker is a rule under the word, in the accent. Same
+              // language as every other line on the page.
+              "relative py-1 text-sm transition-colors after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:transition-colors",
               isActive(item.href)
                 ? "text-fg after:bg-accent"
-                : "text-muted after:bg-transparent hover:text-fg hover:after:bg-line",
+                : "text-muted after:bg-transparent hover:text-fg hover:after:bg-rule",
             )}
           >
             {item.name}
@@ -42,13 +58,16 @@ const isActive = (href: string) =>
       }
     </div>
 
-    <div class="hidden items-center gap-2 md:flex">
+    <div class="hidden items-center gap-4 md:flex">
       <ThemeToggle />
       <a
-        href="/contact"
-        class="rounded-md bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition-opacity hover:opacity-90"
+        href={cta}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener" : undefined}
+        data-track={external ? "book-call" : undefined}
+        class="bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg transition-colors hover:bg-fg hover:text-bg"
       >
-        Start a project
+        {external ? "Book a call" : "Start a project"}
       </a>
     </div>
 
@@ -57,7 +76,7 @@ const isActive = (href: string) =>
       <ThemeToggle />
       <button
         id="nav-toggle"
-        class="inline-flex size-9 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-fg"
+        class="inline-flex size-9 items-center justify-center text-muted hover:text-fg"
         aria-label="Toggle menu"
         aria-expanded="false"
         aria-controls="nav-menu"
@@ -70,17 +89,15 @@ const isActive = (href: string) =>
 
   <!-- Mobile menu -->
   <div id="nav-menu" class="hidden border-t border-line md:hidden">
-    <div class="shell flex flex-col py-3">
+    <div class="shell flex flex-col py-4">
       {
         NAV_ITEMS.map((item) => (
           <a
             href={item.href}
             aria-current={isActive(item.href) ? "page" : undefined}
             class={cn(
-              "border-l-2 py-2.5 pl-3 text-sm",
-              isActive(item.href)
-                ? "border-accent text-fg"
-                : "border-transparent text-muted",
+              "border-b border-line py-3.5 text-lg font-bold tracking-tight",
+              isActive(item.href) ? "text-accent" : "text-fg",
             )}
           >
             {item.name}
@@ -88,12 +105,15 @@ const isActive = (href: string) =>
         ))
       }
       <a
-        href="/contact"
-        class="mt-3 rounded-md bg-accent px-4 py-2.5 text-center text-sm font-medium text-accent-fg"
+        href={cta}
+        target={external ? "_blank" : undefined}
+        rel={external ? "noopener" : undefined}
+        data-track={external ? "book-call" : undefined}
+        class="mt-5 bg-accent px-5 py-3.5 text-center text-sm font-medium text-accent-fg"
       >
-        Start a project
+        {external ? "Book a 20-minute call" : "Start a project"}
       </a>
-      <div class="mt-4 flex gap-4 border-t border-line pt-4">
+      <div class="mt-5 flex gap-5 border-t border-line pt-5">
         <a
           href={GITHUB_URL}
           target="_blank"

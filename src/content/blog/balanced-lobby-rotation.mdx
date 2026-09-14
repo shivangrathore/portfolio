@@ -1,0 +1,230 @@
+---
+title: "Shuffling Is Not Scheduling"
+description: "A battle royale stage puts several groups in one lobby, so the rotation cannot be random. The circle method, and how to fail when the numbers do not divide."
+pubDate: "2026-09-12"
+tags: ["Go", "Algorithms", "Scheduling", "Esports", "Backend"]
+draft: false
+---
+
+A battle royale match is not two teams and a winner. It is sixteen to twenty five teams dropped into one lobby, scored on where they placed and how many kills they got. When an event has more teams than a lobby holds, you split them into groups, and then every match you have to decide which groups share a lobby.
+
+That decision is not cosmetic. Placement points are relative to whoever else is in the room. A group that draws the two strongest groups twice is playing a harder tournament than a group that never does, on the same points table, for the same prize. The schedule is part of the competition format whether you designed it or not.
+
+The first version of this in my platform was `rand.Shuffle`. It took an afternoon to write and one event to discredit, because an organizer opened the standings, looked at the lobby assignments, and asked why one group had faced the eventual winners in three of four matches. There was no answer. That was the answer.
+
+## What the organizers actually run
+
+The common Indian BGMI shape: 64 teams, four groups of 16, a 32 slot lobby. Two groups per lobby, two lobbies running in parallel, some number of matches per group across the day.
+
+Written out, day one looks like this:
+
+```
+Round 1:  A+B   C+D
+Round 2:  A+C   B+D
+Round 3:  A+D   B+C
+```
+
+Three rounds, and by the end every group has met every other group exactly once. That is not something I invented, it is the standard rotation any organizer running this format will reach for on paper. My job was to generate it for any number of groups and any lobby size, and to never silently produce something less fair than what the organizer would have written by hand.
+
+## Stating the requirement properly
+
+Vague fairness gets you nowhere. The requirement is three concrete invariants:
+
+1. **Every group plays in exactly one lobby per round.** No group sits out, no group plays twice in a round. A BR schedule where a group rests is a different competition.
+2. **Every group plays exactly `matchesPerGroup` matches overall.** Equal volume, not approximately equal.
+3. **Pairings are as even as the arithmetic allows.** With two groups per lobby and `n` groups, "as even as possible" has an exact answer: every pair meets exactly once over `n-1` rounds.
+
+Invariants one and two are non-negotiable and easy to satisfy. Three is where the algorithm lives.
+
+The signature that falls out:
+
+```go
+// Returns rounds; each round is a list of lobbies; each lobby is a list of
+// 0-based group indexes. Every group appears exactly once per round and
+// matchesPerGroup times overall.
+func RotationSchedule(groups, perLobby, matchesPerGroup int) ([][][]int, error)
+```
+
+Three levels of nesting is a lot, and I tried flattening it twice. Both times the caller had to reconstruct the rounds to render the schedule, so the nesting stayed. Round is a real concept in the domain: it is what an organizer announces and what the room reveal is keyed to.
+
+## The circle method
+
+For two groups per lobby, the problem is exactly round robin scheduling, which has been solved since long before anyone had a computer to solve it on. Fix one element, arrange the rest in a circle, rotate one step per round, pair across.
+
+```go
+// circlePairings returns the round-robin 1-factorisation of n groups: n-1
+// rounds in which every group is paired with every other exactly once. n must
+// be even, which the caller has already guaranteed.
+func circlePairings(n int) [][][]int {
+	fixed := 0
+	rotating := make([]int, 0, n-1)
+	for i := 1; i < n; i++ {
+		rotating = append(rotating, i)
+	}
+
+	rounds := make([][][]int, 0, n-1)
+	for r := 0; r < n-1; r++ {
+		lobbies := [][]int{{fixed, rotating[0]}}
+		for i := 1; i <= (len(rotating)-1)/2; i++ {
+			lobbies = append(lobbies, []int{rotating[i], rotating[len(rotating)-i]})
+		}
+		rounds = append(rounds, lobbies)
+		// Rotate: the fixed group stays put, the rest turn one step.
+		rotating = append(rotating[1:], rotating[0])
+	}
+	return rounds
+}
+```
+
+Group 0 never moves. The other `n-1` groups sit on a circle and turn one position each round. Each round, group 0 pairs with whoever is at the top of the circle, and the remaining groups pair by folding the circle in half: first with last, second with second last, and so on.
+
+That fold is the line people get wrong, mine included, twice. `rotating[i]` pairs with `rotating[len-i]`, and the loop stops at `(len(rotating)-1)/2`. Off by one here does not crash. It produces a schedule where one group appears twice in a round and another not at all, which surfaces as a confused organizer on event day rather than as a test failure, unless you wrote the test in the next section.
+
+Then the whole thing gets cycled to fill however many matches the stage runs:
+
+```go
+rounds := make([][][]int, 0, matchesPerGroup)
+for r := 0; r < matchesPerGroup; r++ {
+	rounds = append(rounds, pattern[r%len(pattern)])
+}
+```
+
+Six matches over four groups is the three round pattern twice: every pair meets exactly twice. Four matches is the pattern plus one round of it, so one pairing set happens twice and the others once. That residue is unavoidable when `matchesPerGroup` is not a multiple of `n-1`, and it is the smallest possible imbalance rather than the arbitrary one a shuffle hands you.
+
+## Why this is the right structure and not just a nice trick
+
+The circle method produces a 1-factorisation of the complete graph on `n` vertices. Each round is a perfect matching (every group paired, nobody left over), and the `n-1` rounds together cover every edge exactly once.
+
+That framing is worth keeping in your head, because it tells you three things immediately, without experiment:
+
+- **`n` must be even.** An odd number of groups cannot be perfectly matched, one is always left over. In a real round robin you handle this with a bye. In a BR stage a bye is not acceptable, so the schedule must be refused instead.
+- **`n-1` is exactly the number of rounds you get before repeating.** Not a heuristic, a count of the edges divided by the size of a matching. Four groups gives three distinct rounds, eight groups gives seven, and cycling past that is genuinely a repeat rather than a failure of imagination.
+- **You cannot do better.** There is no cleverer arrangement hiding behind the greedy one. Every pair meets once is the definition of balanced for this shape, and the circle method achieves it, so the search is over.
+
+The alternative I would have written without knowing this is a constraint solver: pick pairings greedily, backtrack when a group runs out of opponents, add a heuristic when it gets slow. That code exists in a lot of tournament software. It is slower, it can fail on inputs where a solution exists, and it produces schedules nobody can verify by eye. All of that to rediscover a rotation that a chess club would have written on a napkin in 1880.
+
+## When a lobby holds more than two groups
+
+Three or more groups per lobby is a different problem. You are no longer covering the edges of a graph, you are covering triples or larger, and exact balance stops being available in general. Ask for it and you are into design theory and combinatorial searches for something the organizer will not notice.
+
+So I did the honest thing and shipped the approximation, with the limitation written where the next person will read it:
+
+```go
+// rotatedChunks handles lobbies of three or more groups: rotate the group order
+// by one each round and cut it into consecutive lobbies. Appearances stay
+// exactly even; which groups share a lobby varies from round to round.
+func rotatedChunks(n, perLobby int) [][][]int {
+	rounds := make([][][]int, 0, n)
+	for r := 0; r < n; r++ {
+		order := make([]int, n)
+		for i := 0; i < n; i++ {
+			order[i] = (i + r) % n
+		}
+		lobbies := make([][]int, 0, n/perLobby)
+		for i := 0; i < n; i += perLobby {
+			lobby := make([]int, perLobby)
+			copy(lobby, order[i:i+perLobby])
+			lobbies = append(lobbies, lobby)
+		}
+		rounds = append(rounds, lobbies)
+	}
+	return rounds
+}
+```
+
+Invariants one and two still hold exactly: every group appears once per round, and equally often overall. Invariant three holds approximately, and the doc comment says approximately rather than implying more. This case is rare in practice (two groups per lobby covers nearly every event I have seen), and shipping a documented approximation for the rare case beat blocking on the general one.
+
+The rule I would extract: when you cannot guarantee a property, degrade the property you named, not the ones you promised. Appearance counts stay exact because organizers count matches. Pairing distribution goes fuzzy because at four groups in a lobby nobody is tracking it.
+
+## The degenerate cases are most of the code
+
+Two configurations never reach the interesting code at all, and both are common:
+
+```go
+// One group per lobby: every group plays its own matches, side by side.
+if perLobby == 1 { ... }
+
+// Every group in one lobby: nothing to rotate.
+if perLobby == groups { ... }
+```
+
+One group per lobby is a small event, or the final stage after a cut. All groups in one lobby is the grand finals: 16 teams, one room, four matches. Neither needs a rotation, and both would produce nonsense if they fell through to the circle method (which assumes an even count it will not get, and a fold that does not apply).
+
+I did not write these first. I wrote them after the finals of the first tournament run on the platform crashed the schedule generator, because a single group is odd, and odd was the case the circle method was never given.
+
+## Refuse the schedule you cannot balance
+
+The most important line in the whole file is an error return:
+
+```go
+if groups%perLobby != 0 {
+	return nil, fmt.Errorf(
+		"%w: %d groups do not divide into lobbies of %d, every group must be in exactly one lobby per round",
+		tournament.ErrInvalidStageConfig, groups, perLobby)
+}
+```
+
+Five groups into lobbies of two is not a hard scheduling problem, it is an impossible one. Something has to give: a bye, an uneven lobby, or a group playing twice. All three are decisions about the competition, and none of them belong to a scheduling function making a quiet choice at 2am while nobody watches.
+
+The organizer set this up in a form. The right time to tell them is while that form is open, in terms of the thing they configured, not after 64 teams have registered. The error wraps a domain sentinel so the HTTP layer turns it into a 422 with a message about groups and lobbies, and never a 500.
+
+This is the same instinct as refusing to insert a row that violates a constraint. A schedule with a silent bye is corrupt data that happens to be shaped like a schedule.
+
+## Testing a property, not an output
+
+Golden-file tests are wrong for this. Asserting that four groups produce exactly `[[A,B],[C,D]]` in round one locks in an implementation detail (which group is fixed, which direction the circle turns) while checking none of the things that actually matter.
+
+Test the invariants instead, across a spread of shapes:
+
+```go
+func TestRotationScheduleBalance(t *testing.T) {
+	for _, tc := range []struct{ groups, perLobby, matches int }{
+		{4, 2, 3}, {4, 2, 6}, {4, 2, 4}, {6, 2, 5}, {8, 2, 7}, {8, 4, 6}, {2, 2, 4},
+	} {
+		rounds, err := RotationSchedule(tc.groups, tc.perLobby, tc.matches)
+		if err != nil {
+			t.Fatalf("%v: %v", tc, err)
+		}
+		if len(rounds) != tc.matches {
+			t.Fatalf("%v: got %d rounds", tc, len(rounds))
+		}
+		appearances := make([]int, tc.groups)
+		for _, round := range rounds {
+			seen := make(map[int]bool)
+			for _, lobby := range round {
+				if len(lobby) != tc.perLobby {
+					t.Fatalf("%v: lobby of %d", tc, len(lobby))
+				}
+				for _, g := range lobby {
+					if seen[g] {
+						t.Fatalf("%v: group %d twice in a round", tc, g)
+					}
+					seen[g] = true
+					appearances[g]++
+				}
+			}
+			if len(seen) != tc.groups {
+				t.Fatalf("%v: %d of %d groups played", tc, len(seen), tc.groups)
+			}
+		}
+		for g, n := range appearances {
+			if n != tc.matches {
+				t.Fatalf("%v: group %d played %d", tc, g, n)
+			}
+		}
+	}
+}
+```
+
+And separately, the property that only holds for the two per lobby case, tested only there:
+
+```go
+// The two-per-lobby case must be a true 1-factorisation: over groups-1 rounds
+// every pair of groups meets exactly once. Without that, one group can draw the
+// strongest field twice while another never does.
+func TestRotationPairsEveryGroupOnce(t *testing.T) { ... }
+```
+
+Splitting these two tests is the part I would defend hardest in review. One asserts what every configuration must satisfy, the other asserts the stronger thing only the exact case gives you. Merging them either weakens the guarantee on the case that has one, or fails the case that honestly cannot meet it. Tests are where you write down which promises are which.
+
+The fairness question that started all this ("why did we face them three times") now has an answer that fits in a sentence, and it is the same answer for every event: because over the pattern, everybody faces everybody the same number of times. An organizer can verify that on the schedule page without trusting me. That is worth considerably more than a shuffle that was, on average, fine.

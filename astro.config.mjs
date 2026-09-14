@@ -48,6 +48,28 @@ const PRIORITY = [
 // https://astro.build/config
 export default defineConfig({
   site: "https://shivangrathore.com",
+  // Canonicals and the sitemap have always emitted a trailing slash, while
+  // every internal href omitted one, so every link on the site and every
+  // crawl hop paid a 301. Declaring it here makes the dev server behave like
+  // production, so the mismatch cannot come back silently.
+  trailingSlash: "always",
+  /*
+    Retired posts.
+
+    infinite-scroll-react-js was a 523-word React tutorial from 2024. It was
+    the most-visited page on the site and the least useful: it brought
+    developers looking for a snippet, none of whom were ever going to hire
+    anyone, and its thinness dragged on the quality signal for everything
+    else. Deleting it outright would strand whatever links point at it, so it
+    redirects to the index instead.
+
+    Astro emits these as meta-refresh pages on a static host, which Google
+    follows and treats as a permanent redirect. Good enough for a page whose
+    traffic is being deliberately given up.
+  */
+  redirects: {
+    "/blog/infinite-scroll-react-js/": "/blog/",
+  },
   build: {
     // One stylesheet, ~7KB over the wire, needed before anything paints.
     // Inlining it trades a little repeat-visit caching for one fewer round

@@ -1,0 +1,81 @@
+---
+title: "What Adding AI to Your Product Actually Costs"
+description: "The demo is about a fifth of the work. What the other four fifths are, what the monthly bill looks like once real users arrive, and when not to bother."
+pubDate: "2026-09-28"
+tags: ["AI", "LLM", "Pricing", "Startups", "Founders"]
+draft: true
+---
+
+The AI invoice feature I built for a fleet platform took a weekend to demo and about six weeks to ship. That ratio is not unusual and it is not incompetence. It is what the work actually is, and almost nobody tells founders about the other five weeks before they have committed to a date.
+
+So here is the honest shape of it: what you are paying for, roughly what it costs, and the cases where the answer is that you should not do this yet.
+
+## The demo is real, and it is about a fifth of the job
+
+You can wire a model to your data and get something impressive in two days. This is not a trick. It genuinely works, on the happy path, and it is why every founder who has seen one now believes the feature is nearly done.
+
+Then someone uploads a photograph of a crumpled invoice taken at an angle in a badly lit workshop, and the model confidently invents a supplier that does not exist.
+
+The gap between those two moments is the project. Concretely, it is:
+
+- **Tiering.** Cheap path for clean input, expensive path only when the cheap one is not confident. Without this your bill is the worst case multiplied by every request.
+- **Validation against what you already know.** If the extracted supplier is not in your suppliers table, that is not a result, it is a question. Most of the accuracy in a production pipeline comes from checking the model against your own database rather than from a better prompt.
+- **A confidence threshold and somewhere for the doubtful ones to go.** A review queue, and a person who owns it.
+- **An evaluation set.** Thirty to a hundred real examples with known-correct answers, and a check that runs on every change. Without it you cannot tell whether swapping a model improved anything, and you will swap models, because they keep getting cheaper.
+- **Cost accounting per feature.** Its own API key, so you can see what it spends and revoke it without taking down anything else.
+
+None of that is glamorous and all of it is the difference between a feature and a demo.
+
+## What it costs to build
+
+Rough Indian-market ranges for an LLM feature on an existing product, assuming the data is already in your system:
+
+| Scope | Typical range |
+|---|---|
+| Single extraction or classification, one document type | Rs 40,000 to Rs 1,00,000 |
+| Retrieval over your own data, with ranking that actually works | Rs 80,000 to Rs 2,50,000 |
+| Extraction plus review queue plus evals, production-grade | Rs 1,50,000 to Rs 4,00,000 |
+
+The variable that moves those numbers most is not the model. It is how messy your input is and how expensive a wrong answer is. Classifying support tickets and extracting invoice totals are the same engineering problem until you notice that one of them touches money, at which point the second needs validation, an audit trail and a human in the loop, and it costs three times more.
+
+## What it costs to run, which is the part people forget
+
+The build is a one-off. The bill is not.
+
+Per-request costs are small and per-month costs are not, because the thing that surprises people is volume rather than unit price. A useful way to sanity-check before you start: take your realistic monthly volume, multiply by the worst-case tokens per request, and price it at the expensive model. If that number is survivable, you are fine, because tiering and caching will pull the real figure well below it. If it is not survivable at the worst case, you need to know that now and not in month three.
+
+Two things that reliably keep it down:
+
+Prompt caching, where the provider charges a fraction for the repeated part of your prompt. If you are sending the same long instruction block every time, this is most of your bill.
+
+Not calling the model at all. The cheapest LLM request is the one you skipped because a lookup, a regex or a cached previous answer was enough. Half of what gets built as "AI features" has a deterministic path that handles 70% of cases, and the model should only see the remainder.
+
+Budget somewhere between a few thousand rupees a month and a few tens of thousands for most early-stage products. If your estimate lands far above that, the design is wrong, not the pricing.
+
+## Where the money actually goes wrong
+
+Not the API bill. The two expensive failures I have seen are both organisational.
+
+The first is a feature nobody trusts. It ships, it is right most of the time, it is confidently wrong occasionally, nobody can tell which is which, and within a month the team has quietly gone back to doing it by hand. You have paid for the build and got nothing, because the missing piece was never accuracy, it was a way for a user to see how sure the system was.
+
+The second is discovering at month three that the unit economics do not work: the feature costs more per customer than the customer pays. This is arithmetic you can do before you write any code, and almost nobody does it.
+
+## When not to do this
+
+Three cases where I would tell you to wait, and have.
+
+Your data is not in one place yet. Retrieval over four systems that disagree with each other produces confident nonsense. Fix the data first; that project is less exciting and worth more.
+
+You cannot describe what a correct answer looks like. If you cannot write down thirty examples with known-right answers, you cannot evaluate the thing, which means you cannot improve it, which means you are guessing. This is usually a sign the problem is not well defined yet rather than a sign you need a better model.
+
+The manual process takes less than an hour a week. Automating it will cost more than it saves for a long time. Do it when the hour becomes a day.
+
+## The version worth building first
+
+Pick the single highest-volume, lowest-stakes thing a person currently does by hand. Build the deterministic path first and see how far it gets. Add the model only for what is left. Put every uncertain result in front of a human and log what they change, because that log becomes your evaluation set for free.
+
+That is usually two to four weeks, it costs a fraction of the ranges above, and it tells you whether the full version is worth building with real numbers instead of a demo.
+
+---
+
+I build these on production systems: the invoice pipeline above is live with paying operators. If you want a straight answer on whether yours is worth doing, [book a call](/contact/) or read more about [AI engineering work](/hire/ai-engineer/).

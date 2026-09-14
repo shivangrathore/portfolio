@@ -5,6 +5,12 @@ import { portrait, PORTRAIT_ALT } from "@/lib/portrait";
 interface Props {
   /** Wrapper classes. Set the aspect ratio and width here. */
   class?: string;
+  /**
+   * The hairline around the image. Off for the accent band, where `line` is a
+   * dark grey that disappears against the blue and the caller supplies a ring
+   * in the foreground colour instead.
+   */
+  frame?: boolean;
   /** Widest the image is ever displayed, in CSS pixels. Drives the srcset. */
   width?: number;
   sizes?: string;
@@ -13,6 +19,7 @@ interface Props {
 
 const {
   class: className,
+  frame = true,
   width = 640,
   sizes = "(min-width: 1024px) 24rem, 60vw",
   loading = "lazy",
@@ -23,7 +30,8 @@ const {
   portrait && (
     <figure
       class:list={[
-        "relative overflow-hidden rounded-lg border border-line bg-surface",
+        "relative overflow-hidden bg-surface",
+        frame && "border border-line",
         className,
       ]}
     >

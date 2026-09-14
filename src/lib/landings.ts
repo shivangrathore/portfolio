@@ -39,7 +39,7 @@ export const landings: Landing[] = [
     heading: "Hire a freelance AI engineer who ships to production",
     metaTitle: "Hire a Freelance AI Engineer",
     metaDescription:
-      "Freelance AI engineer for document extraction, RAG over your own data and LLM features that hold up under real load. Go, Python and PostgreSQL. Rates in USD or INR.",
+      "Freelance AI engineer for document extraction, RAG and LLM features that hold up on real data. Python, Go and PostgreSQL. Fixed prices from Rs 40,000.",
     intro:
       "Most LLM demos work on the happy path and fall apart on the third real document. I build the unglamorous half: the extraction that survives a bad scan, the retrieval that returns the right chunk, the confidence threshold that sends an uncertain answer to a person, and the cost ceiling that stops a feature quietly becoming your largest bill.",
     offer: [
@@ -74,7 +74,7 @@ export const landings: Landing[] = [
         name: "AI invoice ingestion, running in production",
         detail:
           "Parts and labour invoices for a UK fleet platform: tiered OCR into LLM extraction, supplier and part alias resolution against existing records, and anti-fraud checks that flag a suspect line for review rather than blocking the invoice. Live with paying operators, not a pilot.",
-        href: "/about",
+        href: "/about/",
       },
       {
         name: "Retrieval over a production Postgres",
@@ -85,7 +85,7 @@ export const landings: Landing[] = [
         name: "The infrastructure an AI feature actually needs",
         detail:
           "Queues, retries, dead-letter handling, object storage and a WebSocket hub, because an extraction pipeline is a background job system with a model in the middle. That part is the same work it has always been.",
-        href: "/hire/go-developer",
+        href: "/hire/go-developer/",
       },
     ],
     fit: {
@@ -119,9 +119,9 @@ export const landings: Landing[] = [
       },
     ],
     related: [
-      { label: "Full service list and pricing", href: "/services" },
-      { label: "Backend performance work", href: "/hire/backend-optimization" },
-      { label: "Hire me for Go backend work", href: "/hire/go-developer" },
+      { label: "Full service list and pricing", href: "/services/" },
+      { label: "Backend performance work", href: "/hire/backend-optimization/" },
+      { label: "Hire me for Go backend work", href: "/hire/go-developer/" },
     ],
     stack: "Go · Python · pgvector · PostgreSQL",
   },
@@ -131,7 +131,7 @@ export const landings: Landing[] = [
     heading: "Backend performance engineer for slow APIs and databases",
     metaTitle: "Hire a Backend Performance Engineer",
     metaDescription:
-      "Freelance backend performance engineer. Slow PostgreSQL queries, N+1s and hot endpoints fixed at the query and the schema, with before and after numbers per endpoint.",
+      "Freelance backend performance engineer. Slow PostgreSQL queries, N+1s and hot endpoints fixed at the query, with before and after numbers.",
     intro:
       "Slow backends are rarely slow because the language is slow. They are slow because a query has no index it can use, because one endpoint makes forty round trips, or because work that belongs in a job queue is happening while a user waits. I find which one it is with a profiler and a query plan, then fix it there rather than putting a cache in front of the symptom.",
     offer: [
@@ -171,7 +171,7 @@ export const landings: Landing[] = [
         name: "570 endpoints on one Postgres, in production",
         detail:
           "A multi-tenant fleet platform serving three front-ends and a mobile API from one database, with a schema per domain and around 120 migrations. Keeping that fast is the daily job, not a one-off engagement.",
-        href: "/about",
+        href: "/about/",
       },
       {
         name: "Rebuilt rather than cached over",
@@ -182,7 +182,7 @@ export const landings: Landing[] = [
         name: "Written up in public",
         detail:
           "Schema design, computed status, tenant isolation and the timezone bug that skipped a month of invoices, documented with the reasoning intact so you can judge how I work before hiring me.",
-        href: "/blog",
+        href: "/blog/",
       },
     ],
     fit: {
@@ -216,9 +216,9 @@ export const landings: Landing[] = [
       },
     ],
     related: [
-      { label: "Full service list and pricing", href: "/services" },
-      { label: "Hire me for Go backend work", href: "/hire/go-developer" },
-      { label: "AI engineering", href: "/hire/ai-engineer" },
+      { label: "Full service list and pricing", href: "/services/" },
+      { label: "Hire me for Go backend work", href: "/hire/go-developer/" },
+      { label: "AI engineering", href: "/hire/ai-engineer/" },
     ],
     stack: "Go · PostgreSQL · Redis",
   },
@@ -263,7 +263,7 @@ export const landings: Landing[] = [
         name: "Fleet compliance platform, in production",
         detail:
           "Both generations of the backend: the original Go service, then the rewrite into domain-separated Go with a schema per domain. Around 570 endpoints and 120 migrations, serving three front-ends and a driver mobile API from one codebase and one database. Four operators, 80+ vehicles, 60+ drivers.",
-        href: "/about",
+        href: "/about/",
       },
       {
         name: "A billing engine, built rather than bought",
@@ -274,7 +274,7 @@ export const landings: Landing[] = [
         name: "Permissions written up in public",
         detail:
           "The JWT and permission work is documented in a three-part series, so you can read how I think about it before paying me to do it.",
-        href: "/blog",
+        href: "/blog/",
       },
     ],
     fit: {
@@ -308,11 +308,104 @@ export const landings: Landing[] = [
       },
     ],
     related: [
-      { label: "Full service list and pricing", href: "/services" },
-      { label: "Backend performance work", href: "/hire/backend-optimization" },
-      { label: "AI engineering", href: "/hire/ai-engineer" },
+      { label: "Full service list and pricing", href: "/services/" },
+      { label: "Backend performance work", href: "/hire/backend-optimization/" },
+      { label: "AI engineering", href: "/hire/ai-engineer/" },
     ],
     stack: "Go · Gin · sqlc · PostgreSQL",
+  },
+  {
+    slug: "python-developer",
+    eyebrow: "Python development",
+    heading: "Hire a freelance Python developer",
+    metaTitle: "Hire a Freelance Python Developer",
+    metaDescription:
+      "Freelance Python developer for APIs, automation, scraping, bots and LLM pipelines, with production systems behind it. Fixed prices from Rs 8,000.",
+    intro:
+      "Python is the language I have written longest and the one most of my scale has been in. A Discord game that a million people registered for ran on it, and every LLM pipeline I have shipped since has been Python at the edges even where the service around it was Go. If the thing you need built is an API, an automation, a scraper, a bot or a model wrapped in something a user can actually reach, this is the page.",
+    offer: [
+      {
+        name: "APIs and backends",
+        detail:
+          "FastAPI or Django depending on how much you want given to you, on PostgreSQL, with the auth, permissions and data model done properly rather than bolted on once there are customers.",
+      },
+      {
+        name: "LLM pipelines that survive real input",
+        detail:
+          "Document and invoice extraction, retrieval over your own data with pgvector, confidence thresholds that route an uncertain answer to a person, and a token budget you can actually see per feature.",
+      },
+      {
+        name: "Automation and scraping",
+        detail:
+          "The recurring manual process nobody wants to own, turned into something scheduled, retried on failure, and loud when it breaks rather than silently wrong for three weeks.",
+      },
+      {
+        name: "Bots at real scale",
+        detail:
+          "Discord and Telegram bots that stay up. Sharding, rate limits, a job queue, and a database the bot is not allowed to touch directly, which is the mistake that eventually takes the main product down with it.",
+      },
+      {
+        name: "Rescuing a script that became infrastructure",
+        detail:
+          "The notebook or cron job that quietly became load-bearing. Turned into a service with tests, logging and a deployment, usually without rewriting the logic that already works.",
+      },
+    ],
+    proof: [
+      {
+        name: "A Python game with a million registered players",
+        detail:
+          "Sole developer of a Pokemon collection bot players moved to after Pokecord shut down: 132,000 Discord servers, a full player economy with duels, trading, a market and an auction house, on Python with MongoDB and Redis behind it and Rust doing the image work.",
+        href: "/work/",
+      },
+      {
+        name: "AI invoice ingestion, in production",
+        detail:
+          "Tiered OCR into LLM extraction for parts and labour invoices on a UK fleet platform, with supplier and part alias resolution and anti-fraud checks that flag a suspect line for review rather than blocking the invoice. Live with paying operators.",
+        href: "/hire/ai-engineer/",
+      },
+      {
+        name: "Why the bot does not share the database",
+        detail:
+          "A write-up of the architecture decision behind the above, and the transactional outbox that replaced a bot reading Postgres directly.",
+        href: "/blog/bot-should-not-share-your-database/",
+      },
+    ],
+    fit: {
+      good: [
+        "You have a manual process built on documents, messages or spreadsheets and want it automated properly",
+        "You have a Python service that works and has outgrown whoever wrote it",
+        "You want an LLM feature that holds up on real input rather than a demo",
+      ],
+      bad: [
+        "You need data science or model training rather than engineering around a model",
+        "You need a Django CMS build, which other people do better and cheaper than I would",
+        "You want someone to maintain a codebase long term rather than deliver a scoped piece of work",
+      ],
+    },
+    faqs: [
+      {
+        q: "Python or Go, if you had to pick for my backend?",
+        a: "Python if the work is model-adjacent, heavy on libraries, or changing shape weekly. Go if it is a long-lived service where predictable latency and a compiler catching your mistakes are worth more than the library ecosystem. I will tell you which on the first call, and sometimes the answer is the one you already have.",
+      },
+      {
+        q: "Can you work in the codebase we already have?",
+        a: "Yes, and that is most of this work. I read what is there before proposing anything, and a rewrite is the last recommendation I reach for, not the first.",
+      },
+      {
+        q: "What does it cost?",
+        a: "Fixed price per milestone once the scope is written down. Projects start at Rs 8,000 and an MVP build at around Rs 20,000, invoiced in INR for Indian clients and USD otherwise. You know the number before anything starts.",
+      },
+      {
+        q: "How quickly can you start?",
+        a: "Usually within a week. Tell me your deadline on the call and I will tell you straight whether I can meet it before either of us commits to anything.",
+      },
+    ],
+    related: [
+      { label: "AI engineering", href: "/hire/ai-engineer/" },
+      { label: "Full service list and pricing", href: "/services/" },
+      { label: "What an MVP actually costs in India", href: "/blog/what-an-mvp-costs-in-india/" },
+    ],
+    stack: "Python · PostgreSQL · Redis",
   },
   {
     slug: "mvp-developer",
@@ -355,19 +448,19 @@ export const landings: Landing[] = [
         name: "Finalist, an esports tournament platform",
         detail:
           "Built end to end and used by real organizers running real events: brackets, match reporting, and results flowing back to the community where players already are.",
-        href: "/case-studies",
+        href: "/case-studies/",
       },
       {
         name: "A Discord game that reached scale",
         detail:
           "Sole developer of a Pokémon collection bot players moved to after Pokécord shut down: 132,000 Discord servers and over a million registered players, with PvP duels, trading, a market and an auction house. Shipped fast, then held up under load.",
-        href: "/about",
+        href: "/about/",
       },
       {
         name: "A production SaaS, after the MVP stage",
         detail:
           "I currently build the backend for a fleet compliance platform in production with UK operators. That is what the far side of a successful MVP looks like, and it is why I build the foundations the way I do.",
-        href: "/about",
+        href: "/about/",
       },
     ],
     fit: {
@@ -401,9 +494,9 @@ export const landings: Landing[] = [
       },
     ],
     related: [
-      { label: "Full service list and pricing", href: "/services" },
-      { label: "Products I have shipped", href: "/work" },
-      { label: "AI engineering", href: "/hire/ai-engineer" },
+      { label: "Full service list and pricing", href: "/services/" },
+      { label: "Products I have shipped", href: "/work/" },
+      { label: "AI engineering", href: "/hire/ai-engineer/" },
     ],
     stack: "Next.js · Go · PostgreSQL",
   },
@@ -411,7 +504,7 @@ export const landings: Landing[] = [
     slug: "nextjs-developer",
     eyebrow: "Full-stack product build",
     heading: "Hire a Next.js developer who also builds the backend",
-    metaTitle: "Hire a Next.js Developer With a Real Backend",
+    metaTitle: "Hire a Next.js Developer",
     metaDescription:
       "Freelance Next.js and TypeScript developer who owns the API and database too. Go or Node backends, PostgreSQL, Stripe, deployed and documented.",
     intro:
@@ -448,7 +541,7 @@ export const landings: Landing[] = [
         name: "A Next.js monorepo over one Go backend",
         detail:
           "Three front-ends and a driver mobile API served from a single codebase and database: fleet, workshop and platform admin, with per-product personas bound at login and permissions carried in the token.",
-        href: "/about",
+        href: "/about/",
       },
       {
         name: "Realtime that stays correct",
@@ -459,7 +552,7 @@ export const landings: Landing[] = [
         name: "Commerce and payments",
         detail:
           "Stripe billing built on the raw API rather than Stripe Subscriptions, because the pricing rules needed to be auditable, plus an e-commerce build front to back.",
-        href: "/work",
+        href: "/work/",
       },
     ],
     fit: {
@@ -493,9 +586,9 @@ export const landings: Landing[] = [
       },
     ],
     related: [
-      { label: "Full service list and pricing", href: "/services" },
-      { label: "Projects I have built", href: "/work" },
-      { label: "Hire me for Go backend work", href: "/hire/go-developer" },
+      { label: "Full service list and pricing", href: "/services/" },
+      { label: "Projects I have built", href: "/work/" },
+      { label: "Hire me for Go backend work", href: "/hire/go-developer/" },
     ],
     stack: "Next.js · TypeScript · Go",
   },

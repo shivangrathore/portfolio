@@ -1,0 +1,61 @@
+---
+title: "A Clock Change Cost Us a Month of Invoices"
+description: "Daylight saving started and a set of customers silently stopped being billed. What it cost, how it was found, and the question to ask your team."
+pubDate: "2026-10-05"
+tags: ["Billing", "Incident", "Founders", "Startups"]
+draft: true
+---
+
+British clocks went forward one Sunday in spring. On the Monday, a set of customers stopped being invoiced, and nothing anywhere said so.
+
+No error. No alert. No failed payment, because a payment was never attempted. The billing run completed successfully, reported success, and simply did not include them. If you had looked at the dashboard you would have seen a normal month.
+
+This is the failure mode worth understanding, and you do not need to be technical to understand it. It is not that something broke loudly and got fixed. It is that something broke quietly and kept reporting success, and the only thing standing between that and a permanent revenue leak was somebody eventually noticing a number looked small.
+
+## What actually happened
+
+The system charged per unit, per month, with the billing period starting on the day a customer joined. Someone who joined on the 1st gets billed on the 1st.
+
+Underneath, the code was doing arithmetic on exact moments in time rather than on calendar dates. Most of the year those are the same thing. On the two nights a year when the clocks move, one of them is an hour shorter or longer than the other, and a boundary that should have landed exactly on the 1st landed just before or just after it.
+
+Any customer whose period boundary sat precisely on that edge fell through. Which, since most accounts are set up at the start of a month, was not a rare edge case. It was a meaningful slice of the book.
+
+## The tests passed the entire time
+
+This is the part I find most useful to tell founders, because it contradicts the thing everyone believes about tests.
+
+The billing engine had a good test suite. Pure functions, table-driven cases, no database, fast. It stayed green throughout, before the incident, during it, and after.
+
+It passed because every test ran in a world where the clock never moved. The tests and the code shared the same wrong assumption, so the tests could not possibly catch it. A test suite does not verify that your code is correct. It verifies that your code does what the person who wrote the tests expected, and that person was the same person who wrote the bug.
+
+When someone tells you the code is well tested, that is worth something. It is not worth what most people think it is worth.
+
+## How it was found
+
+Not by monitoring. By the revenue number looking slightly off, and someone deciding to check rather than assume.
+
+That is uncomfortable, because it means the safety net was a human being paying attention. The fix afterwards was not only to correct the date arithmetic. It was to add the check that should have existed all along: every billing period, compare the number of customers who *should* have been invoiced against the number who *were*, and shout if they differ.
+
+That check is about fifteen lines. It would have caught this within a day. It did not exist because nobody had imagined this specific failure, which is precisely why the useful checks are the ones that assert an invariant rather than a scenario.
+
+## The cleanup nobody writes about
+
+Fixing the bug took an afternoon. Fixing the *data* took considerably longer, and this is the part that gets left out of engineering war stories.
+
+There were now rows in the database recording a state of the world that never happened. Some customers had been under-billed. Correcting that is not a technical question, it is a commercial one: do you invoice someone retroactively for a month you failed to charge them for, when the error was yours? Some of that money you simply do not chase.
+
+Every fix of this kind needs to be reversible, because the correction script can be wrong too. The rule that saved us: archive the exact rows you are about to change, keyed by id, before changing them. Then undoing the fix is deleting a known list, rather than re-running a query and hoping it selects the same set it did an hour ago.
+
+## The question to ask your own team
+
+You do not need to understand time zones to use this. Ask one question:
+
+**"If our billing run silently skipped some customers this month, how would we find out?"**
+
+If the answer is a specific automated check, good. If the answer is "we'd notice", ask how, and how long it would take. If the answer is that the job reports success, you have the same gap we did.
+
+The general shape, which applies well beyond billing: **a system that can fail silently will eventually fail silently**, and the fix is never more testing of the thing you already thought of. It is one check that compares what happened against what should have happened, and complains when the two disagree.
+
+---
+
+I build billing systems that survive this sort of thing, including the one above. The [technical write-up](/blog/timezone-bug-that-skipped-invoices/) has the SQL and the reasoning if you want to hand it to an engineer. If you would rather talk about yours, [book a call](/contact/).

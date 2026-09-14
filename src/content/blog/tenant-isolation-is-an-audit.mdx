@@ -1,32 +1,20 @@
 ---
 title: "Multi-Tenant Isolation Is an Audit, Not a Feature"
-description: "Three endpoints resolved a record by id alone and any authenticated user could read, rename or delete another tenant's data. Why authentication middleware doesn't give you isolation, how to audit every route for it, and how to make the hole impossible to reintroduce."
-pubDate: "2026-10-06"
+description: "Three endpoints resolved a record by id alone, so any authenticated user could read another tenant's data. How to audit every route, and close it for good."
+pubDate: "2026-09-03"
 tags: ["Backend", "Security", "Multi-tenancy", "Postgres", "Go"]
-draft: true
+draft: false
 ---
 
 The commit message was short:
 
 > Three endpoints resolved a record by id alone with no organisation check, so any authenticated user could reach another tenant's data by guessing the id.
 
-Every schema in the system had `organization_id` on it. Every request went through authentication middleware that resolved the caller's tenant. Every code review had passed. The newest domain — written by people who'd internalised the rule — was uniformly correct.
+Every schema in the system had `organization_id` on it. Every request went through authentication middleware that resolved the caller's tenant. Every code review had passed. The newest domain, written by people who'd internalised the rule, was uniformly correct.
 
 The holes were in the oldest code, written before the product was multi-tenant, and they'd been sitting there through every review since.
 
 That's the thesis: **isolation isn't a feature you build once, it's a property you verify per route, forever.** Nothing about having a `tenant_id` column makes your queries use it.
-
-## Contents
-
-- [What the hole looks like](#what-the-hole-looks-like)
-- [Why middleware doesn't save you](#why-middleware-doesnt-save-you)
-- [The audit](#the-audit)
-- [Fix it in SQL, not just in the service](#fix-it-in-sql-not-just-in-the-service)
-- [404, not 403](#404-not-403)
-- [Make it impossible, not just fixed](#make-it-impossible-not-just-fixed)
-- [The cross-tenant test](#the-cross-tenant-test)
-- [Row-level security as a backstop](#row-level-security-as-a-backstop)
-- [Where the holes always are](#where-the-holes-always-are)
 
 ## What the hole looks like
 
@@ -54,9 +42,9 @@ func (h *Handler) GetCapabilityType(w http.ResponseWriter, r *http.Request) {
 SELECT * FROM workshop.capability_types WHERE id = $1;
 ```
 
-The route is authenticated. The user has a valid session and a real tenant. The permission check passed — they genuinely do hold `capabilities:manage` in their own organisation. Then the handler resolves a record by primary key and hands it over.
+The route is authenticated. The user has a valid session and a real tenant. The permission check passed, they genuinely do hold `capabilities:manage` in their own organisation. Then the handler resolves a record by primary key and hands it over.
 
-The same three-line pattern was on `PUT` and `DELETE` for that resource, so a curious authenticated user could enumerate ids and read, rename, or delete another company's configuration — and the delete cascaded to child rows. A neighbouring endpoint listed recently serviced assets for a given site id, again unscoped, which leaked registrations, makes, and service dates for a competitor's fleet.
+The same three-line pattern was on `PUT` and `DELETE` for that resource, so a curious authenticated user could enumerate ids and read, rename, or delete another company's configuration, and the delete cascaded to child rows. A neighbouring endpoint listed recently serviced assets for a given site id, again unscoped, which leaked registrations, makes, and service dates for a competitor's fleet.
 
 Nothing in the logs would look wrong. Every one of those requests was authenticated, authorised, and served with a 200.
 
@@ -68,7 +56,7 @@ Put another way, and it's worth memorising:
 
 > **Claims answer "what". The database answers "which".**
 
-`capabilities:manage` means this user may manage capability types. It does not, and structurally cannot, mean they may manage *this* capability type — a token can't enumerate the rows you're allowed to see. So the tenant id from the session is an **input to your query**, not a box you ticked upstream. (This is Rule 4 of [Permissions Inside JWT](/blog/permissions-inside-jwt), and the reason it gets a second post is that it's the rule that actually causes breaches.)
+`capabilities:manage` means this user may manage capability types. It does not, and structurally cannot, mean they may manage *this* capability type, a token can't enumerate the rows you're allowed to see. So the tenant id from the session is an **input to your query**, not a box you ticked upstream. (This is Rule 4 of [Permissions Inside JWT](/blog/permissions-inside-jwt), and the reason it gets a second post is that it's the rule that actually causes breaches.)
 
 The reason the bug is invisible in review is that the handler *looks* complete. It parses the id, calls the service, handles the error, returns the object. The missing thing is an argument that isn't there, and human eyes are very bad at noticing an absent parameter in a call that compiles.
 
@@ -91,7 +79,7 @@ grep -rl 'WHERE' internal/infra/db/queries \
   | xargs grep -LEi 'organization_id|account_id|tenant_id'
 ```
 
-That second command gives you a short, high-signal list. Most hits are legitimate — platform-internal tables, lookup tables that are genuinely global, joins where the parent carries the scope — so you triage rather than fix blindly. What matters is that the list is *finite and reviewable*, which the router alone is not.
+That second command gives you a short, high-signal list. Most hits are legitimate, platform-internal tables, lookup tables that are genuinely global, joins where the parent carries the scope, so you triage rather than fix blindly. What matters is that the list is *finite and reviewable*, which the router alone is not.
 
 Three categories of finding, in descending order of nastiness:
 
@@ -99,9 +87,9 @@ Three categories of finding, in descending order of nastiness:
 
 **Unscoped single reads.** `GET /thing/:id`. Direct object leakage, one row at a time.
 
-**Unscoped nested lists.** `GET /parent/:id/children` where the parent is unverified. The one people miss most, because the child query looks scoped — it filters by `parent_id`! — while the parent was never checked to belong to the caller. Verify the parent, or join through it with the tenant predicate on the parent.
+Unscoped nested lists. `GET /parent/:id/children` where the parent is unverified. The one people miss most, because the child query looks scoped, it filters by `parent_id`! While the parent was never checked to belong to the caller. Verify the parent, or join through it with the tenant predicate on the parent.
 
-Keep the audit output in the repo as a checklist with a line per route and who verified it. Not for ceremony — because in six months someone will ask whether an endpoint was ever checked, and "yes, on this date, by this person" is a much better answer than a shrug.
+Keep the audit output in the repo as a checklist with a line per route and who verified it. Not for ceremony, because in six months someone will ask whether an endpoint was ever checked, and "yes, on this date, by this person" is a much better answer than a shrug.
 
 ## Fix it in SQL, not just in the service
 
@@ -137,7 +125,7 @@ func (s *Service) CapabilityType(
 }
 ```
 
-Keep the service-layer check as well if you like — defence in depth is cheap here — but the SQL predicate is the one that's load-bearing, because it's the one no caller can skip.
+Keep the service-layer check as well if you like, defence in depth is cheap here, but the SQL predicate is the one that's load-bearing, because it's the one no caller can skip.
 
 Deletes deserve the same treatment inline rather than as a check-then-act:
 
@@ -153,7 +141,7 @@ Return the affected row count and treat zero as not-found. One statement, no rac
 
 When someone asks for a row belonging to another tenant, return `404`.
 
-`403` confirms the row exists. That turns an enumeration attempt into a working oracle: an attacker walks the id space and learns exactly which ids are real, how many customers you have, and roughly when each was created. `404` tells them nothing, and it's also *true* from the caller's point of view — within their tenant, that row does not exist.
+`403` confirms the row exists. That turns an enumeration attempt into a working oracle: an attacker walks the id space and learns exactly which ids are real, how many customers you have, and roughly when each was created. `404` tells them nothing, and it's also *true* from the caller's point of view, within their tenant, that row does not exist.
 
 Do it uniformly. A single endpoint that returns `403` for the cross-tenant case is enough to leak existence, and it'll be the one endpoint you forgot.
 
@@ -161,13 +149,13 @@ Do it uniformly. A single endpoint that returns `403` for the cross-tenant case 
 
 Fixing the three endpoints was the easy afternoon. Not creating a fourth is the actual work, and it's structural.
 
-**Make the tenant id a required parameter everywhere.** No repo method takes just an id. If the signature can't express the mistake, review doesn't have to catch it. This is the single highest-value change and it's mostly mechanical.
+Make the tenant id a required parameter everywhere. No repo method takes just an id. If the signature can't express the mistake, review doesn't have to catch it. This is the single highest-value change and it's mostly mechanical.
 
-**Name queries so the omission is visible.** `CapabilityTypeForOrg` reads as scoped. `CapabilityType` reads as ambient. When a reviewer sees an unsuffixed name in a tenant-facing handler, the name itself is the flag.
+Name queries so the omission is visible. `CapabilityTypeForOrg` reads as scoped. `CapabilityType` reads as ambient. When a reviewer sees an unsuffixed name in a tenant-facing handler, the name itself is the flag.
 
-**Lint for the shape.** A CI check that fails on `WHERE id = $1` with no tenant predicate, with an explicit allowlist for the genuinely global tables. The allowlist is the useful part: adding to it requires a line in a file that someone reviews, which converts an invisible omission into a visible decision.
+Lint for the shape. A CI check that fails on `WHERE id = $1` with no tenant predicate, with an explicit allowlist for the genuinely global tables. The allowlist is the useful part: adding to it requires a line in a file that someone reviews, which converts an invisible omission into a visible decision.
 
-**Segregate the truly-global tables.** If platform-internal tables live in their own schema (see [One Postgres, Four Schemas](/blog/one-postgres-four-schemas)), then "is this table tenant-scoped" is answerable from the query text alone, and your lint rule gets much simpler: everything in `fleet.*` and `workshop.*` needs a predicate, full stop.
+Segregate the truly-global tables. If platform-internal tables live in their own schema (see [One Postgres, Four Schemas](/blog/one-postgres-four-schemas)), then "is this table tenant-scoped" is answerable from the query text alone, and your lint rule gets much simpler: everything in `fleet.*` and `workshop.*` needs a predicate, full stop.
 
 ## The cross-tenant test
 
@@ -175,7 +163,7 @@ The test that would have caught all three endpoints, written once and applied to
 
 ```go
 // For every tenant-facing route, a caller from ANOTHER organisation must get
-// 404 — never 200, never 403 (which would confirm existence).
+// 404, never 200 and never 403 (which would confirm existence).
 func TestCrossTenantAccessDenied(t *testing.T) {
 	victim, attacker := seedTwoOrgs(t)
 
@@ -185,7 +173,7 @@ func TestCrossTenantAccessDenied(t *testing.T) {
 			res := call(t, rt.Method, rt.Path(id), attacker.Token)
 
 			if res.StatusCode != http.StatusNotFound {
-				t.Fatalf("%s %s: got %d, want 404 — cross-tenant access",
+				t.Fatalf("%s %s: got %d, want 404 (cross-tenant access)",
 					rt.Method, rt.Path(id), res.StatusCode)
 			}
 		})
@@ -210,7 +198,7 @@ CREATE POLICY tenant_isolation ON workshop.capability_types
 
 Set `app.organization_id` per transaction, and an unscoped query returns zero rows instead of somebody else's data.
 
-Honest assessment: it's a strong backstop and a poor primary mechanism. It depends entirely on the session variable being set correctly on every connection checkout — miss it and you either see nothing or, if you defaulted it wrong, see everything. It interacts awkwardly with connection pooling, background jobs, and migrations. Debugging "why did this query return no rows" gets meaningfully harder, and the answer is invisible in the query text.
+Honest assessment: it's a strong backstop and a poor primary mechanism. It depends entirely on the session variable being set correctly on every connection checkout, miss it and you either see nothing or, if you defaulted it wrong, see everything. It interacts awkwardly with connection pooling, background jobs, and migrations. Debugging "why did this query return no rows" gets meaningfully harder, and the answer is invisible in the query text.
 
 If you're building green field, turn it on early and live with the friction; it genuinely makes a whole class of bug impossible. Retrofitting it to a mature system is a project in its own right, and the honest ordering is: fix the queries, make the signatures require the tenant, add the cross-tenant test, *then* consider RLS as belt-and-braces.
 
@@ -218,14 +206,14 @@ If you're building green field, turn it on early and live with the friction; it 
 
 Every finding in this audit was in code written before the system was multi-tenant, or in a subsystem whose author was thinking about a different problem. That's the pattern, and it generalises:
 
-**Pre-multi-tenancy code.** Written when there was one customer, tenant-scoped later by adding a column and updating the queries someone remembered.
+Pre-multi-tenancy code. Written when there was one customer, tenant-scoped later by adding a column and updating the queries someone remembered.
 
-**Config and lookup endpoints.** Capability types, categories, tags, document types. They feel like reference data, so they get reference-data treatment, but they're per-tenant and often editable.
+Config and lookup endpoints. Capability types, categories, tags, document types. They feel like reference data, so they get reference-data treatment, but they're per-tenant and often editable.
 
-**Nested list endpoints.** The child query is scoped, so it looks right; the parent id was never verified.
+Nested list endpoints. The child query is scoped, so it looks right; the parent id was never verified.
 
-**Internal and admin tooling.** "Only staff can reach it" is an argument for *fewer* checks that holds right up until an internal route is exposed through a shared gateway, or an internal user's account is compromised.
+Internal and admin tooling. "Only staff can reach it" is an argument for *fewer* checks that holds right up until an internal route is exposed through a shared gateway, or an internal user's account is compromised.
 
-**Anything with `recent`, `stats`, `summary`, or `count` in the name.** Aggregates get written quickly, often outside the normal repo layer, and a leaked count is still a leak — "how many assets does this competitor operate" is commercially interesting on its own.
+Anything with `recent`, `stats`, `summary`, or `count` in the name. Aggregates get written quickly, often outside the normal repo layer, and a leaked count is still a leak, "how many assets does this competitor operate" is commercially interesting on its own.
 
-The uncomfortable summary is that a mature multi-tenant system has probably had one of these and not noticed. The routes are worth walking. It's an afternoon, the tooling is `grep`, and the finding — if there is one — is the kind you would much rather write yourself than read in someone else's disclosure email.
+The uncomfortable summary is that a mature multi-tenant system has probably had one of these and not noticed. The routes are worth walking. It's an afternoon, the tooling is `grep`, and the finding, if there is one, is the kind you would much rather write yourself than read in someone else's disclosure email.

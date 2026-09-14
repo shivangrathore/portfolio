@@ -7,7 +7,7 @@ import { landings } from "@/lib/landings";
 import { abs, breadcrumbs } from "@/lib/schema";
 
 const description =
-  "Hire a freelance AI and Go backend engineer. LLM features, performance work, startup MVPs and full-stack builds, scoped as fixed milestones with code you own.";
+  "Hire a freelance developer for AI features, startup MVPs, web apps and backend work. Python, TypeScript and Go, scoped as fixed milestones with code you own.";
 ---
 
 <Base
@@ -41,7 +41,7 @@ const description =
       {
         landings.map((landing, i) => (
           <a
-            href={`/hire/${landing.slug}`}
+            href={`/hire/${landing.slug}/`}
             class="group relative grid grid-cols-[2.5rem_1fr] gap-x-4 border-b border-line py-7 transition-colors hover:bg-surface sm:gap-x-6 lg:px-4"
           >
             <span class="label pt-1.5 group-hover:text-accent">
@@ -69,7 +69,7 @@ const description =
     </div>
 
     <p class="mt-6 text-sm text-faint">
-      Not one of these? The <a href="/services" class="link">full service list</a>
+      Not one of these? The <a href="/services/" class="link">full service list</a>
       covers everything else I take on.
     </p>
   </div>

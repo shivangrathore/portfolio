@@ -1,7 +1,8 @@
 ---
 import "@/styles/fonts.css";
 import "@/styles/global.css";
-import geistLatin from "@/assets/fonts/geist-latin-wght-normal.woff2?url";
+import interLatin from "@/assets/fonts/inter-latin-wght.woff2?url";
+import archivoLatin from "@/assets/fonts/archivo-latin-wdth-wght.woff2?url";
 import {
   SITE_TITLE,
   GA_ID,
@@ -38,7 +39,15 @@ const jsonLd = graph(schema);
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!--
+  Icons. The SVG is what every current browser uses; the PNG is the fallback for
+  the handful that still will not take an SVG favicon, and apple-touch-icon is
+  what iOS uses when someone saves the site to a home screen.
+-->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
 
 <!--
   Theme, resolved before the first paint. Anything later than this runs after
@@ -69,12 +78,13 @@ const jsonLd = graph(schema);
   they email.
 
   The signal is the machine's own timezone. No network call, no third-party
-  geo API, no round trip, and nothing about the visitor leaves the browser.
-  It is wrong for someone on a VPN and for an NRI, which is what the toggle is
+  geo API, no round trip, and nothing about the visitor leaves the browser. It
+  is wrong for someone on a VPN and for an NRI, which is what the toggle is
   for, and an explicit choice outranks detection from then on.
 
-  Only "in" is ever written. Absent is the international card, so no JS, no
-  storage and every crawler land on the same default the CSS assumes.
+  Only "intl" is ever written. Absent is the India card, so no JS, no storage
+  and every crawler land on the same default the CSS assumes, which is the
+  market being sold to first.
 -->
 <script is:inline>
   (function () {
@@ -114,17 +124,23 @@ const jsonLd = graph(schema);
           ? "in"
           : "intl";
     }
-    if (choice === "in") document.documentElement.dataset.region = "in";
+    if (choice === "intl") document.documentElement.dataset.region = "intl";
   })();
 </script>
+<!--
+  Tints the browser chrome on Android and iOS Safari to match the page, so the
+  bar above the site is not still wearing the v4 palette. Both values are the
+  --color-bg oklch from global.css converted to sRGB; re-derive them if the
+  palette moves.
+-->
 <meta
   name="theme-color"
-  content="#faf9f6"
+  content="#f8f9fa"
   media="(prefers-color-scheme: light)"
 />
 <meta
   name="theme-color"
-  content="#1a1a1d"
+  content="#0b0c10"
   media="(prefers-color-scheme: dark)"
 />
 <!--
@@ -139,7 +155,14 @@ const jsonLd = graph(schema);
   rel="preload"
   as="font"
   type="font/woff2"
-  href={geistLatin}
+  href={interLatin}
+  crossorigin
+/>
+<link
+  rel="preload"
+  as="font"
+  type="font/woff2"
+  href={archivoLatin}
   crossorigin
 />
 <link rel="sitemap" href="/sitemap-index.xml" />
@@ -193,15 +216,21 @@ const jsonLd = graph(schema);
 />
 
 <!--
-  Google Analytics, loaded once the page is idle rather than during first
-  paint. On a slow connection the tag was competing with the stylesheet and
-  the font for the same few hundred kilobits, which is a bad trade for data
-  nobody reads in real time.
+  Google Analytics.
 
-  gtag is defined immediately and events queue in dataLayer, so anything
-  fired before the tag arrives is sent the moment it does. A visitor who
-  clicks something straight away triggers the load early, so quick bounces
-  still get counted.
+  Deferred, but only just. This used to wait for requestIdleCallback with a
+  1200ms fallback, which sounds harmless and was not: nothing is sent until the
+  tag actually arrives, so every visitor who left inside the first second and a
+  half was invisible. Comparing this property against Cloudflare showed 7
+  against 191, and while most of that gap is bots, the delay was making a bad
+  number worse on the one metric being used to decide whether the site works.
+
+  300ms still keeps the tag out of the way of the stylesheet and the font on a
+  slow connection, and it is short enough that a real bounce is recorded.
+
+  gtag is defined immediately and events queue in dataLayer, so anything fired
+  before the tag arrives is sent the moment it does. A pointerdown or keypress
+  loads it early, so an engaged visitor is never waiting on the timer.
 -->
 <script is:inline define:vars={{ GA_ID }}>
   window.dataLayer = window.dataLayer || [];
@@ -221,14 +250,15 @@ const jsonLd = graph(schema);
     document.head.appendChild(tag);
   }
 
-  var whenIdle =
-    window.requestIdleCallback ||
-    function (fn) {
-      setTimeout(fn, 1200);
-    };
+  // A short fixed delay rather than requestIdleCallback: idle callbacks can be
+  // deferred for seconds on a busy or backgrounded tab, and a pageview that
+  // arrives after the visitor has gone is a pageview that was never counted.
+  var schedule = function (fn) {
+    setTimeout(fn, 300);
+  };
 
-  if (document.readyState === "complete") whenIdle(loadGa);
-  else window.addEventListener("load", function () { whenIdle(loadGa); });
+  if (document.readyState === "complete") schedule(loadGa);
+  else window.addEventListener("load", function () { schedule(loadGa); });
 
   ["pointerdown", "keydown"].forEach(function (event) {
     window.addEventListener(event, loadGa, { once: true, passive: true });

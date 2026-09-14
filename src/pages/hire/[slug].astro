@@ -63,21 +63,21 @@ const schema = [
     lede={landing.intro}
   >
     <div class="mt-9 flex flex-wrap items-center gap-3">
-      <Button variant="primary" href="/contact">
+      <Button variant="primary" href="/contact/">
         Start a project
         <Icon
           name="arrow-right"
           class="size-4 transition-transform group-hover/btn:translate-x-0.5"
         />
       </Button>
-      <Button href="/services">Everything I build</Button>
+      <Button href="/services/">Everything I build</Button>
     </div>
     <p class="mt-4 text-sm text-faint">
       No obligation. I reply to every enquiry within 24 hours.
     </p>
   </PageHeader>
 
-  <Section index="01" title="What you get" seamless>
+  <Section standfirst="The engagement" title="What you get" seamless>
     <div class="border-t border-line">
       {
         landing.offer.map((item) => (
@@ -95,7 +95,7 @@ const schema = [
     </div>
   </Section>
 
-  <Section index="02" title="Where I have done this">
+  <Section standfirst="Evidence" title="Where I have done this">
     <div class="border-t border-line">
       {
         landing.proof.map((item) => (
@@ -123,7 +123,7 @@ const schema = [
   </Section>
 
   <Section
-    index="03"
+    standfirst="An honest filter"
     title="Whether this is a fit"
     lede="Saying no early costs us both less than finding out six weeks in."
   >
@@ -157,7 +157,7 @@ const schema = [
     </div>
   </Section>
 
-  <Section index="04" title="Common questions">
+  <Section standfirst="Before you ask" title="Common questions">
     <Faq items={landing.faqs} />
 
     <div class="mt-10 border-t border-line pt-6">

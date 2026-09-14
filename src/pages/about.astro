@@ -65,7 +65,7 @@ const education = {
     />
   </PageHeader>
 
-  <Section index="01" title="Background" seamless>
+  <Section standfirst="Who you would work with" title="Background" seamless>
     <div class="prose">
       <p>
         I'm a full-stack engineer who builds scalable <strong>Go</strong>
@@ -91,12 +91,16 @@ const education = {
     </div>
   </Section>
 
-  <Section index="02" title="Experience">
+  <Section
+    standfirst="Where this was learned"
+    title="Experience"
+    lede="Three engagements, and what each one actually required. The Hauldrive entry is the current one and the deepest."
+  >
     <Timeline items={experience} class="border-b border-line" />
   </Section>
 
   <Section
-    index="03"
+    standfirst="What I reach for"
     title="Tools and technologies"
     lede="What I reach for, grouped by where it sits in a system."
   >
@@ -116,7 +120,7 @@ const education = {
     </dl>
   </Section>
 
-  <Section index="04" title="Education">
+  <Section standfirst="For completeness" title="Education">
     <div class="border-y border-line py-6">
       <p class="font-mono text-xs text-faint">
         {education.period} · {education.location}
@@ -127,15 +131,30 @@ const education = {
       <p class="mt-1 text-sm text-muted">{education.school}</p>
     </div>
 
-    <div class="mt-8 flex flex-wrap gap-3">
-      <Button href="/resume.pdf" target="_blank" rel="noopener">
-        <Icon name="download" class="size-4" />
-        Download resume
-      </Button>
-      <Button variant="primary" href={`mailto:${MAIL_ADDRESS}`}>
+    <!--
+      The primary action here is the call, not the CV.
+
+      This used to lead with "Download resume", which is the vocabulary of
+      someone looking for a job. A founder reading an about page is deciding
+      whether to talk to a supplier, and handing them a CV answers a question
+      they did not ask while quietly repositioning the whole page as a job
+      application. The PDF stays for the recruiters who do want it, one step
+      down and named for what it is.
+    -->
+    <div class="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
+      <Button variant="primary" href="/contact/">
         <Icon name="mail" class="size-4" />
-        Get in touch
+        Start a project
       </Button>
+      <Button href={`mailto:${MAIL_ADDRESS}`}>Email me directly</Button>
+      <a
+        href="/resume.pdf"
+        target="_blank"
+        rel="noopener"
+        class="text-sm text-faint underline decoration-rule underline-offset-4 hover:text-accent hover:decoration-accent"
+      >
+        CV, for recruiters
+      </a>
     </div>
   </Section>
 

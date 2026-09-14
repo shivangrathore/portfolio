@@ -2,6 +2,7 @@
 import BaseHead from "@/components/BaseHead.astro";
 import Nav from "@/components/Nav.astro";
 import Footer from "@/components/Footer.astro";
+import StickyCta from "@/components/StickyCta.astro";
 import { SITE_TITLE, SITE_DESCRIPTION } from "@/lib/constants";
 import { ogImageFor } from "@/lib/og";
 
@@ -27,10 +28,17 @@ const ogImage = image ?? (await ogImageFor(Astro.url.pathname));
 
 // The homepage previously titled itself "Shivang Rathore", which targets one
 // query: your own name. The tagline is what someone searching for the service
-// actually types.
+// actually types. Kept under 60 characters: past that Google truncates it and
+// the half that gets cut is always the half that was doing the selling.
+// Articles drop the site-name suffix. A post title plus " · Shivang Rathore"
+// runs past the ~60 characters Google shows, and the half that gets cut is the
+// end of the title rather than the name, so the suffix costs more than it earns
+// on exactly the pages that arrive from search.
 const fullTitle = title
-  ? `${title} · ${SITE_TITLE}`
-  : `${SITE_TITLE} · Freelance AI & Go Backend Engineer`;
+  ? type === "article"
+    ? title
+    : `${title} · ${SITE_TITLE}`
+  : `${SITE_TITLE} · Freelance Developer in India`;
 ---
 
 <!doctype html>
@@ -50,6 +58,7 @@ const fullTitle = title
       <slot />
     </main>
     <Footer />
+    <StickyCta />
 
     <script>
       // Sections rise into place once, as they are reached. The hidden state

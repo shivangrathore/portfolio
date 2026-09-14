@@ -1,0 +1,71 @@
+---
+title: "What Fleet Compliance Software Actually Has to Do"
+description: "Operators do not need to be safe, they need to prove they were safe on a date, months later. That one requirement decides almost every design choice."
+pubDate: "2026-10-12"
+tags: ["Compliance", "Fleet", "Logistics", "Architecture", "Founders"]
+draft: true
+---
+
+A transport operator does not need your software to tell them a vehicle is roadworthy. They already know. What they need is to prove it was roadworthy on the 14th of March, eighteen months ago, to someone who has the power to take their licence away.
+
+That distinction sounds like pedantry. It is the single requirement that decides almost every design choice in the system, and it is the thing most software built for this industry gets wrong.
+
+I build the backend for a UK fleet compliance platform. This is what the domain actually demands, written for anyone considering building in it or buying into it.
+
+## The obligation you are encoding
+
+A UK operator licence comes with undertakings. Vehicles get a preventive maintenance inspection on a cycle measured in weeks, not "regularly". Brake tests have their own schedule. Drivers complete a walkaround check before each shift, and any defect they record starts a clock that someone has to answer.
+
+Fail enough of this and you lose the licence, which is the business.
+
+So the product is not really a maintenance tracker. It is an evidence system that happens to also help you schedule maintenance. Every feature has to answer "can this be produced later, dated, unaltered" before it answers "is this convenient".
+
+## Why you cannot store a status
+
+The instinct is a column. `status` on the vehicle: `valid`, `expiring_soon` or `expired`, updated by a nightly job.
+
+It is wrong, and it is wrong in a way that produces a compliance failure rather than a cosmetic bug.
+
+A document's status depends on today's date and on a threshold someone configured. Nothing has to *happen* for it to change: the Earth goes round the Sun and yesterday's `valid` is today's `expired`. A nightly job has a permanent staleness window equal to its interval. Worse, when an administrator changes "warn me before expiry" from 30 days to 60, every row that should now be flagged is still sitting there saying it is fine, because nobody wrote to those rows.
+
+You compute it at read time from the stored facts. The stored facts are the expiry date and the configured threshold. The status is arithmetic, and arithmetic does not go stale.
+
+The general rule, and it applies well outside this industry: **if a value can become wrong while nothing writes to the row, it is not state. It is a view of state, and it belongs in a query.**
+
+## Configuration that changes has to be versioned
+
+An operator changes their inspection interval from six weeks to eight. Straightforward, until you ask what happens to the inspection already scheduled under the old rule, and to the audit trail that says a vehicle was compliant last March.
+
+If you store the interval as a single mutable number, you have just rewritten history. Every past inspection is now evaluated against a rule that did not exist when it happened, and your evidence system is producing evidence of something that never occurred.
+
+So the configurable rules are published versions, immutable once live, and each vehicle or task binds to the version in force when it was scheduled. New rules apply to new work. Old records keep being judged by the rules they were actually held to.
+
+This is the same pattern as trial lengths, pricing and terms of service, and it is worth recognising early, because retrofitting it means reconstructing history you no longer have.
+
+## Defects are workflows, not flags
+
+A driver finds a cracked mirror during a walkaround. That is not a boolean on the vehicle.
+
+It is a record with a reporter, a time, a severity, possibly a photograph, a decision about whether the vehicle can still go out, a work order if it cannot, a part, a labour cost, a sign-off, and a chain from the original report to the resolution that survives whoever leaves the company in between.
+
+Systems that model this as a flag end up with the real workflow in WhatsApp, which is exactly where it was before you sold them anything. The product only replaces the informal process if it handles the awkward middle: the defect that is deferred, the one that turns out to be something else, the one raised against a vehicle that was sold last week.
+
+## The integrations are not optional
+
+Vehicle data and MOT history come from DVLA. Operators will not retype what the government already knows, and every field you ask them to enter by hand is a field that will eventually be wrong.
+
+Two practical consequences. Those APIs are occasionally down, so a scheduled sync has to fail without breaking the page a user is looking at. And you should cache what you fetch and show when it was last refreshed, because a user-facing screen that depends on a third party responding right now is a screen that will be blank during someone's audit.
+
+## What this means if you are building here
+
+Three things I would tell anyone entering this market.
+
+The domain is the moat, not the technology. Nothing here is technically exotic. The difficulty is entirely in knowing that an inspection interval needs versioning, and that a status column will quietly ruin your audit trail. That knowledge comes from the industry rather than from engineering.
+
+Your buyer is risk-averse for good reason. They are not optimising for features. They are buying the ability to sleep before an audit, and they will forgive a plain interface far sooner than they will forgive a record they cannot produce.
+
+Get the evidence model right before the interface. Everything visible can be rebuilt cheaply later. The shape of what you stored, and whether you can prove what was true on a date, cannot.
+
+---
+
+I built and still own the compliance core described here: inspection and brake-test cycles, walkaround defects into fault workflows, per-task document policies, and DVLA and MOT history sync. The [full write-up](/case-studies/hauldrive/) covers the architecture. If you are building in this space, [I am happy to talk](/contact/).

@@ -116,3 +116,26 @@ export function graph(nodes: object[]) {
     "@graph": [person, website, ...nodes],
   };
 }
+
+/**
+ * FAQPage, for the accordions on the homepage and /services.
+ *
+ * These answers were already on the page and already written for a person;
+ * marking them up is what makes them eligible to appear as expandable results
+ * under the listing. It costs nothing and it is the only rich result this site
+ * can realistically earn.
+ *
+ * Only mark up answers that are genuinely visible on the page: Google treats
+ * hidden FAQ markup as a violation, and the region-specific ones are hidden by
+ * CSS for half the audience, so those are left out.
+ */
+export function faqPage(items: { q: string; a: string }[]) {
+  return {
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
+}

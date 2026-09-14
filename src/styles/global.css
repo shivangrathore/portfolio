@@ -1,90 +1,141 @@
 @import "tailwindcss";
 
 /*
-  v4 palette. Two themes off one token set.
+  v5: ink, paper, and one electric blue.
 
-  The light values live in @theme because they are the default a browser with
-  no stored preference and no system preference gets. The dark values live in
-  --d-* below and are aliased onto the same tokens, so a colour is written
-  once and every utility (bg-bg, text-muted, border-line) keeps working in
-  both themes without a single dark: variant in the markup.
+  Two systems were rejected before this one, and it is worth writing down why,
+  because both are traps that look fine in isolation.
+
+  v4 was neutral grey with a green accent, hairline borders on every element,
+  and mono micro-caps as the only decorative type. That is the house style of
+  every generated portfolio on the internet.
+
+  The first v5 attempt was warm cream, a high-contrast serif, and a vermilion
+  accent. Editorial, and better, but it is almost exactly Anthropic's brand
+  palette, which means it reads as "made by Claude" to anyone who has seen a
+  Claude page. Swapped out.
+
+  What this is instead:
+
+  - Cool paper, not cream. Very slightly blue-grey, so it reads as paper stock
+    rather than parchment and shares no ground with the warm-cream look.
+  - Electric blue, used at full strength and in quantity. Not a 6px accent dot:
+    whole bands of the page are blue with white type on them. An accent colour
+    used timidly reads as a theme variable. A colour used confidently reads as
+    a decision someone made.
+  - Archivo across the board, using its width axis. Display type is Expanded,
+    body is normal width. Nothing generated uses a width axis, because nothing
+    generated knows it exists.
+  - Density. Generated pages are sparse and evenly spaced, everything breathing
+    the same amount. This one packs data tightly where data belongs and leaves
+    real air only where the eye should stop.
+
+  Light values live in @theme because that is what a browser with no stored
+  preference and no system preference gets. Dark values live in --d-* and are
+  aliased onto the same tokens, so a colour is written once and every utility
+  keeps working in both themes with no dark: variant in the markup.
 */
 @theme {
-  /* Warm paper rather than white: pure #fff next to a dark headline vibrates. */
-  --color-bg: oklch(0.985 0.004 95);
-  --color-surface: oklch(0.955 0.005 95);
-  /* Hairline, for the rules that carry the layout. */
-  --color-line: oklch(0.895 0.006 95);
-  /* Heavier edge, for controls and anything that has to read as a container. */
-  --color-border: oklch(0.83 0.008 95);
-  --color-fg: oklch(0.21 0.012 265);
-  --color-muted: oklch(0.45 0.012 265);
-  /* Quiet, but it carries dates and meta lines at 12px, so it still has to
-     clear 4.5:1 against both bg and surface. 0.58 measured 4.1 and failed. */
-  --color-faint: oklch(0.53 0.012 265);
-  /* Darkened for light mode: the dark-mode green fails contrast on paper. */
-  --color-accent: oklch(0.5 0.13 150);
+  /* Cool paper. Enough blue in it to sit under the accent without arguing. */
+  --color-bg: oklch(0.981 0.002 265);
+  --color-surface: oklch(0.951 0.004 265);
+  /* Row separator inside a list. Deliberately almost invisible. */
+  --color-line: oklch(0.888 0.005 265);
+  /* Band opener and control edges. Heavy enough to read as structure. */
+  --color-rule: oklch(0.72 0.008 265);
+  --color-border: oklch(0.80 0.007 265);
+  /* Near-black with a trace of blue. Pure #000 on paper looks like a printing
+     error, and a warm black would pull the page toward the cream look. */
+  --color-fg: oklch(0.17 0.011 265);
+  --color-muted: oklch(0.425 0.011 265);
+  /* Carries dates and captions at 12-13px, so it still has to clear 4.5:1
+     against both bg and surface. 0.58 measures 4.1 and fails. */
+  --color-faint: oklch(0.525 0.011 265);
+  /* Electric blue. Dark enough to carry white type when a band is filled with
+     it, saturated enough that it never reads as "corporate blue". */
+  --color-accent: oklch(0.475 0.265 264);
   --color-accent-fg: oklch(0.99 0 0);
-  /* Form errors. Themed, because a fixed red fails on one background or the other. */
-  --color-danger: oklch(0.52 0.19 27);
+  /* One step brighter, for links and small type on paper where the filled
+     value is heavier than it needs to be. */
+  --color-accent-soft: oklch(0.54 0.245 264);
+  --color-danger: oklch(0.515 0.19 27);
 
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Body and UI. */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  /* Headlines, the wordmark and the standfirst. Never paragraphs. */
+  --font-display: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", monospace;
 
-  /* Editorial type scale. Fluid, so the display size is set once. */
-  --text-display: clamp(2.1rem, 4.6vw, 3.9rem);
-  --text-display--line-height: 0.98;
+  /*
+    Type scale.
+
+    Display sizes carry font-stretch: 125% (Archivo Expanded) and heavy weight,
+    set in the utilities below rather than here, because Tailwind's --text-*
+    triple only covers size, line-height, letter-spacing and weight. Expanded
+    type needs more negative tracking than normal width does, not less: the
+    letters are already wide, so the default spacing between them reads loose.
+
+    The bottom of the display clamp is set by the phone, not by taste. At
+    2.5rem the headline filled a 420px screen on its own and pushed both
+    buttons under the fold, which on the majority of this site's traffic means
+    the call to action is never seen at all.
+  */
+  --text-display: clamp(2.125rem, 5.2vw, 4.25rem);
+  --text-display--line-height: 0.96;
   --text-display--letter-spacing: -0.035em;
-  --text-display--font-weight: 600;
+  --text-display--font-weight: 700;
 
-  --text-title: clamp(1.9rem, 3.6vw, 2.6rem);
-  --text-title--line-height: 1.06;
-  --text-title--letter-spacing: -0.028em;
-  --text-title--font-weight: 600;
+  --text-title: clamp(1.875rem, 3.6vw, 2.75rem);
+  --text-title--line-height: 1.0;
+  --text-title--letter-spacing: -0.03em;
+  --text-title--font-weight: 700;
 
-  --text-heading: clamp(1.35rem, 2vw, 1.6rem);
-  --text-heading--line-height: 1.2;
-  --text-heading--letter-spacing: -0.02em;
-  --text-heading--font-weight: 600;
+  --text-heading: clamp(1.5rem, 2.2vw, 1.875rem);
+  --text-heading--line-height: 1.04;
+  --text-heading--letter-spacing: -0.022em;
+  --text-heading--font-weight: 700;
 
-  /* Micro label: mono, caps, wide. The only decorative type on the site. */
-  --text-label: 0.6875rem;
-  --text-label--line-height: 1;
-  --text-label--letter-spacing: 0.18em;
+  /* The paragraph directly under a display heading. */
+  --text-lede: clamp(1.0625rem, 1.4vw, 1.25rem);
+  --text-lede--line-height: 1.55;
 
-  --container-shell: 78rem;
+  --container-shell: 84rem;
 }
 
 @layer base {
   :root {
-    --d-bg: oklch(0.155 0.006 265);
-    --d-surface: oklch(0.195 0.007 265);
-    --d-line: oklch(0.27 0.008 265);
-    --d-border: oklch(0.36 0.009 265);
-    --d-fg: oklch(0.97 0 0);
-    --d-muted: oklch(0.73 0.012 265);
-    --d-faint: oklch(0.6 0.011 265);
-    --d-accent: oklch(0.74 0.15 150);
-    --d-accent-fg: oklch(0.17 0.02 150);
-    --d-danger: oklch(0.72 0.16 25);
+    /* Near-black, cool. Not a slate-blue: that is the other generated look. */
+    --d-bg: oklch(0.155 0.008 265);
+    --d-surface: oklch(0.205 0.009 265);
+    --d-line: oklch(0.278 0.01 265);
+    --d-rule: oklch(0.44 0.012 265);
+    --d-border: oklch(0.37 0.011 265);
+    --d-fg: oklch(0.975 0.002 265);
+    --d-muted: oklch(0.735 0.01 265);
+    --d-faint: oklch(0.615 0.011 265);
+    /* Brighter on ink, or the blue goes black against the background. */
+    --d-accent: oklch(0.60 0.245 264);
+    --d-accent-fg: oklch(0.99 0 0);
+    --d-accent-soft: oklch(0.72 0.19 264);
+    --d-danger: oklch(0.71 0.16 25);
   }
 
-  /*
-    System preference, unless the visitor has explicitly chosen light. The
-    :not() keeps a stored light choice winning over a dark OS.
-  */
+  /* System preference, unless the visitor has explicitly chosen light. The
+     :not() keeps a stored light choice winning over a dark OS. */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       color-scheme: dark;
       --color-bg: var(--d-bg);
       --color-surface: var(--d-surface);
       --color-line: var(--d-line);
+      --color-rule: var(--d-rule);
       --color-border: var(--d-border);
       --color-fg: var(--d-fg);
       --color-muted: var(--d-muted);
       --color-faint: var(--d-faint);
       --color-accent: var(--d-accent);
       --color-accent-fg: var(--d-accent-fg);
+      --color-accent-soft: var(--d-accent-soft);
       --color-danger: var(--d-danger);
     }
   }
@@ -95,12 +146,14 @@
     --color-bg: var(--d-bg);
     --color-surface: var(--d-surface);
     --color-line: var(--d-line);
+    --color-rule: var(--d-rule);
     --color-border: var(--d-border);
     --color-fg: var(--d-fg);
     --color-muted: var(--d-muted);
     --color-faint: var(--d-faint);
     --color-accent: var(--d-accent);
     --color-accent-fg: var(--d-accent-fg);
+    --color-accent-soft: var(--d-accent-soft);
     --color-danger: var(--d-danger);
   }
 
@@ -112,6 +165,19 @@
     @apply bg-bg text-fg font-sans antialiased;
   }
 
+  /*
+    Every heading is Expanded and heavy. Set once here so no page has to
+    remember, and so a heading that forgets its size utility still looks like a
+    heading rather than bold body copy.
+  */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-stretch: 118%;
+    @apply font-bold tracking-tight;
+  }
+
   ::selection {
     @apply bg-accent text-accent-fg;
   }
@@ -120,13 +186,12 @@
     @apply transition-colors;
   }
 
-  /* One focus treatment everywhere, visible on paper and on ink. */
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-accent;
   }
 
-  /* Geist Mono ships coding ligatures (=>, ===, ..., !=) whose glyphs
-     overlap neighbouring characters at these sizes. Render code literally. */
+  /* Geist Mono ships coding ligatures (=>, ===, ..., !=) whose glyphs overlap
+     neighbouring characters at these sizes. Render code literally. */
   code,
   pre,
   kbd,
@@ -159,16 +224,16 @@
 }
 
 /*
-  Scroll reveal. The hidden state is scoped to .js-reveal, which the script
-  adds to <html> before first paint, so a visitor with JS disabled or a
-  crawler reading the page gets everything at full opacity.
+  Scroll reveal. The hidden state is scoped to .js-reveal, which the script adds
+  to <html> before first paint, so a visitor with JS disabled or a crawler
+  reading the page gets everything at full opacity.
 */
 .js-reveal .reveal {
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(10px);
   transition:
-    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .js-reveal .reveal.is-in {
@@ -186,22 +251,93 @@
 
 /* The page gutter. Every full-width band puts its content in one of these. */
 @utility shell {
-  @apply mx-auto w-full max-w-shell px-5 sm:px-8 lg:px-12;
+  @apply mx-auto w-full max-w-shell px-5 sm:px-8 lg:px-14;
 }
 
-/* Reading measure for body copy that is not inside .prose. */
+/* Reading measure for body copy outside .prose. */
 @utility measure {
-  max-width: 62ch;
+  max-width: 64ch;
 }
 
-/* Mono micro-caps. Used for section numbers, field names and status lines. */
+/* Narrower, for a lede under a display heading that should not run the full
+   width of the column. */
+@utility measure-tight {
+  max-width: 50ch;
+}
+
+/*
+  Expanded display type. The width axis is the signature of this system, so it
+  gets an explicit utility rather than being buried in a component.
+*/
+@utility expanded {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+}
+
+/* The opposite end of the axis. Used for the standfirst above a headline and
+   for dense table headers, where narrow type packs without shrinking. */
+@utility condensed {
+  font-family: var(--font-display);
+  font-stretch: 78%;
+}
+
+/*
+  The standfirst: the small line that sits above a headline and says what
+  section this is. Condensed, uppercase, heavy, small. It is machine-ish on
+  purpose, but it is set in the display family rather than mono, which is what
+  keeps it from reading as the generated-portfolio micro-label.
+*/
+@utility standfirst {
+  font-family: var(--font-display);
+  font-stretch: 78%;
+  @apply text-xs font-bold uppercase tracking-[0.1em] text-accent;
+}
+
+/*
+  The neutral form of the standfirst, for column headings, spec-row terms and
+  anything else that labels a block without announcing a section.
+
+  In v4 this was mono, uppercase and tracked to 0.18em, which is the single most
+  recognisable tell of a generated portfolio. Same job here, done in condensed
+  bold sans: still unmistakably a label, no longer a costume.
+*/
 @utility label {
-  @apply font-mono text-label uppercase text-faint;
+  font-family: var(--font-display);
+  font-stretch: 78%;
+  @apply text-xs font-bold uppercase tracking-[0.1em] text-faint;
 }
 
-/* Subtle link underline that lives under the baseline */
+/* Where genuinely machine type is right: prices, dates, counts, spec rows.
+   Lowercase and barely tracked, so it reads as data, not decoration. */
+@utility spec {
+  @apply font-mono text-xs tracking-tight text-faint;
+}
+
+/* Body link inside prose-ish copy. */
 @utility link {
-  @apply text-fg underline decoration-border decoration-1 underline-offset-4 hover:decoration-accent;
+  @apply text-fg underline decoration-rule decoration-1 underline-offset-4 hover:decoration-accent hover:text-accent;
+}
+
+/*
+  The band opener: a 3px ink rule across the top of a major section. The only
+  heavy horizontal line in the system, so it is what tells the eye "new chapter"
+  without a number or a card.
+*/
+@utility band {
+  @apply border-t-[3px] border-fg;
+}
+
+/*
+  A band filled with the accent. White type, blue ground, full bleed. Used two
+  or three times on the site and nowhere else. This is the single element that
+  makes the page look designed rather than themed.
+*/
+@utility band-accent {
+  @apply bg-accent text-accent-fg;
+
+  & a:not([data-plain]) {
+    @apply text-accent-fg;
+  }
 }
 
 /* Long-form article typography */
@@ -216,27 +352,31 @@
   h2,
   h3,
   h4 {
-    @apply text-fg font-semibold scroll-mt-24 tracking-tight;
+    @apply text-fg scroll-mt-24;
   }
 
   h2 {
-    @apply text-2xl mt-12 mb-4 text-balance;
+    font-family: var(--font-display);
+    font-stretch: 118%;
+    @apply text-3xl font-bold tracking-tight mt-14 mb-4 text-balance;
   }
 
   h3 {
-    @apply text-xl mt-8 mb-3 text-balance;
+    font-family: var(--font-display);
+    font-stretch: 110%;
+    @apply text-xl font-bold tracking-tight mt-10 mb-3 text-balance;
   }
 
   h4 {
-    @apply text-lg mt-6 mb-2;
+    @apply text-base font-bold tracking-tight mt-8 mb-2;
   }
 
   p {
-    @apply my-4 text-pretty;
+    @apply my-5 text-pretty;
   }
 
   a {
-    @apply text-fg underline decoration-border underline-offset-4 hover:decoration-accent;
+    @apply text-fg underline decoration-rule underline-offset-4 hover:decoration-accent hover:text-accent;
   }
 
   strong {
@@ -247,39 +387,44 @@
     @apply italic;
   }
 
+  /* Pull quote. The accent rule is the only place colour appears in an
+     article. */
   blockquote {
-    @apply border-l-2 border-accent/60 pl-4 my-6 italic text-faint;
+    @apply border-l-[3px] border-accent pl-5 my-8 text-xl leading-snug text-fg;
+  }
+
+  blockquote p {
+    @apply my-2;
   }
 
   hr {
-    @apply border-0 border-t border-line my-10;
+    @apply border-0 border-t border-line my-12;
   }
 
   ul {
-    @apply list-disc pl-6 my-4 space-y-1.5;
+    @apply list-disc pl-6 my-5 space-y-2 marker:text-rule;
   }
 
   ol {
-    @apply list-decimal pl-6 my-4 space-y-1.5;
+    @apply list-decimal pl-6 my-5 space-y-2 marker:text-faint marker:font-mono marker:text-sm;
   }
 
   img {
-    @apply rounded-lg my-6 mx-auto border border-line;
+    @apply my-8 mx-auto border border-line;
   }
 
-  /* Inline code */
   :not(pre) > code {
-    @apply bg-surface text-fg rounded px-1.5 py-0.5 text-[0.85em] font-mono;
+    @apply bg-surface text-fg px-1.5 py-0.5 text-[0.85em] font-mono;
   }
 
   /*
-    Shiki code blocks. pr-14 reserves a gutter for the copy button so code
-    never renders underneath it. The theme is dark in both site themes: a
-    code block is a quoted terminal, and re-tinting it per theme would mean
-    shipping two Shiki themes for no reading benefit.
+    Shiki code blocks. pr-14 reserves a gutter for the copy button so code never
+    renders underneath it. The theme is dark in both site themes: a code block
+    is a quoted terminal, and re-tinting it per theme would mean shipping two
+    Shiki themes for no reading benefit.
   */
   pre {
-    @apply rounded-lg border border-border p-4 pr-14 my-6 overflow-x-auto text-sm leading-relaxed;
+    @apply border border-border p-4 pr-14 my-7 overflow-x-auto text-sm leading-relaxed;
   }
 
   pre code {
@@ -288,23 +433,25 @@
   }
 
   table {
-    @apply w-full text-left border-collapse my-6 text-sm block overflow-x-auto md:table;
+    @apply w-full text-left border-collapse my-7 text-sm block overflow-x-auto md:table;
   }
 
   thead {
-    @apply border-b border-border;
+    @apply border-b-2 border-fg;
   }
 
   th {
-    @apply px-3 py-2 font-semibold text-fg;
+    font-family: var(--font-display);
+    font-stretch: 78%;
+    @apply px-3 py-2.5 text-xs font-bold uppercase tracking-[0.08em] text-fg;
   }
 
   td {
-    @apply px-3 py-2 border-b border-line;
+    @apply px-3 py-2.5 border-b border-line;
   }
 
   figcaption {
-    @apply text-sm text-faint text-center mt-2;
+    @apply text-sm text-faint text-center mt-3;
   }
 }
 
@@ -328,7 +475,7 @@
 
 /* Permalink injected beside each article heading */
 .heading-anchor {
-  @apply ml-2 align-middle text-[0.7em] font-normal text-faint no-underline opacity-0 transition hover:text-accent focus-visible:opacity-100;
+  @apply ml-2 align-middle text-[0.6em] font-normal text-faint no-underline opacity-0 transition hover:text-accent focus-visible:opacity-100;
 }
 
 .prose h2:hover .heading-anchor,
@@ -336,7 +483,6 @@
   @apply opacity-100;
 }
 
-/* Touch devices have no hover — keep anchors visible but quiet */
 @media (hover: none) {
   .heading-anchor {
     @apply opacity-60;
@@ -351,7 +497,7 @@
 /* Opaque, not translucent: a long line scrolling past must be hidden by the
    button, not visible through it. */
 .copy-button {
-  @apply absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center rounded-md border border-border bg-surface text-faint opacity-100 shadow-sm transition hover:text-fg focus-visible:opacity-100 md:opacity-0;
+  @apply absolute right-2 top-2 z-10 inline-flex size-8 items-center justify-center border border-border bg-surface text-faint opacity-100 transition hover:text-fg focus-visible:opacity-100 md:opacity-0;
 }
 
 .code-block:hover .copy-button {
@@ -370,48 +516,50 @@
   Region-aware pricing.
 
   Both rate cards ship in every page and CSS shows one, keyed off the
-  data-region attribute the inline head script sets before first paint. The
-  international card is the default: no attribute, no JS and every crawler get
-  USD, which is what the site is indexed on.
+  data-region attribute the inline head script sets before first paint.
+
+  India is the default: no attribute, no JS and every crawler get the INR card,
+  because India is the market being sold to first. "intl" is the detected case
+  and the only value ever written.
 
   Inline and block variants exist because a swapped price is usually a <span>
   inside a sentence and a swapped FAQ is a whole element. Setting `display:
   inline` on a block would collapse it.
 */
-.r-in {
+.r-intl {
   display: none;
 }
 
-:root[data-region="in"] .r-intl {
+:root[data-region="intl"] .r-in {
   display: none;
 }
 
-:root[data-region="in"] .r-in {
+:root[data-region="intl"] .r-intl {
   display: inline;
 }
 
-.r-in-b {
+.r-intl-b {
   display: none;
 }
 
-:root[data-region="in"] .r-intl-b {
+:root[data-region="intl"] .r-in-b {
   display: none;
 }
 
-:root[data-region="in"] .r-in-b {
+:root[data-region="intl"] .r-intl-b {
   display: revert;
 }
 
 /* Region toggle. The active side is filled, so which card you are reading is
    readable at a glance rather than inferred from the currency symbol. */
 .region-btn {
-  @apply rounded px-2.5 py-1 font-mono text-xs text-faint transition-colors hover:text-fg;
+  @apply px-2.5 py-1 font-mono text-xs text-faint transition-colors hover:text-fg;
 }
 
-/* Driven off the root attribute alone, never off aria-pressed: the attribute
-   is set before first paint, while aria-pressed is written by the component
-   script and would leave both sides looking inactive until it runs. */
-:root:not([data-region="in"]) .region-btn[data-region-set="intl"],
-:root[data-region="in"] .region-btn[data-region-set="in"] {
+/* Driven off the root attribute alone, never off aria-pressed: the attribute is
+   set before first paint, while aria-pressed is written by the component script
+   and would leave both sides looking inactive until it runs. */
+:root:not([data-region="intl"]) .region-btn[data-region-set="in"],
+:root[data-region="intl"] .region-btn[data-region-set="intl"] {
   @apply bg-fg text-bg;
 }

@@ -1,6 +1,6 @@
 ---
 title: "The Timezone Bug That Skipped a Month of Invoices"
-description: "Daylight saving started, and every account that onboarded on the 1st of the month stopped being charged for it. The bug, why the tests passed, the fix (civil dates), and the part nobody writes about: cleaning up the wrong rows afterwards."
+description: "Daylight saving started and every account that onboarded on the 1st stopped being charged. The bug, why the tests passed, and cleaning up the wrong rows."
 pubDate: "2026-08-18"
 tags: ["Backend", "Billing", "Postgres", "Go", "Timezones", "Incident"]
 draft: false
@@ -8,19 +8,9 @@ draft: false
 
 The billing engine had a good test suite. Pure functions, table-driven cases, no clock, no database. It stayed green through the whole incident.
 
-At the end of March, accounts that had been onboarded on the 1st of a month stopped being charged for their devices. Not all accounts. Not all devices. Just the ones whose billing start date landed exactly on a period boundary — which, since most accounts are set up on the 1st, was a lot of them.
+At the end of March, accounts that had been onboarded on the 1st of a month stopped being charged for their devices. Not all accounts. Not all devices. Just the ones whose billing start date landed exactly on a period boundary, which, since most accounts are set up on the 1st, was a lot of them.
 
 The cause was one hour. Here's the whole thing, because the general lesson is worth more than the specific fix.
-
-## Contents
-
-- [What the engine does](#what-the-engine-does)
-- [The hour](#the-hour)
-- [Why the tests passed](#why-the-tests-passed)
-- [The fix: civil dates are a type](#the-fix-civil-dates-are-a-type)
-- [Where the boundary belongs](#where-the-boundary-belongs)
-- [Cleaning up: the part nobody writes about](#cleaning-up-the-part-nobody-writes-about)
-- [The rules I'd hand to my past self](#the-rules-id-hand-to-my-past-self)
 
 ## What the engine does
 
@@ -66,7 +56,7 @@ periodStart  = 2026-04-01 00:00 BST = 2026-03-31 23:00 UTC
 effectiveOn  = 2026-04-01 00:00 UTC
 ```
 
-`effectiveOn` is one hour **after** `periodStart`. So `!effectiveOn.After(periodStart)` is false, and a device that was plainly there on day one gets classified as a mid-period addition. It drops out of the advance base for that period. It's prorated instead — from the 1st, for the whole period, so the *amount* is nearly identical — but it's now charged on the following cycle rather than this one.
+`effectiveOn` is one hour **after** `periodStart`. So `!effectiveOn.After(periodStart)` is false, and a device that was plainly there on day one gets classified as a mid-period addition. It drops out of the advance base for that period. It's prorated instead, from the 1st, for the whole period, so the *amount* is nearly identical, but it's now charged on the following cycle rather than this one.
 
 The visible symptom was that the advance base fee shrank to near zero for affected accounts, and the money arrived a month late in a differently-shaped line item.
 
@@ -123,7 +113,7 @@ Mixed locations, on purpose, because that's what production does. If your test h
 
 ## The fix: civil dates are a type
 
-The instinct is to convert everything to UTC. That's wrong too — it just moves the boundary. `2026-04-01 00:00 BST` in UTC is `2026-03-31 23:00`, whose *date* is the 31st of March. Convert consistently to UTC and now the period starts in the previous month.
+The instinct is to convert everything to UTC. That's wrong too, it just moves the boundary. `2026-04-01 00:00 BST` in UTC is `2026-03-31 23:00`, whose *date* is the 31st of March. Convert consistently to UTC and now the period starts in the previous month.
 
 The actual fix is to admit there are two different types here and stop passing one where the other belongs.
 
@@ -212,9 +202,9 @@ Shipping the fix is maybe a fifth of the work. The rest is the rows the bug alre
 
 By the time it was found, the engine had produced cycles that were wrong in two distinct ways, and they needed different treatment:
 
-**Cycles that undercharged.** The advance base was near zero because every device was misclassified. Not corrupt data exactly — the ledger was right, the classification was wrong. Since the arrears path picked the money up the following month, these mostly self-healed and were left alone. Correcting them would have double-charged.
+Cycles that undercharged. The advance base was near zero because every device was misclassified. Not corrupt data exactly, the ledger was right, the classification was wrong. Since the arrears path picked the money up the following month, these mostly self-healed and were left alone. Correcting them would have double-charged.
 
-**Cycles marked `skipped`.** These are the dangerous ones. An account whose entire base dropped out could close with nothing to charge, and the job recorded `skipped`. That's a real state with real meaning ("this account owed nothing this period"), and now it was recording a lie. Left in place, those rows would suppress future work and confuse every revenue report downstream.
+Cycles marked `skipped`. These are the dangerous ones. An account whose entire base dropped out could close with nothing to charge, and the job recorded `skipped`. That's a real state with real meaning ("this account owed nothing this period"), and now it was recording a lie. Left in place, those rows would suppress future work and confuse every revenue report downstream.
 
 The cleanup rule I'd follow again:
 
@@ -223,7 +213,7 @@ The cleanup rule I'd follow again:
 
 ```sql
 -- Victim set: cycles wrongly closed as skipped inside the affected window.
--- Bounded four ways — by status, by the window (from the clock change that
+-- Bounded four ways: by status, by the window (from the clock change that
 -- exposed the bug, to the day the fix deployed), and by the absence of an
 -- invoice. A skipped cycle that somehow HAS an invoice is not part of this
 -- incident and must survive.
@@ -240,7 +230,7 @@ DELETE FROM billing_cycles
 WHERE id IN (SELECT id FROM billing_cycles_incident_archive);
 ```
 
-3. **Archive before you delete, then delete by id.** Copying the victim set into a table first gives you the count, the evidence, and the undo. Deleting by the archived ids — rather than re-running the predicate — means the two statements can't disagree if something writes between them.
+3. **Archive before you delete, then delete by id.** Copying the victim set into a table first gives you the count, the evidence, and the undo. Deleting by the archived ids, rather than re-running the predicate, means the two statements can't disagree if something writes between them.
 
 4. **Read the count before running the delete.** If the number doesn't match your estimate, your `WHERE` clause is wrong, not your estimate. The archive table makes that check free.
 5. **Disable the manual triggers while you work.** There was an internal "check billing now" button that could close a cycle out of band. It went behind a flag until the cleanup landed. Anything that can write to the table you're repairing gets turned off first.
@@ -249,14 +239,14 @@ Data cleanup after a billing bug is genuinely irreversible work, and it's the st
 
 ## The rules I'd hand to my past self
 
-**Instants and civil dates are different types.** One is a point on the timeline, the other is a label on a calendar. If your language makes them the same type, normalise at every boundary and write the reason in a comment, because the next person will "simplify" it otherwise.
+Instants and civil dates are different types. One is a point on the timeline, the other is a label on a calendar. If your language makes them the same type, normalise at every boundary and write the reason in a comment, because the next person will "simplify" it otherwise.
 
-**Never compare a `date` column to a zoned timestamp.** The database gives you UTC midnight, your code gives you local midnight, and for seven months a year those differ. This one comparison is the whole bug.
+Never compare a `date` column to a zoned timestamp. The database gives you UTC midnight, your code gives you local midnight, and for seven months a year those differ. This one comparison is the whole bug.
 
-**Decide "what day is it" once, at the edge, in the business's timezone.** Pass the answer down. A function that reaches for `time.Now()` in the middle of a policy is untestable and, worse, unstable across a DST boundary.
+Decide "what day is it" once, at the edge, in the business's timezone. Pass the answer down. A function that reaches for `time.Now()` in the middle of a policy is untestable and, worse, unstable across a DST boundary.
 
-**In SQL, always say which calendar you mean.** `AT TIME ZONE 'Europe/London'` before `::date`, every time.
+In SQL, always say which calendar you mean. `AT TIME ZONE 'Europe/London'` before `::date`, every time.
 
-**Test with mismatched locations.** Helpers that build both sides of a comparison identically are a comfort, not a check. The bug lives in the seam between two callers, so at least one test must reproduce that seam.
+Test with mismatched locations. Helpers that build both sides of a comparison identically are a comfort, not a check. The bug lives in the seam between two callers, so at least one test must reproduce that seam.
 
-**Assume the bug is dormant, not absent.** This code was correct for five months. Anything involving offsets has a season. Once a year, in the last week of March, is exactly when you should be reading your date-comparison code.
+Assume the bug is dormant, not absent. This code was correct for five months. Anything involving offsets has a season. Once a year, in the last week of March, is exactly when you should be reading your date-comparison code.

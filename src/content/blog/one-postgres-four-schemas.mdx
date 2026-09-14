@@ -1,9 +1,9 @@
 ---
 title: "One Postgres, Four Schemas"
-description: "Splitting a 200-table monolith database into domain schemas instead of microservices: what it buys, how to move the tables without downtime, and the four gotchas — search_path, sqlc, migrations, and enums — that cost me an afternoon each."
-pubDate: "2026-09-08"
+description: "Splitting a 200-table database into domain schemas instead of microservices: what it buys, how to move the tables without downtime, and four expensive gotchas."
+pubDate: "2026-08-25"
 tags: ["Backend", "Postgres", "Architecture", "Go", "sqlc"]
-draft: true
+draft: false
 ---
 
 The database had somewhere north of two hundred tables in `public`. Not because anyone designed it that way, but because `public` is the default and nobody ever types a schema name.
@@ -14,34 +14,23 @@ There's a much cheaper move first: keep one database and one deployable, and giv
 
 This is what that migration looked like, including the four things that broke.
 
-## Contents
-
-- [The layout](#the-layout)
-- [Moving the tables](#moving-the-tables)
-- [Gotcha 1: search_path is per-connection, and ordered](#gotcha-1-search_path-is-per-connection-and-ordered)
-- [Gotcha 2: teach your codegen about schemas](#gotcha-2-teach-your-codegen-about-schemas)
-- [Gotcha 3: migrations don't inherit your app's search_path](#gotcha-3-migrations-dont-inherit-your-apps-search_path)
-- [Gotcha 4: enums live somewhere too](#gotcha-4-enums-live-somewhere-too)
-- [What this actually buys](#what-this-actually-buys)
-- [What it doesn't](#what-it-doesnt)
-
 ## The layout
 
 Four schemas, and the rule for which is which is about **ownership**, not about tidiness:
 
-**`public`** — the global core, shared by everything: accounts, users, memberships, roles, uploads, notifications, the outbox. If two domains both need it, it lives here.
+**`public`**, the global core, shared by everything: accounts, users, memberships, roles, uploads, notifications, the outbox. If two domains both need it, it lives here.
 
-**`fleet`** — one product's domain tables. Assets, jobs, faults, maintenance, documents, customers, contacts. About 120 tables.
+**`fleet`**, one product's domain tables. Assets, jobs, faults, maintenance, documents, customers, contacts. About 120 tables.
 
-**`workshop`** — the second product's domain tables (see [One Backend, Multiple Products](/blog/one-backend-multiple-products) for why there's a second product on the same backend at all). Locations, bookings, job cards, capacity.
+`workshop`, the second product's domain tables (see [One Backend, Multiple Products](/blog/one-backend-multiple-products) for why there's a second product on the same backend at all). Locations, bookings, job cards, capacity.
 
-**`platform`** — internal-only: billing cycles, audit entries, admin tooling, feature policy. Nothing a customer's session ever touches.
+`platform`, internal-only: billing cycles, audit entries, admin tooling, feature policy. Nothing a customer's session ever touches.
 
 Two conventions made the difference between this being clarifying and being annoying:
 
-**Don't rename the tables.** `public.assets` becomes `fleet.assets`, not `fleet.fleet_assets`. The schema is the prefix. A table called `fleet.fleet_assets` reads like a stutter and every query gets longer for no information.
+Don't rename the tables. `public.assets` becomes `fleet.assets`, not `fleet.fleet_assets`. The schema is the prefix. A table called `fleet.fleet_assets` reads like a stutter and every query gets longer for no information.
 
-**Do prefix the generated types.** The Go model for `fleet.assets` is `FleetAsset`, for `workshop.bookings` it's `WorkshopBooking`. In SQL the schema is right there in the query; in application code the type name is the only place that context can live. Passing a `WorkshopCustomer` to a function expecting a `FleetCustomer` should be a compile error, and with prefixed types it is.
+Do prefix the generated types. The Go model for `fleet.assets` is `FleetAsset`, for `workshop.bookings` it's `WorkshopBooking`. In SQL the schema is right there in the query; in application code the type name is the only place that context can live. Passing a `WorkshopCustomer` to a function expecting a `FleetCustomer` should be a compile error, and with prefixed types it is.
 
 ## Moving the tables
 
@@ -56,7 +45,7 @@ ALTER TABLE public.faults       SET SCHEMA fleet;
 -- ~120 more
 ```
 
-`ALTER TABLE ... SET SCHEMA` is a catalogue update. It does not rewrite the table, does not copy data, and takes an `ACCESS EXCLUSIVE` lock for the instant it takes to update the row in `pg_class`. Indexes, constraints, defaults, sequences owned by the table, and — importantly — **foreign keys pointing at it from other schemas** all follow automatically and keep working.
+`ALTER TABLE ... SET SCHEMA` is a catalogue update. It does not rewrite the table, does not copy data, and takes an `ACCESS EXCLUSIVE` lock for the instant it takes to update the row in `pg_class`. Indexes, constraints, defaults, sequences owned by the table, and, importantly, **foreign keys pointing at it from other schemas** all follow automatically and keep working.
 
 That last point is the reason this approach works at all. `workshop.bookings.asset_id` can reference `fleet.assets(id)` with a normal FK and normal cascade behaviour. You are not giving up referential integrity across domain boundaries, which is exactly what you *would* give up by splitting into separate databases.
 
@@ -66,7 +55,7 @@ Do it per-schema, one migration file each, in dependency-free order. And do it w
 
 ## Gotcha 1: search_path is per-connection, and ordered
 
-The instant the tables move, every unqualified query in the app breaks — unless the connection knows where to look.
+The instant the tables move, every unqualified query in the app breaks, unless the connection knows where to look.
 
 `search_path` is a connection-level setting, so it goes on the pool config, once:
 
@@ -82,15 +71,15 @@ poolCfg.ConnConfig.RuntimeParams["search_path"] = "public, fleet, platform, work
 
 `RuntimeParams` is the right hook because it's sent at connection establishment. Setting it with `SET search_path = ...` after checkout is a bug waiting to happen: pgx opens new connections lazily, and a connection created during a traffic spike may never run your setup statement.
 
-Every entry point needs it, not just the API. The seeder, the backfill CLI, the migration test harness, the cron worker — anything that opens a pool. Each one you forget produces a `relation "assets" does not exist` from a codepath nobody exercises until it's 3am.
+Every entry point needs it, not just the API. The seeder, the backfill CLI, the migration test harness, the cron worker, anything that opens a pool. Each one you forget produces a `relation "assets" does not exist` from a codepath nobody exercises until it's 3am.
 
-**The ordering is load-bearing.** `search_path` resolves left to right, first match wins. If `public.documents` and `fleet.documents` both exist mid-migration, `public` wins and half your app is reading the old table while the other half reads the new one. Two ways to stay safe: never leave a name in two schemas across a deploy boundary, and qualify explicitly in queries anyway (next section).
+The ordering is load-bearing. `search_path` resolves left to right, first match wins. If `public.documents` and `fleet.documents` both exist mid-migration, `public` wins and half your app is reading the old table while the other half reads the new one. Two ways to stay safe: never leave a name in two schemas across a deploy boundary, and qualify explicitly in queries anyway (next section).
 
-Worth knowing: `search_path` also decides where `CREATE TABLE` without a schema puts things. First entry wins — so with `public` first, a migration that forgets to qualify creates the table right back in `public`. Which is how you get a table in two schemas.
+Worth knowing: `search_path` also decides where `CREATE TABLE` without a schema puts things. First entry wins, so with `public` first, a migration that forgets to qualify creates the table right back in `public`. Which is how you get a table in two schemas.
 
 ## Gotcha 2: teach your codegen about schemas
 
-If you generate your data access from SQL — sqlc, in my case — the generator parses your migrations to learn the schema, then parses your queries against it. Both halves need to agree about where things live.
+If you generate your data access from SQL, sqlc, in my case, the generator parses your migrations to learn the schema, then parses your queries against it. Both halves need to agree about where things live.
 
 The config barely changes:
 
@@ -109,7 +98,7 @@ sql:
         emit_pointers_for_null_types: true
 ```
 
-Because the generator replays your migrations in order, it sees the `SET SCHEMA` statements and relocates the tables itself. It then emits `FleetAsset` for `fleet.assets` automatically — the type prefixing you wanted is a free consequence of the move, not something you configure.
+Because the generator replays your migrations in order, it sees the `SET SCHEMA` statements and relocates the tables itself. It then emits `FleetAsset` for `fleet.assets` automatically, the type prefixing you wanted is a free consequence of the move, not something you configure.
 
 The rule for queries: **qualify everything.**
 
@@ -121,7 +110,7 @@ JOIN fleet.customers c ON c.id = a.customer_id
 WHERE a.id = $1 AND a.account_id = $2;
 ```
 
-Not because the generator can't cope with an unqualified name — it can, via its own search path — but because a qualified query is self-documenting and immune to the ordering trap above. When you open a 60-line query six months later, `workshop.bookings` versus `fleet.bookings` is the first thing you need to know and the last thing you want to infer.
+Not because the generator can't cope with an unqualified name, it can, via its own search path, but because a qualified query is self-documenting and immune to the ordering trap above. When you open a 60-line query six months later, `workshop.bookings` versus `fleet.bookings` is the first thing you need to know and the last thing you want to infer.
 
 The migration to qualified names is mechanical and worth doing in one sweep rather than gradually, so that "unqualified" reliably means "someone added this after the sweep and hasn't been reviewed".
 
@@ -160,7 +149,7 @@ UPDATE assets SET next_service_on = ... ;
 
 `SET LOCAL` over `SET` whenever you're inside a transaction. Two words, and it stops a migration from changing the resolution rules for the rest of the connection's life.
 
-There's a related trap that isn't about schemas but shows up in the same week: golang-migrate tracks state as a single integer watermark, and **a migration numbered below the current watermark is silently skipped**. Branch off, write a migration timestamped Tuesday, merge on Friday after someone else's Thursday migration landed, and yours never runs — no error, no warning. New migration version is always `highest existing + 1`, computed at merge time, not at write time.
+There's a related trap that isn't about schemas but shows up in the same week: golang-migrate tracks state as a single integer watermark, and **a migration numbered below the current watermark is silently skipped**. Branch off, write a migration timestamped Tuesday, merge on Friday after someone else's Thursday migration landed, and yours never runs, no error, no warning. New migration version is always `highest existing + 1`, computed at merge time, not at write time.
 
 ## Gotcha 4: enums live somewhere too
 
@@ -168,9 +157,9 @@ Types are schema-qualified exactly like tables, and this catches people because 
 
 Two rules that between them cover everything:
 
-**Keep shared enums in `public`.** If `fleet` and `workshop` both have a `status` concept using the same values, one type in `public` referenced from both is right. Two identical types in two schemas will drift within a quarter. If the values genuinely differ per domain, they were never the same type — give each its own, in its own schema.
+Keep shared enums in `public`. If `fleet` and `workshop` both have a `status` concept using the same values, one type in `public` referenced from both is right. Two identical types in two schemas will drift within a quarter. If the values genuinely differ per domain, they were never the same type, give each its own, in its own schema.
 
-**Never add an enum value and use it in the same transaction.** Postgres won't let you:
+Never add an enum value and use it in the same transaction. Postgres won't let you:
 
 ```sql
 -- migration N: add the value, nothing else
@@ -188,26 +177,26 @@ While we're here: `IF NOT EXISTS` on the `ADD VALUE` makes the migration re-runn
 
 ## What this actually buys
 
-**The schema name answers "who owns this".** `workshop.bookings` versus `fleet.jobs` is a fact you get from reading the query, not from reading the code that calls it. On a 200-table database that alone justifies the afternoon.
+The schema name answers "who owns this". `workshop.bookings` versus `fleet.jobs` is a fact you get from reading the query, not from reading the code that calls it. On a 200-table database that alone justifies the afternoon.
 
-**Grants become expressible.** `GRANT USAGE ON SCHEMA platform TO admin_role` is one line. Doing the equivalent per-table across 40 internal tables is a maintenance burden that no one keeps up with, which is why nobody bothers and everything runs as the owner.
+Grants become expressible. `GRANT USAGE ON SCHEMA platform TO admin_role` is one line. Doing the equivalent per-table across 40 internal tables is a maintenance burden that no one keeps up with, which is why nobody bothers and everything runs as the owner.
 
 **`\dt fleet.*` is a real command again.** So is a `pg_dump --schema-only` per domain, which is genuinely useful for onboarding: hand someone the 40-table `workshop` dump instead of the 200-table everything.
 
-**You get an extraction seam for free.** If `workshop` ever does need to become its own service, the boundary is already drawn and — this is the useful part — every cross-schema FK is now a visible, greppable list of exactly what you'd have to sever. Before the split, that list didn't exist. You don't have to act on it; you just know what it would cost.
+You get an extraction seam for free. If `workshop` ever does need to become its own service, the boundary is already drawn and, this is the useful part, every cross-schema FK is now a visible, greppable list of exactly what you'd have to sever. Before the split, that list didn't exist. You don't have to act on it; you just know what it would cost.
 
-**Naming collisions stop being arguments.** Both products want a table called `customers`? Fine, they can each have one, and the type system keeps them apart.
+Naming collisions stop being arguments. Both products want a table called `customers`? Fine, they can each have one, and the type system keeps them apart.
 
 ## What it doesn't
 
 Be honest about the limits, because "we're modularising the database" invites people to hear "microservices".
 
-**It is not isolation.** One connection pool, one instance, one `max_connections`, one vacuum budget. A runaway query in `platform` slows down `fleet`. Schemas are namespaces, not bulkheads.
+It is not isolation. One connection pool, one instance, one `max_connections`, one vacuum budget. A runaway query in `platform` slows down `fleet`. Schemas are namespaces, not bulkheads.
 
-**It is not independent deployability.** One binary, one migration sequence. Domain schemas don't let two teams ship on different cadences.
+It is not independent deployability. One binary, one migration sequence. Domain schemas don't let two teams ship on different cadences.
 
-**It does not enforce boundaries.** Nothing stops a `fleet` query joining a `workshop` table. If you want that enforced, it has to come from code review, package layout, or per-schema database roles — the schema alone is a convention with good ergonomics.
+It does not enforce boundaries. Nothing stops a `fleet` query joining a `workshop` table. If you want that enforced, it has to come from code review, package layout, or per-schema database roles, the schema alone is a convention with good ergonomics.
 
-**It adds a step to every new query.** Someone will forget to qualify, or forget the pool config in a new CLI. A lint rule that rejects unqualified table names in `queries/` is worth the twenty minutes.
+It adds a step to every new query. Someone will forget to qualify, or forget the pool config in a new CLI. A lint rule that rejects unqualified table names in `queries/` is worth the twenty minutes.
 
-That's the trade: most of the clarity of service boundaries, none of the cost, and none of the isolation. For a team small enough that the isolation would be theoretical anyway, it's the right end of the deal — and unlike a service split, it's an afternoon of `ALTER TABLE` and a config line, revertible in one migration.
+That's the trade: most of the clarity of service boundaries, none of the cost, and none of the isolation. For a team small enough that the isolation would be theoretical anyway, it's the right end of the deal, and unlike a service split, it's an afternoon of `ALTER TABLE` and a config line, revertible in one migration.

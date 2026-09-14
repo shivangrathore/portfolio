@@ -35,7 +35,7 @@ const schema = [
 
 <Base
   title="Blog"
-  description="Thoughts on web development, system programming, Linux, Go, and Rust."
+  description="Write-ups from things that actually shipped: multi-tenancy, billing, Postgres data modelling and LLM pipelines, with the decisions and the reversals."
   schema={schema}
 >
   <PageHeader
@@ -52,7 +52,7 @@ const schema = [
         <div class="border-b border-line">
           {posts.map((post) => (
             <PostRow
-              href={`/blog/${post.id}`}
+              href={`/blog/${post.id}/`}
               title={post.data.title}
               description={post.data.description}
               pubDate={post.data.pubDate}

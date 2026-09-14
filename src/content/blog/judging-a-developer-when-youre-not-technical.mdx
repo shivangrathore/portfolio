@@ -1,0 +1,82 @@
+---
+title: "How to Judge a Developer When You're Not Technical"
+description: "You cannot read their code, so stop trying. Seven questions that separate people who have shipped from people who interview well."
+pubDate: "2026-09-14"
+tags: ["Hiring", "Freelance", "Startups", "Founders"]
+---
+
+A founder asked me last month how she was supposed to judge three developers when she could not read a line of what any of them wrote. She had been told to "check their GitHub", which is advice from people who forget that GitHub is unreadable if you are not a programmer.
+
+She is right that she cannot evaluate the code. She is wrong that this leaves her helpless. Almost everything that predicts whether a build goes well is visible without reading any code at all, and most of it comes out in twenty minutes of conversation.
+
+Here is what I would ask, roughly in order of how much it tells you.
+
+## Show me something running, with real users on it
+
+Not a screenshot. Not a Figma file. Not a private repository. A URL you can open, or a company name you can look up.
+
+Anyone who has actually shipped can answer this in ten seconds, because shipped things have addresses. Anyone who cannot will have an explanation, and the explanation is the answer. "It's under NDA" is legitimate once. It is not legitimate for an entire portfolio, and someone whose whole career is invisible is telling you something.
+
+What you are testing is not the quality of the work. You cannot assess that. You are testing whether the work exists.
+
+The follow-up matters more than the question: **what part of that was yours?** People who did the work answer immediately and specifically, usually with a caveat about the parts they did not do. People who were nearby answer in the plural and stay vague.
+
+## What would you cut first if the budget halved?
+
+This one separates the field faster than anything else I know.
+
+A good answer is specific and slightly painful. "The admin panel. You'd run it out of the database for the first month, which will annoy you, but it saves three weeks." That is someone who has thought about your product as a set of trade-offs and is willing to say an uncomfortable thing out loud before you have paid them anything.
+
+A bad answer is "nothing, the scope is already minimal". That is either flattery or a sign they have not thought about it. Every scope has fat. Someone who cannot find any has not looked.
+
+## What is the part you are least sure about?
+
+Everyone has one. If they say they do not, they have either built this exact thing before, in which case ask to see it, or they have not thought hard enough about yours.
+
+Listen for whether the uncertainty is specific. "The payment reconciliation, because your provider's webhooks arrive out of order and I'd want to test that properly" is a real answer. "Timelines are always uncertain" is not an answer, it is a disclaimer.
+
+## What happens if it takes twice as long as you think?
+
+You are not listening for a promise. You are listening for whether they have a *mechanism*.
+
+Good: fixed price per milestone, so overrun is their problem, not yours. Or an explicit hourly rate with a written estimate and a check-in point where you can stop. Either is fine. What they have in common is that the answer to "what if you are wrong" was decided before anyone was wrong.
+
+Bad: "that won't happen." It will happen. Roughly half of all software projects run over, and the people who have shipped a few know this about themselves.
+
+## Who owns the code, and where does it live from day one?
+
+The correct answer is: you do, in your repository, on your accounts, from the first commit.
+
+If the code lives somewhere only they can log into until final payment, you are not buying software. You are renting a hostage. This is more common than it should be, and it is the single easiest thing to get wrong in a contract because it sounds administrative rather than important.
+
+Ask the same question about the infrastructure. Whose AWS account, whose domain registrar, whose database. If the answer to any of those is "mine", you have bought a dependency rather than an asset.
+
+## Explain something technical to me, and I will tell you if I followed it
+
+Pick anything from their own description of the work and ask them to unpack it.
+
+You are not testing whether the explanation is correct. You cannot check that. You are testing whether they can produce one at all, at your level, without either talking down to you or hiding behind vocabulary.
+
+This matters far beyond the sales call. You are about to spend two months asking this person questions. If every answer leaves you less confident than before you asked, that is what the whole engagement will feel like, and it is how projects drift: not through bad code, but because the non-technical person stops asking.
+
+The best signal here is someone who volunteers a trade-off unprompted. "We could do it the fast way, but then X breaks later, so I'd rather do Y." People who think in trade-offs make good decisions when you are not in the room, which is most of the time.
+
+## Tell me about something you got wrong
+
+Almost nobody asks this and it is the most revealing question on the list.
+
+You are looking for a specific technical mistake, a description of how it was found, and what changed afterwards. "I built permissions into the auth token, and it was the right call for about a year, then we split the backend into services and it quietly stopped being true" is a real answer. It tells you they ship, they revisit, and they will tell you when something is not working.
+
+"I'm a perfectionist" is not an answer. Neither is a story where the mistake turns out to be someone else's fault.
+
+## What none of this tells you
+
+Whether the code is good. It genuinely does not, and anyone selling you a way to assess that without a technical person is selling something.
+
+What it tells you is whether this person has shipped, thinks in trade-offs, will tell you the truth when it is inconvenient, and has a mechanism for when they are wrong. In my experience that predicts the outcome of a build far better than raw technical ability does, because most failed projects I have seen did not fail on difficulty. They failed on the person going quiet for three weeks.
+
+If you want a shortcut: ask the first question and the last one. Something running with real users, and something they got wrong. Almost everything else is downstream of those two.
+
+---
+
+If you have quotes in front of you and want a second opinion, [send me the scope](/contact/) and I will tell you what I think it should cost, including when I think the expensive one is right.

@@ -50,7 +50,7 @@ export const services: Service[] = [
     goodFit:
       "You have a manual process built on documents, tickets or messages, and you want a model doing the first pass without it inventing things nobody catches.",
     timeline: "3 to 10 weeks",
-    startingAt: { usd: 3000, inr: 75000 },
+    startingAt: { usd: 1000, inr: 20000 },
     icon: "brain",
   },
   {
@@ -68,16 +68,16 @@ export const services: Service[] = [
     goodFit:
       "Your product works but pages hang, the database is the bottleneck, and adding servers has stopped helping.",
     timeline: "1 to 4 weeks",
-    startingAt: { usd: 1800, inr: 20000 },
+    startingAt: { usd: 500, inr: 8000 },
     icon: "gauge",
   },
   {
     slug: "go-backend",
-    name: "Go backend development",
+    name: "Backend and API development",
     tagline:
-      "APIs, auth and data models built to hold up once real traffic and real customers arrive.",
+      "APIs, logins and data models built to hold up once real traffic and real customers arrive.",
     includes: [
-      "REST APIs in Go with Gin, sqlc and pgx",
+      "REST APIs in whichever of Go, Python or Node fits what you already run",
       "Multi-tenant data models and role-based access control",
       "Authentication, sessions, 2FA and permission systems",
       "PostgreSQL schema design, migrations and query tuning",
@@ -85,7 +85,7 @@ export const services: Service[] = [
     goodFit:
       "You have a product that works but the backend is becoming the thing that slows every release down.",
     timeline: "4 to 12 weeks",
-    startingAt: { usd: 3500, inr: 100000 },
+    startingAt: { usd: 1000, inr: 25000 },
     icon: "server",
   },
   {
@@ -95,14 +95,14 @@ export const services: Service[] = [
       "The smallest version that proves the idea, in front of real users in weeks rather than quarters.",
     includes: [
       "A scoping call that cuts the idea down to what actually has to ship first",
-      "Next.js frontend, Go backend, deployed and running on your accounts",
+      "Next.js and TypeScript front end, with a Python or Go backend, deployed and running on your accounts",
       "Sign-up, payments and the one or two flows the product lives or dies on",
       "Analytics from day one so you can see what users actually do",
     ],
     goodFit:
       "You have an idea and a deadline, no product yet, and you need something real to put in front of users or investors.",
     timeline: "4 to 8 weeks",
-    startingAt: { usd: 3500, inr: 110000 },
+    startingAt: { usd: 900, inr: 20000 },
     icon: "rocket",
   },
   {
@@ -111,7 +111,7 @@ export const services: Service[] = [
     tagline:
       "The full version, once you know what you are building and the MVP is behind you.",
     includes: [
-      "Next.js and TypeScript frontend, Go backend",
+      "Next.js and TypeScript front end, with a Python or Go backend",
       "Payments, file uploads, email and third-party integrations",
       "Admin tooling so you can run the product without me",
       "Deployment, CI and handover documentation",
@@ -119,7 +119,7 @@ export const services: Service[] = [
     goodFit:
       "You have validation or a written spec, and you need the real product built by one person who can own the whole stack.",
     timeline: "6 to 14 weeks",
-    startingAt: { usd: 6500, inr: 200000 },
+    startingAt: { usd: 1800, inr: 45000 },
     icon: "layers",
   },
   {
@@ -136,7 +136,7 @@ export const services: Service[] = [
     goodFit:
       "Your Node backend has outgrown its structure and you want type safety and predictable performance without a rewrite that freezes the roadmap.",
     timeline: "6 to 16 weeks",
-    startingAt: { usd: 5000, inr: 150000 },
+    startingAt: { usd: 1400, inr: 35000 },
     icon: "shuffle",
   },
   {
@@ -146,14 +146,14 @@ export const services: Service[] = [
       "WebSockets, queues and background jobs that stay correct when things fail.",
     includes: [
       "WebSocket services with reconnect and presence handling",
-      "RabbitMQ and Redis for queues, caching and pub/sub",
+      "RabbitMQ, Redis or gRPC between services, depending on whether you need events, cache or a typed call",
       "Transactional outbox so events never drift from your database",
       "Job scheduling, retries and dead-letter handling",
     ],
     goodFit:
       "You need live updates, notifications or integrations that cannot silently drop events.",
     timeline: "3 to 8 weeks",
-    startingAt: { usd: 3000, inr: 75000 },
+    startingAt: { usd: 1000, inr: 20000 },
     icon: "zap",
   },
   {
@@ -170,13 +170,20 @@ export const services: Service[] = [
     goodFit:
       "You are about to make a decision that is expensive to reverse and want it pressure-tested first.",
     timeline: "1 to 2 weeks",
-    startingAt: { usd: 1000, inr: 15000 },
+    startingAt: { usd: 250, inr: 4000 },
     icon: "search",
   },
 ];
 
-/** Open-ended work, billed by the week. Kept here so the FAQ cannot drift. */
-export const WEEKLY_RATE: Price = { usd: 900, inr: 30000 };
+/**
+ * Open-ended work, billed by the week. Kept here so the FAQ cannot drift.
+ *
+ * Deliberately under the market on both cards. The first few freelance
+ * engagements are bought with a price a founder does not have to justify to
+ * anyone, and the reference the work earns is worth more than the margin given
+ * up on it. Raise both numbers once there are named clients on the homepage.
+ */
+export const WEEKLY_RATE: Price = { usd: 350, inr: 12000 };
 
 const bySlug = (slug: string) => services.find((s) => s.slug === slug)!;
 
@@ -230,6 +237,10 @@ export const faqs: Faq[] = [
     a: "Fixed price per milestone for defined scope, or a weekly rate for open-ended work. You will know the number before anything starts, and it does not move unless the scope does. Payment runs 40 percent up front, 30 percent at the midpoint, 30 percent on handover.",
   },
   {
+    q: "Why are these rates lower than you would expect for this work?",
+    a: "Because I am early in freelancing and a reference from a shipped project is worth more to me right now than the margin I would give up to get it. The work is the same work that runs a UK fleet platform in production. These numbers will go up once there are named clients on this page, and anything agreed before then is held for the length of the engagement.",
+  },
+  {
     q: "Why is the Indian rate card different from the international one?",
     a: "Because the two markets are not the same market. An Indian founder is comparing me against local studios; a US or UK client is comparing me against an agency at $150 an hour. Quoting one number would price me out of one side and undersell the other. Same engineer, same code, same process, priced against where the work is being bought.",
   },
@@ -254,7 +265,7 @@ export const faqs: Faq[] = [
   },
   {
     q: "What is your availability?",
-    a: "I work on contract and take one project at a time, so whoever I am working with gets my full attention rather than a slice of it. I can usually start within a week or two. Tell me your deadline and I will tell you straight whether I can meet it.",
+    a: "I can usually start within a week. I keep the number of projects I run at once deliberately small, so whoever I am working with gets my full attention rather than a slice of it, and you are never waiting behind three other clients for an answer. Tell me your deadline on the call and I will tell you straight whether I can meet it, before either of us commits to anything."
   },
   {
     q: "Do you work with existing teams?",

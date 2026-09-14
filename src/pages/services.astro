@@ -20,7 +20,7 @@ import { landings } from "@/lib/landings";
 import { abs, breadcrumbs } from "@/lib/schema";
 
 const description =
-  "Hire a freelance AI and Go backend engineer for LLM features, performance work, MVP builds and multi-tenant SaaS. Rates in USD or INR, fixed milestones, code you own.";
+  "Freelance developer for AI features, web apps, MVPs and backend work. Python, TypeScript and Go. Fixed prices from Rs 15,000, and code you own.";
 
 // Prices sit in the header on purpose. Serious buyers scroll looking for a
 // number, and the ones who leave when they find it were never going to book.
@@ -94,14 +94,14 @@ const schema = [
 ---
 
 <Base
-  title="AI Engineering & Go Backend Services"
+  title="Services and Rates"
   description={description}
   schema={schema}
 >
   <PageHeader
     label="Services"
     title="What I can build for you"
-    lede="AI features that hold up in production and the backends that make them fast enough to use. Go and PostgreSQL for the parts that have to be correct, Next.js for the parts people touch. Scoped projects, fixed milestones, and code you own at the end."
+    lede="AI features that hold up in production, web apps people actually use, and the backends underneath both. Python, TypeScript and Go, picked to fit what you already run rather than what I feel like writing. Scoped projects, fixed milestones, and code you own at the end."
   >
     <div slot="aside" class="lg:mt-11">
       <div class="flex flex-wrap items-center justify-between gap-3 pb-3">
@@ -134,7 +134,7 @@ const schema = [
 
   <!-- Services -->
   <Section
-    index="01"
+    standfirst="What I can build"
     title="The work"
     lede="Eight engagements. Each one lists what it includes, how long it usually runs and where it starts on price. AI and performance work sit first because that is what most of the last two years has been."
     seamless
@@ -187,7 +187,7 @@ const schema = [
 
   <!-- Deeper pages for the three things people hire me for most -->
   <Section
-    index="02"
+    standfirst="Narrower answers"
     title="Hiring for something specific?"
     lede="These go further: what the work includes, where I have done it before, and when I am the wrong person for it."
   >
@@ -195,7 +195,7 @@ const schema = [
       {
         landings.map((landing) => (
           <a
-            href={`/hire/${landing.slug}`}
+            href={`/hire/${landing.slug}/`}
             class="group flex items-start justify-between gap-6 border-b border-line py-5 transition-colors hover:bg-surface lg:px-4"
           >
             <span class="min-w-0">
@@ -216,7 +216,7 @@ const schema = [
 
   <!-- Process -->
   <Section
-    index="03"
+    standfirst="After you press the button"
     title="How it runs"
     lede="No long discovery phase, no surprise invoice at the end."
   >
@@ -240,7 +240,7 @@ const schema = [
   </Section>
 
   <!-- FAQ -->
-  <Section index="04" title="Common questions">
+  <Section standfirst="Before you ask" title="Common questions">
     <Faq items={faqs} />
   </Section>
 

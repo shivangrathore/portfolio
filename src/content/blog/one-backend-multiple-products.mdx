@@ -1,29 +1,19 @@
 ---
 title: "One Backend, Multiple Products"
-description: "Shipping a second product on the same backend, database and login: capability flags instead of account types, sessions bound to one app, and the difference between linking data inside a tenant and across one."
+description: "Shipping a second product on the same backend, database and login: capability flags instead of account types, and sessions bound to a single app."
 pubDate: "2026-07-07"
 tags: ["Backend", "Architecture", "Multi-tenancy", "SaaS", "TypeScript"]
 ---
 
-Sooner or later a product that's working grows a second product. Same customers, neighbouring problem, obvious upsell. Someone asks how to build it, and the answer arrives fully formed before anyone's thought about it: new service, new database, new team, clean separation.
+A fleet compliance platform grew a second product: a workshop tool, sold to the garages those fleets already book their vehicles into. Same customers, neighbouring problem, obvious upsell.
+
+Someone asks how to build the second one, and the answer arrives fully formed before anyone has thought about it. New service, new database, new team, clean separation.
 
 That answer is usually wrong at the size most teams are when they ask. Everything the second product needs (accounts, login, roles, billing, file storage, notifications, background jobs) already exists in the first one. Splitting means building all of it again and then keeping the two copies in sync forever. You'd be paying distributed-systems tax for a separation that a folder boundary in one codebase already gives you.
 
 The shape that actually works is less exciting: **one backend, one database, one login, with per-product entitlement and per-product billing on top.** Here's what that means in practice, and which handful of decisions you really don't want to get wrong, because those are the ones that are painful to undo.
 
 Running example throughout: a company sells **Sales**, a CRM. Later they add **Support**, a helpdesk. Same customers, and plenty of accounts buy both.
-
-## Contents
-
-- [The mental model that settles arguments](#the-mental-model-that-settles-arguments)
-- [Capability flags, not an account type](#capability-flags-not-an-account-type)
-- [Sessions belong to one app](#sessions-belong-to-one-app)
-- [Let the client say which app it is](#let-the-client-say-which-app-it-is)
-- [Linking data: two distances](#linking-data-two-distances)
-- [Billing falls out of the model](#billing-falls-out-of-the-model)
-- [Frontends, subdomains, and one cookie gotcha](#frontends-subdomains-and-one-cookie-gotcha)
-- [The parts that stay hard](#the-parts-that-stay-hard)
-- [When to actually split](#when-to-actually-split)
 
 ## The mental model that settles arguments
 
@@ -67,9 +57,9 @@ Boring, and that's the point. Any combination is representable, a third product 
 
 Two things to hold onto as this grows.
 
-**Entitlement isn't authorization.** The flag says the account paid for the product. It says nothing about whether *this particular user* may do anything in it. Both checks have to pass. Blur them together and upgrading a plan quietly hands every employee admin rights, which is a fun conversation to have with a customer.
+Entitlement isn't authorization. The flag says the account paid for the product. It says nothing about whether *this particular user* may do anything in it. Both checks have to pass. Blur them together and upgrading a plan quietly hands every employee admin rights, which is a fun conversation to have with a customer.
 
-**Leave room for per-seat later.** Most big platforms gate finer than per-account: per-user licences, per-product roles, per-team toggles. A per-account flag is coarser than all of them. That's completely fine while the second product is bundled or sold per account. But if you ever sell it per seat, you want to add a per-member check *inside* the flag, not replace the flag. Keep it as the outer gate and you'll thank yourself.
+Leave room for per-seat later. Most big platforms gate finer than per-account: per-user licences, per-product roles, per-team toggles. A per-account flag is coarser than all of them. That's completely fine while the second product is bundled or sold per account. But if you ever sell it per seat, you want to add a per-member check *inside* the flag, not replace the flag. Keep it as the outer gate and you'll thank yourself.
 
 ## Sessions belong to one app
 
@@ -187,11 +177,59 @@ The refusal branch matters as much as the happy path. If the Support app asks fo
 
 The same reasoning extends to people who belong to several accounts. If someone is a member of four accounts but only one has Support enabled, a login from the Support app isn't actually ambiguous, no matter what the account count suggests. Filter to the accounts entitled to the requested app first; if exactly one survives, bind it and skip the picker entirely. Showing someone four accounts they can't open three of is a worse experience than that extra query costs you.
 
+## Hide accounts the user cannot act in
+
+A subtle one that shows up on the account picker.
+
+A user can be a member of a company and hold no roles that grant the scope of the app they're using. A fleet-only manager opening the workshop app is a member of that company, but not, from the workshop's point of view, a participant in it.
+
+Showing that company in the picker is a trap: they select it, and every subsequent request 403s. So the account list is filtered by entitled scope:
+
+```go
+// viableMembership pairs an entitled membership with the scopes it grants.
+// Memberships with zero entitled scopes for the requested app are omitted
+// entirely: offering an account the user can't act in is worse than hiding it.
+for _, m := range memberships {
+	scopes := m.AvailableScopes()
+	if len(scopes) == 0 || !slices.Contains(scopes, requested) {
+		continue
+	}
+	viable = append(viable, viableMembership{Member: m, Scopes: scopes})
+}
+```
+
+And the edge case that follows: if the filtered list is *empty*, don't show an empty picker. Say the thing that's true, "your account doesn't have workshop access; ask an administrator to assign you a workshop role", because the user's next action is a conversation with a colleague, not another attempt at logging in.
+
+## Two kinds of 403
+
+There are two entirely different reasons to refuse a request, and giving clients one code for both makes them behave badly:
+
+`insufficient_permissions`, their roles don't grant this. Permanent. Retrying, re-authenticating, or switching anything will not help.
+
+`scope_required`, they *have* this permission, in a scope their current session isn't in. Fixable: get a token in the right scope and retry.
+
+```go
+// Their roles don't grant it. Nothing to retry.
+respondError(w, http.StatusForbidden, ErrorBody{
+	Code: "insufficient_permissions",
+})
+
+// They hold this via a role in another scope. Re-issue and retry.
+respondError(w, http.StatusForbidden, ErrorBody{
+	Code:            "scope_required",
+	RequiredScope: "workshop",
+})
+```
+
+With one code, a client does one of two unhelpful things: retries a request that can never succeed, or tells a user they lack a permission they demonstrably have. With two, the client can call the switch-scope endpoint, get a correctly scoped token, and retry once, invisible to the user.
+
+Add both codes on day one. Retrofitting the distinction means auditing every 403 handler in every client you've shipped, including the mobile app that half your users haven't updated.
+
 ## Linking data: two distances
 
 Back to those two distances, now with schemas.
 
-**Inside one account**, the apps share a database and reference each other directly:
+Inside one account, the apps share a database and reference each other directly:
 
 ```sql
 CREATE TABLE support_tickets (
@@ -209,7 +247,7 @@ That's it: a nullable foreign key. Tickets raised from a sales opportunity carry
 
 One discipline worth keeping even here: `sales_opportunities` stays owned by the Sales module, and Support reads it through that module's interface rather than reaching into its tables. It costs nothing to do from day one and is close to impossible to retrofit, and it's the thing that keeps a future extraction merely difficult rather than impossible.
 
-**Across two accounts**, nothing is shared. Two separate companies, two tenants, no cross-tenant queries, and **no cross-tenant tokens**. That last one is the invariant that keeps the whole system understandable: a user is only ever scoped to their own account. Ever.
+Across two accounts, nothing is shared. Two separate companies, two tenants, no cross-tenant queries, and **no cross-tenant tokens**. That last one is the invariant that keeps the whole system understandable: a user is only ever scoped to their own account. Ever.
 
 What crosses the boundary is events, over a connection both sides agreed to set up:
 
@@ -265,13 +303,13 @@ Worth deciding before marketing falls in love with a standalone domain for the n
 
 Four things don't get easier just because it's all one backend.
 
-**Entitlement in a token goes stale.** A token issued while Support was enabled keeps saying so until it expires. A short access token lifetime bounds this, and 15 minutes of a product an account just downgraded off isn't a security incident. But for anything where it *would* matter (billing changes, destructive actions) check entitlement server-side rather than trusting the claim.
+Entitlement in a token goes stale. A token issued while Support was enabled keeps saying so until it expires. A short access token lifetime bounds this, and 15 minutes of a product an account just downgraded off isn't a security incident. But for anything where it *would* matter (billing changes, destructive actions) check entitlement server-side rather than trusting the claim.
 
-**Custom roles need a ceiling.** If accounts can define their own roles, a custom role mustn't be able to grant more than the account is entitled to. The rule: custom roles may only narrow, never widen. The platform sets the ceiling; the tenant customises underneath it. Enforce it when the role is saved *and* when the token is issued, so an over-broad role gets rejected up front rather than silently trimmed months later.
+Custom roles need a ceiling. If accounts can define their own roles, a custom role mustn't be able to grant more than the account is entitled to. The rule: custom roles may only narrow, never widen. The platform sets the ceiling; the tenant customises underneath it. Enforce it when the role is saved *and* when the token is issued, so an over-broad role gets rejected up front rather than silently trimmed months later.
 
-**Every query stays account-scoped.** One database means the only thing between two customers' data is `WHERE account_id = $1` on every read. Every read: internal helpers, admin tooling, the reporting job nobody's looked at since it was written. One unscoped query is one cross-tenant leak.
+Every query stays account-scoped. One database means the only thing between two customers' data is `WHERE account_id = $1` on every read. Every read: internal helpers, admin tooling, the reporting job nobody's looked at since it was written. One unscoped query is one cross-tenant leak.
 
-**Keep identity extractable.** One identity layer is right at this size. Keep it a clean module with a real interface anyway, with no product code reaching into its tables. If you genuinely outgrow the monolith one day, auth should be the piece you can lift out first, not the piece welded to everything else.
+Keep identity extractable. One identity layer is right at this size. Keep it a clean module with a real interface anyway, with no product code reaching into its tables. If you genuinely outgrow the monolith one day, auth should be the piece you can lift out first, not the piece welded to everything else.
 
 ## When to actually split
 

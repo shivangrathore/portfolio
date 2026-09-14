@@ -1,31 +1,20 @@
 ---
 title: "Don't Use Stripe Subscriptions"
-description: "Why a metered B2B product outgrows subscription APIs, and what a custom billing engine actually looks like: an activity ledger, immutable cycles, proration you control, and Stripe demoted to a payment gateway."
+description: "Why a metered B2B product outgrows subscription APIs, and what a custom billing engine looks like: an activity ledger, immutable cycles, proration you control."
 pubDate: "2026-08-18"
 tags: ["Backend", "Billing", "Stripe", "Postgres", "Go", "SaaS"]
 draft: false
 ---
 
-Every billing post on the internet gives the same advice: don't build billing, use Stripe Subscriptions. It's good advice for the product it was written about, which is a product with plans, seats, and customers who change plan twice a year.
+The platform charges per active device, per month. A customer brings nine devices online the day they onboard and three more the following week. One drops off in March and comes back in April. What they owe at the end of the month is a consequence of them using the product, not a number anyone typed into a checkout page.
 
-It stops being good advice the moment your price depends on something that moves on its own. Devices that come online on a Tuesday and go offline on a Thursday. Assets a customer adds nine of on the day they onboard and three more the week after. Anything where the quantity is a *consequence* of the customer using the product rather than a number they typed into a checkout page.
+Every billing post on the internet gives the same advice: don't build billing, use Stripe Subscriptions. That's good advice for the product it was written about, which has plans, seats, and customers who change plan twice a year.
+
+It stops being good advice the moment your price depends on something that moves on its own. Devices, seats that come and go, assets, vehicles, anything where the quantity is a consequence of the customer using the product rather than a decision they made at checkout.
 
 At that point you have two sources of truth for what the customer owes, and one of them lives in another company's database.
 
 What follows is the shape that worked instead: a billing engine you own, with Stripe kept on as a payment gateway and invoice renderer. Running example throughout is a B2B platform that charges **per active device, per month**.
-
-## Contents
-
-- [What actually breaks](#what-actually-breaks)
-- [The split: you decide, Stripe collects](#the-split-you-decide-stripe-collects)
-- [An activity ledger, not a counter](#an-activity-ledger-not-a-counter)
-- [Proration is policy, and policy is yours](#proration-is-policy-and-policy-is-yours)
-- [Cycles are immutable once closed](#cycles-are-immutable-once-closed)
-- [Advance for the base, arrears for the rest](#advance-for-the-base-arrears-for-the-rest)
-- [No payment method is a state, not an error](#no-payment-method-is-a-state-not-an-error)
-- [The close job](#the-close-job)
-- [What this buys you: tests](#what-this-buys-you-tests)
-- [When to just use Subscriptions](#when-to-just-use-subscriptions)
 
 ## What actually breaks
 
@@ -35,9 +24,9 @@ Subscription APIs model *a thing the customer bought*. Metered products need to 
 
 **Your invoice line items aren't theirs.** As soon as an invoice has a base charge, a prorated mid-cycle addition, and a one-off usage charge, you're building line items by hand anyway. The subscription is no longer generating your invoice, it's just holding a number you keep overwriting.
 
-**Reconciliation is now a distributed-systems problem.** The customer's real device count lives in your database. The billed quantity lives in theirs. Every mid-cycle change is a write that can fail, retry, or land out of order. When support asks "why were they charged for 41 devices in March", you need one query, not two systems and a webhook log.
+Reconciliation is now a distributed-systems problem. The customer's real device count lives in your database. The billed quantity lives in theirs. Every mid-cycle change is a write that can fail, retry, or land out of order. When support asks "why were they charged for 41 devices in March", you need one query, not two systems and a webhook log.
 
-**Trials, grace periods, suspension.** These are product rules. Encoding them as subscription statuses means your product's state machine is a projection of a vendor's state machine, and every new rule is a puzzle about which vendor state to abuse.
+Trials, grace periods, suspension. These are product rules. Encoding them as subscription statuses means your product's state machine is a projection of a vendor's state machine, and every new rule is a puzzle about which vendor state to abuse.
 
 None of these are Stripe being bad. They're the cost of putting the *decision* of what to charge outside your own database.
 
@@ -45,9 +34,9 @@ None of these are Stripe being bad. They're the cost of putting the *decision* o
 
 Draw the line in one place and everything downstream gets simpler:
 
-**You own** what a customer is entitled to, what they're worth this period, when the period starts and ends, what the line items are, and what happens when they don't pay.
+You own what a customer is entitled to, what they're worth this period, when the period starts and ends, what the line items are, and what happens when they don't pay.
 
-**Stripe owns** card and bank details, the actual movement of money, the hosted invoice page and PDF, SCA, and the receipt email if you want it.
+Stripe owns card and bank details, the actual movement of money, the hosted invoice page and PDF, SCA, and the receipt email if you want it.
 
 Concretely: you keep using `SetupIntent` to collect and store a payment method, `Invoice` + `InvoiceItem` to render and host the document, and `PaymentIntent` to take the money. You don't use `Subscription`, `Price`, or `SubscriptionSchedule` at all. Your pricing lives in your own table where you can join to it.
 
@@ -79,7 +68,7 @@ Two things in that table earn their place.
 
 `effective_on` is a `date`, not a `timestamptz`. Billing boundaries are calendar concepts: a device added "on the 3rd" is added on the 3rd regardless of what hour the API call happened to land on. (This distinction has a whole failure mode of its own, which I wrote up separately in [The Timezone Bug That Skipped a Month of Invoices](/blog/timezone-bug-that-skipped-invoices).)
 
-`reason` is free text and it will save you a support ticket a week. "deactivated — customer request", "activated — trial converted", "deactivated — data migration". You will be asked.
+`reason` is free text and it will save you a support ticket a week. "deactivated, customer request", "activated, trial converted", "deactivated, data migration". You will be asked.
 
 Deactivation rows look pointless if you never credit for removals. Keep them: they drop the device out of *future* periods, and they're the audit trail for the question you'll actually be asked, which is why the charge went down.
 
@@ -143,7 +132,7 @@ The money conversion is four lines and one decision:
 
 ```go
 // prorateAmount returns the net charge for billableDays out of daysInPeriod,
-// rounded half-up. A full period returns exactly unitPricePence — never
+// rounded half-up. A full period returns exactly unitPricePence, never
 // unitPrice*30/31, which is how a full month quietly becomes £29.03.
 func prorateAmount(unitPricePence, billableDays, daysInPeriod int) int {
 	if daysInPeriod <= 0 || billableDays <= 0 || unitPricePence <= 0 {
@@ -184,7 +173,7 @@ CREATE TABLE billing_cycles (
 );
 ```
 
-`unit_price_pence` is copied onto the row rather than joined from the pricing table. Raise your prices in eighteen months and every historic invoice still reproduces exactly. The same argument applies to trial terms, tax rates, and anything else a customer was quoted at a point in time — see [Version Your Policies, Snapshot at Bind Time](/blog/versioned-policies).
+`unit_price_pence` is copied onto the row rather than joined from the pricing table. Raise your prices in eighteen months and every historic invoice still reproduces exactly. The same argument applies to trial terms, tax rates, and anything else a customer was quoted at a point in time, see [Version Your Policies, Snapshot at Bind Time](/blog/versioned-policies).
 
 The `UNIQUE (account_id, period_start)` is your idempotency key. The close job will run twice one day, because a deploy will overlap a cron, and this constraint is what makes that a no-op instead of a duplicate invoice.
 
@@ -207,9 +196,9 @@ const (
 
 Two conventions, both defensible:
 
-**Arrears.** Close the period, count what happened, charge for it. Simple, and every number is known when you compute it.
+Arrears. Close the period, count what happened, charge for it. Simple, and every number is known when you compute it.
 
-**Advance.** Charge on day one for the period ahead. Better cashflow, and it matches how customers expect subscriptions to feel.
+Advance. Charge on day one for the period ahead. Better cashflow, and it matches how customers expect subscriptions to feel.
 
 The workable answer is a hybrid, and the split falls out of what's knowable at the start of a period:
 
@@ -291,17 +280,17 @@ func TestBillableDays(t *testing.T) {
 
 Every one of those is a real support question, answered by a test that runs in microseconds with no database, no HTTP, and no clock. Rerun the whole ledger for an account and you get byte-identical invoices. Try that against a vendor's proration engine.
 
-The last row in that table — a device activating exactly on the period boundary — is the one that will eventually go wrong in production for a reason that has nothing to do with billing. That story is [the next post](/blog/timezone-bug-that-skipped-invoices).
+The last row in that table, a device activating exactly on the period boundary, is the one that will eventually go wrong in production for a reason that has nothing to do with billing. That story is [the next post](/blog/timezone-bug-that-skipped-invoices).
 
 ## When to just use Subscriptions
 
 Use them, genuinely, if:
 
-**Your price is a plan the customer picks.** Seats they buy deliberately, tiers they upgrade between, an annual contract. That's the product Subscriptions were designed for and reimplementing it is pure loss.
+Your price is a plan the customer picks. Seats they buy deliberately, tiers they upgrade between, an annual contract. That's the product Subscriptions were designed for and reimplementing it is pure loss.
 
-**You need a self-serve checkout and pricing page tomorrow.** Checkout plus Subscriptions gets you a working paid product in an afternoon. Build the engine at the point pricing stops fitting, not before.
+You need a self-serve checkout and pricing page tomorrow. Checkout plus Subscriptions gets you a working paid product in an afternoon. Build the engine at the point pricing stops fitting, not before.
 
-**Nobody on the team will own billing.** A custom engine is code that must be maintained by someone who understands cash, tax, and refunds. Without that person, a vendor's engine is better than your unowned one.
+Nobody on the team will own billing. A custom engine is code that must be maintained by someone who understands cash, tax, and refunds. Without that person, a vendor's engine is better than your unowned one.
 
 Build your own when the quantity moves by itself, when your proration rules are written in a contract rather than picked from a dropdown, and when "why was this account charged this amount" needs to be one SQL query.
 

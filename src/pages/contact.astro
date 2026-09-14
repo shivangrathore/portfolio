@@ -2,6 +2,7 @@
 import Base from "@/layouts/Base.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import ContactForm from "@/components/ContactForm.tsx";
+import { services } from "@/lib/services";
 import Github from "@/components/icons/Github.astro";
 import Linkedin from "@/components/icons/Linkedin.astro";
 import Icon from "@/components/icons/Icon.astro";
@@ -14,6 +15,11 @@ import {
   BOOKING_LENGTH,
 } from "@/lib/constants";
 import { abs, breadcrumbs } from "@/lib/schema";
+
+// The form's project-type options, derived from the single source of truth so a
+// renamed service cannot leave a stale option behind on the contact page. Only
+// these strings cross into the island, not the whole services module.
+const projectTypes = [...services.map((s) => s.name), "Something else"];
 
 const methods = [
   {
@@ -38,13 +44,13 @@ const methods = [
 
 const lookingFor = [
   "AI features: document extraction, retrieval, LLM pipelines",
-  "Backend performance and PostgreSQL optimization",
-  "Go backend and API work",
+  "Web apps and dashboards in Next.js, React and TypeScript",
+  "Backends and APIs in Python, Node or Go",
   "Idea to MVP builds for early startups",
-  "Full-stack product builds",
-  "Node to Go migrations",
+  "Slow pages and databases made fast again",
+  "Discord and Telegram bots, at real scale",
   "Real-time and event-driven systems",
-  "Architecture reviews",
+  "Architecture reviews and second opinions",
 ];
 
 // The two practical questions a client asks before the first call, and the
@@ -66,7 +72,7 @@ const logistics = {
 
 <Base
   title="Start a Project"
-  description="Start a freelance project. Tell me what you are building, your deadline and budget, and get a reply within 24 hours."
+  description="Start a freelance project. Tell me what you are building, your deadline and budget, and get a reply within 24 hours. Indian rates in INR."
   schema={[
     breadcrumbs([{ name: "Contact", path: "/contact" }]),
     {
@@ -80,7 +86,7 @@ const logistics = {
   <PageHeader
     label="Taking new projects"
     title="Start a project"
-    lede="Tell me what you are building, when you need it, and roughly what the budget looks like. I work with founders in India, the US and the UK, and quote on whichever rate card applies. I reply within 24 hours, and if I am not the right person I will say so and point you somewhere better."
+    lede="Tell me what you are building, when you need it, and roughly what the budget looks like. I work mostly with Indian founders, and with teams in the US and UK on the international rate card. I reply within 24 hours, and if I am not the right person I will say so and point you somewhere better."
   />
 
   <div class="shell grid gap-x-12 gap-y-14 py-14 md:py-16 lg:grid-cols-12">
@@ -91,7 +97,7 @@ const logistics = {
         The more you fill in, the more useful my first reply will be.
       </p>
       <div class="mt-7 border-t border-line pt-8">
-        <ContactForm client:load />
+        <ContactForm projectTypes={projectTypes} client:load />
       </div>
     </div>
 

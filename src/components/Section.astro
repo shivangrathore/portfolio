@@ -2,53 +2,74 @@
 import Icon from "@/components/icons/Icon.astro";
 
 interface Props {
-  /** Section number, e.g. "01". Kept as data so pages control the sequence. */
-  index?: string;
+  /**
+   * The small line above the title. Replaces the "01", "02", "03" counters of
+   * v4: a number tells the reader how far through a list they are, which nobody
+   * wants to know, while a phrase tells them what they are about to read.
+   */
+  standfirst?: string;
   title: string;
-  /** One or two lines under the title, in the label rail. */
+  /** One or two lines under the title, in the rail. */
   lede?: string;
   href?: string;
   linkLabel?: string;
-  /** Drops the top rule, for the first band under a hero. */
+  /** Drops the opening rule, for the first band under a hero. */
   seamless?: boolean;
+  /** Tints the band. Used once per page at most, to break a long scroll. */
+  tinted?: boolean;
   class?: string;
 }
 
 const {
-  index,
+  standfirst,
   title,
   lede,
   href,
   linkLabel,
   seamless = false,
+  tinted = false,
   class: className,
 } = Astro.props;
 ---
 
 <!--
-  The band: a hairline, a label rail, and the content. Every section on the
-  site is one of these, which is what makes the pages read as one document
-  rather than a stack of unrelated cards.
+  The band.
+
+  A heavy ink rule opens it, a narrow rail on the left carries the running head
+  and the title, and the content sits in a wider column offset to the right
+  with a gutter between them. The offset is what makes the page look set rather
+  than laid out: a 50/50 split reads as a template, an asymmetric one reads as
+  a page someone designed.
+
+  There are no cards inside. Anything that would have been a card is a row with
+  a hairline under it.
 -->
 <section
-  class:list={["reveal", !seamless && "border-t border-line", className]}
+  class:list={[
+    "reveal",
+    !seamless && "band",
+    tinted && "bg-surface",
+    className,
+  ]}
 >
-  <div class="shell grid gap-x-12 gap-y-8 py-16 md:py-20 lg:grid-cols-12">
-    <!-- The rail tracks the reader down long sections instead of scrolling
-         out of sight at the top. -->
-    <div class="lg:sticky lg:top-24 lg:col-span-4 lg:self-start">
-      {index && <p class="label">{index}</p>}
-      <h2 class="mt-3 text-heading text-balance">{title}</h2>
+  <div class="shell grid gap-x-12 gap-y-10 py-20 md:py-28 lg:grid-cols-12">
+    <!-- The rail tracks the reader down long sections instead of scrolling out
+         of sight at the top. -->
+    <div class="lg:sticky lg:top-28 lg:col-span-4 lg:self-start">
+      {standfirst && <p class="standfirst">{standfirst}</p>}
+      <h2 class:list={["text-heading text-balance", standfirst && "mt-4"]}>
+        {title}
+      </h2>
       {
         lede && (
-          <p class="measure mt-3 text-sm leading-relaxed text-muted">{lede}</p>
+          <p class="measure-tight mt-5 leading-relaxed text-muted">{lede}</p>
         )
       }
       {
         href && (
           <a
             href={href}
-            class="group mt-5 inline-flex items-center gap-1.5 text-sm text-muted hover:text-accent"
+            class="group mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-fg underline decoration-rule underline-offset-[6px] hover:text-accent hover:decoration-accent"
           >
             {linkLabel ?? "See all"}
             <Icon
@@ -60,7 +81,7 @@ const {
       }
     </div>
 
-    <div class="lg:col-span-8">
+    <div class="lg:col-span-7 lg:col-start-6">
       <slot />
     </div>
   </div>
