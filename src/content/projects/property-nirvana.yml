@@ -1,0 +1,24 @@
+title: "Property Nirvana"
+description: "Marketing and lead capture site for a West London estate agency covering sales, lettings and property management. Built to the client's brand, with the valuation and enquiry flows that feed their pipeline."
+date: "2025"
+featured: true
+order: 105
+status: "live"
+technologies:
+  - Next.js
+  - TypeScript
+  - React
+  - Tailwind CSS
+  - shadcn/ui
+  - React Hook Form
+  - Zod
+  - Vercel
+features:
+  - "Valuation request flow that branches on sales, rental or both, so the agency gets the right details before they book the appointment"
+  - "Validated forms on the client and the server, with the enquiry delivered to the agency inbox rather than left in a database nobody opens"
+  - "WhatsApp handoff on every page, which is how most of their enquiries actually arrive"
+  - "Service pages for buyers, sellers, tenants and landlords, each ending in the one action that page is for"
+  - "Tenant fees and terms pages written to the disclosure rules agencies are held to"
+  - "Statically rendered on Vercel, so pages come off the edge cache and the site stays fast on a phone"
+  - "Built to a supplied design and brand, component by component, rather than dropped into a theme"
+demo: "https://www.propertynirvana.com"
