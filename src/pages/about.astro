@@ -11,7 +11,7 @@ import { experience } from "@/lib/experience";
 import { MAIL_ADDRESS, RESUME_URL } from "@/lib/constants";
 import { abs, breadcrumbs } from "@/lib/schema";
 
-// Kept in step with the résumé's skills section: only what shows up in shipped
+// Kept in step with the resume's skills section: only what shows up in shipped
 // work and holds up in an interview. A recruiter reads both.
 const skills: { group: string; items: string[] }[] = [
   { group: "Languages", items: ["TypeScript", "JavaScript", "Go", "Python", "SQL"] },
@@ -152,7 +152,7 @@ const education = {
     -->
     <div class="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
       <Button variant="primary" href={RESUME_URL} target="_blank" rel="noopener">
-        Download résumé
+        Download resume
         <Icon name="arrow-right" class="size-4" />
       </Button>
       <Button href={`mailto:${MAIL_ADDRESS}`}>

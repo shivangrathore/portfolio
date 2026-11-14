@@ -141,7 +141,7 @@ export type Evidence = {
 
 export const evidence: Evidence[] = [
   // One card per project, then the engineering number last with its own source
-  // label. Every figure has to match the résumé exactly: a recruiter checks one
+  // label. Every figure has to match the resume exactly: a recruiter checks one
   // against the other, and a mismatch costs more than a smaller number would.
   {
     value: "4",

@@ -42,7 +42,7 @@ export const BOOKING_LENGTH = "20-minute";
  */
 export const AVAILABILITY = "Open to full-time remote roles · 30 days' notice";
 
-/** The résumé every "Résumé" button points at. Rebuilt from ~/Development/resume. */
+/** The resume every "Resume" button points at. Rebuilt from ~/Development/resume. */
 export const RESUME_URL = "/resume.pdf";
 
 /**

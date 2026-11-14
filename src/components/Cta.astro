@@ -13,7 +13,7 @@ import {
 
 interface Props {
   /**
-   * "hire" is the default ask, to a hiring manager: the résumé and an email.
+   * "hire" is the default ask, to a hiring manager: the resume and an email.
    * "freelance" is the old booking ask, kept for /services, /hire and the other
    * pages that still sell a project.
    */
@@ -38,7 +38,7 @@ const {
       ? `Most projects start with a ${BOOKING_LENGTH} call`
       : "Tell me what you are building",
   body = !freelance
-    ? "I am looking for a full-time remote role, full stack or backend. The résumé has the detail and the case studies have the reasoning. Email reaches me directly, and I reply within a day."
+    ? "I am looking for a full-time remote role, full stack or backend. The resume has the detail and the case studies have the reasoning. Email reaches me directly, and I reply within a day."
     : "Send the problem, the deadline and roughly what the budget looks like. You get an honest read on whether I am the right person, a rough timeline and a price range. If I am not a fit I will say so and point you somewhere better.",
   class: className,
 } = Astro.props;
@@ -122,7 +122,7 @@ const {
                 data-plain
                 class="inline-flex w-full items-center justify-center gap-2 bg-bg px-6 py-4 text-sm font-semibold tracking-tight text-fg transition-opacity hover:opacity-90"
               >
-                Download résumé
+                Download resume
                 <Icon name="arrow-right" class="size-4" />
               </a>
               <a
