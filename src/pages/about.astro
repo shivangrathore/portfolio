@@ -8,26 +8,34 @@ import Button from "@/components/Button.astro";
 import Cta from "@/components/Cta.astro";
 import Icon from "@/components/icons/Icon.astro";
 import { experience } from "@/lib/experience";
-import { MAIL_ADDRESS } from "@/lib/constants";
+import { MAIL_ADDRESS, RESUME_URL } from "@/lib/constants";
 import { abs, breadcrumbs } from "@/lib/schema";
 
+// Kept in step with the résumé's skills section: only what shows up in shipped
+// work and holds up in an interview. A recruiter reads both.
 const skills: { group: string; items: string[] }[] = [
-  { group: "Languages", items: ["Go", "TypeScript", "JavaScript", "Python", "SQL"] },
-  { group: "Frontend", items: ["React", "Next.js", "Tailwind CSS", "TanStack Query", "Zustand", "Jotai"] },
-  { group: "Backend", items: ["Gin", "Node.js", "NestJS", "Express", "WebSockets"] },
+  { group: "Languages", items: ["TypeScript", "JavaScript", "Go", "Python", "SQL"] },
+  { group: "Frontend", items: ["React", "Next.js", "TanStack Query", "Tailwind CSS", "PWAs", "i18n"] },
+  { group: "Backend", items: ["Node.js", "Express", "Gin", "gRPC", "Protocol Buffers", "WebSockets"] },
   { group: "Data", items: ["PostgreSQL", "Redis", "RabbitMQ", "MongoDB"] },
-  { group: "Infra", items: ["Docker", "AWS S3", "GitHub Actions", "Turborepo", "Vercel", "Linux"] },
+  {
+    group: "Infra",
+    items: ["Docker", "Docker Compose", "Coolify", "Linux", "GitHub Actions", "AWS S3", "Turborepo", "Vercel"],
+  },
   {
     group: "Integrations",
     items: [
       "Stripe",
-      "Google OAuth",
-      "Gmail / Drive / Sheets",
-      "Twilio",
+      "WebAuthn (passkeys)",
+      "Firebase Cloud Messaging",
+      "Gotenberg",
       "OpenAI",
+      "Twilio",
+      "Google OAuth",
+      "discord.py",
     ],
   },
-  { group: "Tools", items: ["sqlc", "pgx", "Prisma", "Drizzle", "Zod"] },
+  { group: "Tools", items: ["sqlc", "pgx", "Zod"] },
 ];
 
 const education = {
@@ -40,7 +48,7 @@ const education = {
 
 <Base
   title="About"
-  description="Freelance full-stack engineer working in Go, PostgreSQL and Next.js, currently rebuilding a fleet-compliance SaaS from Node to Go."
+  description="Full stack engineer in India, building software since 2019: TypeScript and React, Go, Python and PostgreSQL. Contract engineer on a UK fleet-compliance platform and founder of Finalist."
   schema={[
     breadcrumbs([{ name: "About", path: "/about" }]),
     {
@@ -54,8 +62,8 @@ const education = {
 >
   <PageHeader
     label="About"
-    title="Backend engineer who ships the front end too"
-    lede="Production SaaS is the day job: RBAC, real-time infrastructure, compliance workflows, third-party integrations, and the distributed services that hold them together."
+    title="Full stack engineer, building since 2019"
+    lede="TypeScript and React on the front, Go, Python and PostgreSQL behind it. A UK fleet-compliance platform by day, and an esports platform I founded on the side."
   >
     <!-- Reads from src/assets/portrait.*; the header closes up if it is removed. -->
     <Portrait
@@ -68,25 +76,28 @@ const education = {
   <Section standfirst="Who you would work with" title="Background" seamless>
     <div class="prose">
       <p>
-        I'm a full-stack engineer who builds scalable <strong>Go</strong>
-        backends and modern <strong>React/Next.js</strong> applications, with
-        <strong>Node.js</strong>, <strong>TypeScript</strong> and
-        <strong>Python</strong> for the work that suits them better. My
-        day-to-day is production SaaS: RBAC, real-time infrastructure,
-        compliance workflows, third-party integrations, and the distributed
-        services that hold them together.
+        I'm a full stack engineer, and I have been building software since
+        2019. My strongest ground is <strong>TypeScript</strong> and
+        <strong>React/Next.js</strong>; behind it I work in <strong>Go</strong>,
+        <strong>Python</strong> and <strong>PostgreSQL</strong>, with
+        <strong>Node.js</strong> and Express where they suit the job better.
       </p>
       <p>
-        I started out on Linux and never left. I'm still pulled toward how
-        systems actually work under the hood. What I care about most is backend
-        architecture, developer tooling, and writing code that stays clean as
-        it grows.
+        I started with a Discord bot: a Pokémon collection game I co-created and
+        was the only developer of until handing it over in 2022, sharding
+        included. It now runs in 130,000+ servers under its current owner. Most
+        of what I know about software that real people lean on started there.
       </p>
       <p>
-        Right now I'm on contract at <strong>Hauldrive</strong>, leading a Go
-        and Next.js platform rewrite where one backend carries a fleet product, a
-        workshop product and the admin tooling behind both, and writing about
-        the backend and systems work I pick up along the way.
+        Right now I'm on contract at <strong>Hauldrive</strong>, a UK
+        fleet-compliance platform, where I led backend design for a team of four
+        and took the split from one Go backend into five services to production
+        in October 2026. On the side I founded <strong>Finalist</strong>, a scrim
+        and tournament platform for BGMI and Free Fire communities.
+      </p>
+      <p>
+        I'm looking for a full-time remote role, full stack or backend, on a
+        team that ships to real users.
       </p>
     </div>
   </Section>
@@ -132,28 +143,27 @@ const education = {
     </div>
 
     <!--
-      The primary action here is the call, not the CV.
+      The primary action here is the CV again.
 
-      This used to lead with "Download resume", which is the vocabulary of
-      someone looking for a job. A founder reading an about page is deciding
-      whether to talk to a supplier, and handing them a CV answers a question
-      they did not ask while quietly repositioning the whole page as a job
-      application. The PDF stays for the recruiters who do want it, one step
-      down and named for what it is.
+      In v5 this led with "Start a project" and demoted the CV to a footnote,
+      because the site was selling freelance work. It is a job search now, and a
+      hiring manager on an about page wants the PDF. The freelance ask stays, one
+      step down and named for what it is.
     -->
     <div class="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
-      <Button variant="primary" href="/contact/">
-        <Icon name="mail" class="size-4" />
-        Start a project
+      <Button variant="primary" href={RESUME_URL} target="_blank" rel="noopener">
+        Download résumé
+        <Icon name="arrow-right" class="size-4" />
       </Button>
-      <Button href={`mailto:${MAIL_ADDRESS}`}>Email me directly</Button>
+      <Button href={`mailto:${MAIL_ADDRESS}`}>
+        <Icon name="mail" class="size-4" />
+        Email me directly
+      </Button>
       <a
-        href="/resume.pdf"
-        target="_blank"
-        rel="noopener"
+        href="/services/"
         class="text-sm text-faint underline decoration-rule underline-offset-4 hover:text-accent hover:decoration-accent"
       >
-        CV, for recruiters
+        Freelance work, for clients
       </a>
     </div>
   </Section>

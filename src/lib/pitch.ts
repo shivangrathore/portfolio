@@ -108,7 +108,7 @@ export const differences: Difference[] = [
   {
     claim: "It runs in production or it does not count",
     detail:
-      "Everything on this site is live with paying users behind it. A fleet compliance platform with four UK operators on it. A game that reached a million registered players. No pilots, no prototypes presented as products.",
+      "Everything on this site is live with users behind it. A fleet compliance platform with four UK operators on it. An esports platform with 1,300+ teams registered. No pilots, no prototypes presented as products.",
   },
   {
     claim: "You own all of it",
@@ -141,37 +141,38 @@ export type Evidence = {
 
 export const evidence: Evidence[] = [
   // One card per project, then the engineering number last with its own source
-  // label. Two Hauldrive cards sitting adjacent with identical sources read as a
-  // copy-paste error, and each card now carries two figures instead of one, so
-  // the band says more in the same space.
+  // label. Every figure has to match the résumé exactly: a recruiter checks one
+  // against the other, and a mismatch costs more than a smaller number would.
   {
     value: "4",
     label:
-      "UK transport operators running the fleet platform in production, covering 80+ vehicles and 60+ drivers",
+      "UK transport operators running the fleet platform in production, with 100 drivers and 120+ vehicles",
     source: "Hauldrive, contract",
     href: "/case-studies/hauldrive/",
   },
   {
-    value: "81",
-    // "on the platform", not "run" or "completed": the admin total includes
-    // unpublished and cancelled events, and every number here has to survive
-    // being asked about on a call.
+    value: "1,300+",
+    // Finalist's own public counter: published, non-test, non-cancelled events
+    // only (LandingStats in the backend). As of November 2026: 1,325 teams,
+    // 135 scrims, 40 tournaments, 3,424 registrations.
     label:
-      "esports organisations on the platform, with 95 scrims and tournaments created across them",
+      "teams registered for 135 scrims and 40 tournaments on the esports platform I founded",
     source: "Finalist, live",
     href: "/case-studies/finalist/",
   },
   {
-    value: "1M+",
+    value: "130K+",
+    // Today's count, under the owner it was handed to in 2022. Labelled as
+    // such: the growth since the handover is not mine to claim.
     label:
-      "registered players on a game I designed, built, scaled and ran alone, across 132k Discord servers",
+      "Discord servers now run the Pokémon bot I co-created and was sole developer of until its 2022 handover",
     source: "Pokémon Discord bot",
     href: "/work/",
   },
   {
-    value: "600+",
+    value: "5",
     label:
-      "endpoints across five Go services behind one gateway, split out of a single backend without breaking a client",
+      "Go services split out of one backend, with gRPC between them, a transactional outbox, and a production cutover that broke no client",
     source: "Hauldrive, the architecture",
     href: "/case-studies/hauldrive/",
   },

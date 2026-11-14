@@ -20,6 +20,7 @@ technologies:
   - WebSockets
   - Docker
 features:
+  - "Founded it and lead engineering with one other developer: 135 scrims and 40 tournaments run for 1,300+ teams and 3,400+ registrations, as of November 2026"
   - "Multi-tenant organizations with role-scoped staff, invite links, and separate player and organizer surfaces on their own subdomains"
   - "Full scrim lifecycle — registration, slot lists, room details, results entry, and leaderboards"
   - "Tournaments supporting six competition formats (BR points, round robin, single and double elimination, Swiss, gauntlet) behind one pluggable format engine"

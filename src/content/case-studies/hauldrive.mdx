@@ -40,10 +40,10 @@ centres, walkaround checks, defects, work orders, maintenance templates,
 incidents, insurance, driver training, toolbox talks and holidays, and it has to
 be able to answer "prove it" for any of them, for any date, months later.
 
-I joined to build the backend and have built every generation of it: the
-original Go service, the domain-separated rewrite, and the current split into
-five services. It is live with four operators running 80+ vehicles and 60+
-drivers.
+I joined to build the backend and have led every generation of it, with a team
+of four: the original Go service, the domain-separated rewrite, and the current
+split into five services. As of November 2026 it is live with four operators,
+100 drivers and 120+ vehicles.
 
 ## The shape now
 
@@ -218,11 +218,15 @@ fails in CI, which is a bad way to find out.
 
 ## Where it is now
 
+**Update, November 2026:** the split went to production on 25 October 2026,
+and the platform now serves four operators, 100 drivers and 120+ vehicles. The
+rest of this section is the state at the time of writing.
+
 In production with four operators. Fleet, identity and documents run; platform
 is scaffolding; workshop and tacho are modules with the shape visible and the
 code still coming.
 
-There is a decision log, 59 entries deep, including the ones that were reversed
+There is a decision log, past 150 entries now, including the ones that were reversed
 and the reasoning that reversed them. It is the artefact I would point at first
 if someone asked what working with me is like, because the useful thing is
 rarely the decision. It is knowing why, and being able to tell when it stops

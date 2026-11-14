@@ -41,13 +41,14 @@ export const person = {
     "Real-time systems",
     "Multi-tenant SaaS",
   ],
-  // Tells search engines this person sells services, not just writes about code.
+  // Tells search engines this person also takes freelance work. Secondary to the
+  // job search now, but /services still exists and still sells it.
   makesOffer: {
     "@type": "Offer",
     itemOffered: {
       "@type": "Service",
       name: "Freelance software engineering",
-      serviceType: "Go backend and full-stack product development",
+      serviceType: "Full-stack product and Go backend development",
     },
   },
 };

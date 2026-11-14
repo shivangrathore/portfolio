@@ -3,24 +3,43 @@ import Button from "@/components/Button.astro";
 import Icon from "@/components/icons/Icon.astro";
 import Portrait from "@/components/Portrait.astro";
 import { hasPortrait } from "@/lib/portrait";
-import { BOOKING_URL, BOOKING_LENGTH, AVAILABILITY } from "@/lib/constants";
+import {
+  BOOKING_URL,
+  BOOKING_LENGTH,
+  AVAILABILITY,
+  MAIL_ADDRESS,
+  RESUME_URL,
+} from "@/lib/constants";
 
 interface Props {
+  /**
+   * "hire" is the default ask, to a hiring manager: the résumé and an email.
+   * "freelance" is the old booking ask, kept for /services, /hire and the other
+   * pages that still sell a project.
+   */
+  variant?: "hire" | "freelance";
   /** Overrides for pages that need a more specific ask. */
   heading?: string;
   body?: string;
   class?: string;
 }
 
+const { variant = "hire" } = Astro.props;
+const freelance = variant === "freelance";
+
 // The booking link only renders once it exists, so the primary CTA is never
 // dead and the heading never promises a call the buttons cannot deliver.
-const booking = BOOKING_URL.length > 0;
+const booking = freelance && BOOKING_URL.length > 0;
 
 const {
-  heading = booking
-    ? `Most projects start with a ${BOOKING_LENGTH} call`
-    : "Tell me what you are building",
-  body = "Send the problem, the deadline and roughly what the budget looks like. You get an honest read on whether I am the right person, a rough timeline and a price range. If I am not a fit I will say so and point you somewhere better.",
+  heading = !freelance
+    ? "Hiring a full stack engineer?"
+    : booking
+      ? `Most projects start with a ${BOOKING_LENGTH} call`
+      : "Tell me what you are building",
+  body = !freelance
+    ? "I am looking for a full-time remote role, full stack or backend. The résumé has the detail and the case studies have the reasoning. Email reaches me directly, and I reply within a day."
+    : "Send the problem, the deadline and roughly what the budget looks like. You get an honest read on whether I am the right person, a rough timeline and a price range. If I am not a fit I will say so and point you somewhere better.",
   class: className,
 } = Astro.props;
 ---
@@ -72,9 +91,19 @@ const {
               frame={false}
             />
             <p class="text-sm leading-relaxed opacity-90">
-              You will be talking to me, not a salesperson.
-              <br class="hidden sm:block" />
-              Shivang Rathore, the person who writes the code.
+              {freelance ? (
+                <>
+                  You will be talking to me, not a salesperson.
+                  <br class="hidden sm:block" />
+                  Shivang Rathore, the person who writes the code.
+                </>
+              ) : (
+                <>
+                  Shivang Rathore, full stack engineer.
+                  <br class="hidden sm:block" />
+                  Building software since 2019.
+                </>
+              )}
             </p>
           </div>
         )
@@ -84,7 +113,26 @@ const {
     <div class="lg:col-span-4 lg:col-start-9">
       <div class="flex flex-col items-start gap-4">
         {
-          booking ? (
+          !freelance ? (
+            <>
+              <a
+                href={RESUME_URL}
+                target="_blank"
+                rel="noopener"
+                data-plain
+                class="inline-flex w-full items-center justify-center gap-2 bg-bg px-6 py-4 text-sm font-semibold tracking-tight text-fg transition-opacity hover:opacity-90"
+              >
+                Download résumé
+                <Icon name="arrow-right" class="size-4" />
+              </a>
+              <a
+                href={`mailto:${MAIL_ADDRESS}`}
+                class="text-sm font-medium underline decoration-1 underline-offset-[6px] opacity-90 hover:opacity-100"
+              >
+                {MAIL_ADDRESS}
+              </a>
+            </>
+          ) : booking ? (
             <>
               <a
                 href={BOOKING_URL}

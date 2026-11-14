@@ -1,5 +1,5 @@
 title: "Hauldrive"
-description: "Multi-tenant fleet compliance and maintenance platform for UK transport operators. I built the original Go backend, then split it into five services behind one gateway without breaking a single client, and still own the compliance and billing core."
+description: "Multi-tenant fleet compliance and maintenance platform for UK transport operators. I led the original Go backend with a team of four, then split it into five services behind one gateway without breaking a single client, and still own the compliance and billing core."
 date: "2025 - Present"
 featured: true
 order: 130
@@ -21,8 +21,8 @@ technologies:
   - WebSockets
   - Docker
 features:
-  - "Split one Go backend into five services (identity, platform, fleet, workshop, tacho) plus an internal documents service, behind a Traefik gateway on a single origin. Clients kept working throughout: the old path prefixes are rewritten at the gateway rather than every service carrying two contracts"
-  - "600+ endpoints and 192 migrations across the service databases, in a Go workspace with one shared module for the pieces every service needs"
+  - "Split one Go backend into identity, platform, fleet and workshop services plus an internal documents service, behind a Traefik gateway on a single origin, and ran the October 2026 production cutover. Clients kept working throughout: the old path prefixes are rewritten at the gateway rather than every service carrying two contracts"
+  - "A Go workspace with one shared module for the pieces every service needs"
   - "Identity owns the account and issues every token, publishing JWKS for the rest to verify against. The token carries identity, not authorization: a permission baked into a JWT outlives its own revocation, so each service resolves permissions from its own tables"
   - "Each product owns its roles and its permission catalogue: 133 permission keys defined in Go rather than a table, so a missing grant is a compile-time concern instead of a failed seed"
   - "Services talk to each other over gRPC on Protocol Buffers contracts (identity provisioning and terms, platform billing, documents), not by calling each other's REST APIs. Clients get REST through the gateway; the internal plane is typed and generated"
@@ -31,6 +31,6 @@ features:
   - "Billing built on Stripe primitives rather than Stripe Subscriptions: per-vehicle pricing, base fee in advance with usage in arrears, mid-cycle proration through a ledger, BACS mandates and dunning"
   - "Compliance core: PMI and brake-test cycles, workshop booking over branded email, per-task document policies, walkaround defects into fault workflows, DVLA and MOT history sync"
   - "AI invoice ingestion for parts and labour: tiered OCR into LLM extraction, supplier and part alias resolution, and anti-fraud checks that flag for review rather than block"
-  - "A written decision log, 59 entries deep, including the ones that were reversed and why"
-  - "In production with four operators running 80+ vehicles and 60+ drivers"
+  - "A written decision log, past 150 entries, including the ones that were reversed and why"
+  - "In production with four operators, 100 drivers and 120+ vehicles"
 demo: "https://hauldrive.com"

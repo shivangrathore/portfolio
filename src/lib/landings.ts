@@ -262,7 +262,7 @@ export const landings: Landing[] = [
       {
         name: "Fleet compliance platform, in production",
         detail:
-          "Both generations of the backend: the original Go service, then the rewrite into domain-separated Go with a schema per domain. Around 570 endpoints and 120 migrations, serving three front-ends and a driver mobile API from one codebase and one database. Four operators, 80+ vehicles, 60+ drivers.",
+          "Both generations of the backend: the original Go service, then the rewrite into domain-separated Go with a schema per domain. Around 570 endpoints and 120 migrations, serving three front-ends and a driver mobile API from one codebase and one database. Now in production with four operators, 100 drivers and 120+ vehicles.",
         href: "/about/",
       },
       {
@@ -322,7 +322,7 @@ export const landings: Landing[] = [
     metaDescription:
       "Freelance Python developer for APIs, automation, scraping, bots and LLM pipelines, with production systems behind it. Fixed prices from Rs 8,000.",
     intro:
-      "Python is the language I have written longest and the one most of my scale has been in. A Discord game that a million people registered for ran on it, and every LLM pipeline I have shipped since has been Python at the edges even where the service around it was Go. If the thing you need built is an API, an automation, a scraper, a bot or a model wrapped in something a user can actually reach, this is the page.",
+      "Python is the language I have written longest and the one most of my scale has been in. A Discord game I was the only developer of, now in 130,000+ servers, ran on it, and every LLM pipeline I have shipped since has been Python at the edges even where the service around it was Go. If the thing you need built is an API, an automation, a scraper, a bot or a model wrapped in something a user can actually reach, this is the page.",
     offer: [
       {
         name: "APIs and backends",
@@ -352,9 +352,9 @@ export const landings: Landing[] = [
     ],
     proof: [
       {
-        name: "A Python game with a million registered players",
+        name: "A Python game, now in 130,000+ Discord servers",
         detail:
-          "Sole developer of a Pokemon collection bot players moved to after Pokecord shut down: 132,000 Discord servers, a full player economy with duels, trading, a market and an auction house, on Python with MongoDB and Redis behind it and Rust doing the image work.",
+          "Sole developer, until its 2022 handover, of a Pokemon collection bot players moved to after Pokecord shut down (now in 130,000+ Discord servers under its current owner): a full player economy with duels, trading, a market and an auction house, on Python with MongoDB and Redis behind it and Rust doing the image work.",
         href: "/work/",
       },
       {
@@ -453,7 +453,7 @@ export const landings: Landing[] = [
       {
         name: "A Discord game that reached scale",
         detail:
-          "Sole developer of a Pokémon collection bot players moved to after Pokécord shut down: 132,000 Discord servers and over a million registered players, with PvP duels, trading, a market and an auction house. Shipped fast, then held up under load.",
+          "Sole developer, until its 2022 handover, of a Pokémon collection bot players moved to after Pokécord shut down, now in 130,000+ Discord servers under its current owner. PvP duels, trading, a market and an auction house. Shipped fast, then held up under load.",
         href: "/about/",
       },
       {

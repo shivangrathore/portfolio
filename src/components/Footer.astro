@@ -5,6 +5,7 @@ import {
   X_URL,
   MAIL_ADDRESS,
   AVAILABILITY,
+  RESUME_URL,
 } from "@/lib/constants";
 import { landings } from "@/lib/landings";
 import Github from "@/components/icons/Github.astro";
@@ -14,21 +15,12 @@ import Icon from "@/components/icons/Icon.astro";
 import RegionToggle from "@/components/RegionToggle.astro";
 
 const year = new Date().getFullYear();
+const freelance = /^\/(services|hire|contact)(\/|$)/.test(Astro.url.pathname);
 
-// The top nav carries six items and cannot grow. Everything worth reaching
-// lives here instead, which also puts the /hire pages one click from every
-// page rather than only from the homepage and /services.
+// The top nav carries four items and cannot grow. Everything worth reaching
+// lives here instead. Freelance comes last: it is the secondary path now, still
+// one click from every page for the client who does want it.
 const columns = [
-  {
-    title: "Hire me",
-    links: [
-      // The hub is otherwise orphaned: the homepage and /services link the
-      // three landing pages directly and nothing points at /hire itself.
-      { label: "Ways to work together", href: "/hire/" },
-      ...landings.map((l) => ({ label: l.eyebrow, href: `/hire/${l.slug}/` })),
-      { label: "All services", href: "/services/" },
-    ],
-  },
   {
     title: "Work",
     links: [
@@ -41,8 +33,19 @@ const columns = [
     title: "Site",
     links: [
       { label: "About", href: "/about/" },
-      { label: "Start a project", href: "/contact/" },
+      { label: "Résumé", href: RESUME_URL },
       { label: "RSS", href: "/rss.xml" },
+    ],
+  },
+  {
+    title: "Freelance",
+    links: [
+      // The hub is otherwise orphaned: /services links the landing pages
+      // directly and nothing else points at /hire itself.
+      { label: "Ways to work together", href: "/hire/" },
+      ...landings.map((l) => ({ label: l.eyebrow, href: `/hire/${l.slug}/` })),
+      { label: "Services and rates", href: "/services/" },
+      { label: "Start a project", href: "/contact/" },
     ],
   },
 ];
@@ -64,9 +67,9 @@ const elsewhere = [
           Shivang Rathore
         </p>
         <p class="measure mt-4 text-sm leading-relaxed text-muted">
-          Freelance engineer in India. AI features, web apps and the backends
-          under them, in Python, TypeScript and Go. Working mostly with Indian
-          founders, and with teams in the US and UK.
+          Full stack engineer in India. TypeScript and React on the front, Go,
+          Python and PostgreSQL behind it. Building software since 2019, and
+          open to full-time remote roles.
         </p>
         <a
           href={`mailto:${MAIL_ADDRESS}`}
@@ -132,12 +135,16 @@ const elsewhere = [
     >
       <p class="label">© {year} Shivang Rathore</p>
       <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
-        {/* Sitewide, because the guess is a guess and someone reading a case
-            study should not have to go back to /services to correct it. */}
-        <div class="flex items-center gap-2.5">
-          <span class="label">Pricing</span>
-          <RegionToggle />
-        </div>
+        {/* Only where a rate is on the page. The rest of the site no longer
+            sells anything, and a pricing toggle there reads as a price list. */}
+        {
+          freelance && (
+            <div class="flex items-center gap-2.5">
+              <span class="label">Pricing</span>
+              <RegionToggle />
+            </div>
+          )
+        }
         <p class="label text-accent">{AVAILABILITY}</p>
       </div>
     </div>

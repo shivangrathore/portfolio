@@ -1,5 +1,5 @@
 ---
-import { NAV_ITEMS, GITHUB_URL, LINKEDIN_URL, BOOKING_URL } from "@/lib/constants";
+import { NAV_ITEMS, GITHUB_URL, LINKEDIN_URL, RESUME_URL } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Github from "@/components/icons/Github.astro";
 import Linkedin from "@/components/icons/Linkedin.astro";
@@ -14,10 +14,9 @@ const isActive = (href: string) => {
   return target === "/" ? pathname === "/" : pathname.startsWith(target);
 };
 
-// The bar CTA goes to the calendar when there is one, because the visitor who
-// clicks a nav CTA is further along than the one who scrolls to the footer.
-const cta = BOOKING_URL || "/contact";
-const external = Boolean(BOOKING_URL);
+// The bar CTA is the résumé: the visitor who clicks a nav CTA is further along
+// than the one who scrolls to the footer, and for a hiring manager that next
+// step is the PDF. BaseHead tracks it as resume_download by its href.
 ---
 
 <!--
@@ -61,13 +60,12 @@ const external = Boolean(BOOKING_URL);
     <div class="hidden items-center gap-4 md:flex">
       <ThemeToggle />
       <a
-        href={cta}
-        target={external ? "_blank" : undefined}
-        rel={external ? "noopener" : undefined}
-        data-track={external ? "book-call" : undefined}
+        href={RESUME_URL}
+        target="_blank"
+        rel="noopener"
         class="bg-accent px-5 py-2.5 text-sm font-medium text-accent-fg transition-colors hover:bg-fg hover:text-bg"
       >
-        {external ? "Book a call" : "Start a project"}
+        Résumé
       </a>
     </div>
 
@@ -105,13 +103,12 @@ const external = Boolean(BOOKING_URL);
         ))
       }
       <a
-        href={cta}
-        target={external ? "_blank" : undefined}
-        rel={external ? "noopener" : undefined}
-        data-track={external ? "book-call" : undefined}
+        href={RESUME_URL}
+        target="_blank"
+        rel="noopener"
         class="mt-5 bg-accent px-5 py-3.5 text-center text-sm font-medium text-accent-fg"
       >
-        {external ? "Book a 20-minute call" : "Start a project"}
+        Download résumé
       </a>
       <div class="mt-5 flex gap-5 border-t border-line pt-5">
         <a

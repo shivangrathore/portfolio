@@ -1,8 +1,8 @@
 export const SITE_TITLE = "Shivang Rathore";
 // Kept to roughly 155 characters. Longer than that and Google rewrites the tail
-// itself, usually with something less useful than the price.
+// itself, usually with something less useful than the ask.
 export const SITE_DESCRIPTION =
-  "Freelance developer in India. AI features, web apps and the backends under them, in Python, TypeScript and Go. Fixed prices from ₹8,000.";
+  "Full stack engineer in India: TypeScript, React and Next.js on Go, Python and PostgreSQL backends. Open to full-time remote roles.";
 export const BASE_URL = "https://shivangrathore.com";
 
 export const GITHUB_URL = "https://github.com/shivangrathore";
@@ -36,15 +36,14 @@ export const BOOKING_LENGTH = "20-minute";
 /**
  * Shown under every CTA. Keep it true, and update it when it stops being true.
  *
- * This used to read "Available now, one project at a time". The second half was
- * meant to promise focus and instead advertised a capacity limit: a founder with
- * a deadline reads "one slot" as "he might not be free when I need him", which
- * is a reason to keep shopping, on the page where they were about to stop.
- * Scarcity only reads as confidence when there is visible demand behind it, and
- * there is not one yet. The focus promise moved to the availability FAQ, where
- * it answers a question someone asked rather than raising one they had not.
+ * The site now leads with the job search; freelance work is the secondary path
+ * (/services, /hire, /contact). The notice period is here because it is the
+ * first thing a recruiter filters on, and the only one this line can answer.
  */
-export const AVAILABILITY = "Available now · can start within a week";
+export const AVAILABILITY = "Open to full-time remote roles · 30 days' notice";
+
+/** The résumé every "Résumé" button points at. Rebuilt from ~/Development/resume. */
+export const RESUME_URL = "/resume.pdf";
 
 /**
  * Web3Forms, the primary contact endpoint.
@@ -81,9 +80,11 @@ export const CONTACT_FORM_FIELDS = {
   timeline: "entry.1019092497",
 } as const;
 
+// Services moved to the footer's Freelance column: the masthead is for the
+// visitor the site is now built for, a hiring manager.
 export const NAV_ITEMS = [
-  { name: "Services", href: "/services/" },
   { name: "Work", href: "/work/" },
+  { name: "Case studies", href: "/case-studies/" },
   { name: "Writing", href: "/blog/" },
   { name: "About", href: "/about/" },
 ] as const;

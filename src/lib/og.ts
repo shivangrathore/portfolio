@@ -206,10 +206,10 @@ const STATIC_CARDS: OgCard[] = [
     // template as every other card is the only way it stays in step.
     route: "home",
     // Short enough to survive the eyebrow truncation at this card width.
-    eyebrow: "Freelance engineer, India",
-    title: "Plenty of people can build your demo",
+    eyebrow: "Full stack engineer, India",
+    title: "I build software people use",
     subtitle:
-      "Fewer can build the version that survives real users. AI features, web apps and the backends under them, in Python, TypeScript and Go.",
+      "TypeScript, React and Next.js on Go, Python and PostgreSQL. A UK fleet-compliance platform, an esports platform with 1,300+ teams, and a Discord bot now in 130K+ servers.",
   },
   {
     route: "services",
@@ -251,7 +251,7 @@ const STATIC_CARDS: OgCard[] = [
     eyebrow: "About",
     title: "Shivang Rathore",
     subtitle:
-      "Freelance engineer in India. AI features, web apps and the backends under them, in Python, TypeScript and Go.",
+      "Full stack engineer in India, building software since 2019. TypeScript and React on the front, Go, Python and PostgreSQL behind it.",
   },
   {
     route: "contact",
