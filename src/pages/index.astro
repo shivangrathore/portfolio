@@ -8,7 +8,17 @@ import Button from "@/components/Button.astro";
 import Cta from "@/components/Cta.astro";
 import Timeline from "@/components/Timeline.astro";
 import Icon from "@/components/icons/Icon.astro";
-import { NAV_ITEMS, RESUME_URL, MAIL_ADDRESS, AVAILABILITY } from "@/lib/constants";
+import Github from "@/components/icons/Github.astro";
+import Linkedin from "@/components/icons/Linkedin.astro";
+import Portrait from "@/components/Portrait.astro";
+import {
+  NAV_ITEMS,
+  RESUME_URL,
+  MAIL_ADDRESS,
+  AVAILABILITY,
+  GITHUB_URL,
+  LINKEDIN_URL,
+} from "@/lib/constants";
 import { evidence } from "@/lib/pitch";
 import { experience } from "@/lib/experience";
 import { abs } from "@/lib/schema";
@@ -111,48 +121,49 @@ const writing = [
       </div>
 
       <!--
-        The colophon rail. Four facts a recruiter checks before reading any
-        further: what kind of role, when you could start, where you are, and
-        what you work in. The stack last and quietest.
+        The rail: a face, and the two profiles a recruiter opens next.
+
+        It used to be a spec sheet (role, notice, location, hours, stack), and
+        every line of it repeated the standfirst, the lede or the availability
+        line beside it. Nothing here may restate the column on the left.
+        On a phone it collapses to a row under the buttons.
       -->
       <aside class="lg:col-span-3 lg:col-start-10">
-        <dl class="border-t-[3px] border-fg">
-          <div class="border-b border-line py-4">
-            <dt class="spec">Looking for</dt>
-            <dd class="mt-1.5 text-lg font-bold tracking-tight text-accent">
-              Full-time remote, full stack or backend
-            </dd>
-          </div>
+        <div class="flex items-center gap-5 border-t-[3px] border-fg pt-5 lg:block">
+          <Portrait
+            class="size-20 shrink-0 lg:aspect-4/5 lg:size-auto lg:w-full"
+            width={384}
+            sizes="(min-width: 1024px) 18rem, 5rem"
+            loading="eager"
+          />
 
-          <div class="grid grid-cols-2 gap-x-4 border-b border-line py-4">
-            <div>
-              <dt class="spec">Notice</dt>
-              <dd class="expanded mt-1.5 text-2xl font-bold tracking-tight text-fg">
-                30 days
-              </dd>
-            </div>
-            <div>
-              <dt class="spec">Based in</dt>
-              <dd class="expanded mt-1.5 text-2xl font-bold tracking-tight text-fg">
-                India
-              </dd>
-            </div>
-          </div>
-
-          <div class="border-b border-line py-4">
-            <dt class="spec">Hours</dt>
-            <dd class="mt-1.5 text-lg font-bold tracking-tight text-fg">
-              IST, with UK overlap daily
-            </dd>
-          </div>
-
-          <div class="py-4">
-            <dt class="spec">Works in</dt>
-            <dd class="mt-1.5 text-sm leading-relaxed text-muted">
-              TypeScript · React · Next.js · Go · Python · PostgreSQL
-            </dd>
-          </div>
-        </dl>
+          <ul class="w-full text-sm lg:mt-5">
+            <li class="border-b border-line">
+              <a
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noopener me"
+                class="flex items-center gap-2.5 py-3 font-semibold text-fg hover:text-accent"
+              >
+                <Github class="size-4" />
+                GitHub
+                <Icon name="arrow-up-right" class="ml-auto size-4 text-faint" />
+              </a>
+            </li>
+            <li class="border-b border-line">
+              <a
+                href={LINKEDIN_URL}
+                target="_blank"
+                rel="noopener me"
+                class="flex items-center gap-2.5 py-3 font-semibold text-fg hover:text-accent"
+              >
+                <Linkedin class="size-4" />
+                LinkedIn
+                <Icon name="arrow-up-right" class="ml-auto size-4 text-faint" />
+              </a>
+            </li>
+          </ul>
+        </div>
       </aside>
     </div>
   </section>
